@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단어 연결 게임</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            user-select: none; /* 드래그 시 텍스트 선택 방지 */
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .controls input {
+            width: 50px;
+            padding: 5px;
+            margin: 0 10px;
+            text-align: center;
+        }
+        .controls button {
+            padding: 8px 16px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 0 5px;
+        }
+        .btn-start { background-color: #28a745; }
+        .btn-start:hover { background-color: #218838; }
+        
+        .btn-reset { background-color: #ffc107; color: black; }
+        .btn-reset:hover { background-color: #e0a800; }
+        
+        .btn-stop { background-color: #dc3545; }
+        .btn-stop:hover { background-color: #c82333; }
+        
+        .status {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        #board-container {
+            position: relative;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-height: 200px;
+            min-width: 200px;
+        }
+        #board {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px; /* 블록 사이 간격 2배 확대 유지 */
+            justify-content: center;
+            position: relative;
+            z-index: 2;
+        }
+        .block {
+            width: 60px;
+            height: 60px;
+            background-color: #e9ecef;
+            border: 2px solid #ced4da;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .block.selected {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+            color: white;
+        }
+        #lineCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <label>블록 개수: <input type="number" id="blockCount" value="16" min="4" max="36"></label>
+        <label>목표 글자 수: <input type="number" id="wordLength" value="2" min="2" max="5"></label>
+        <br><br>
+        <button class="btn-start" onclick="startGame()">게임 시작</button>
+        <button class="btn-reset" onclick="resetBoard()">단어변경</button>
+        <button class="btn-stop" onclick="stopGame()">게임 종료</button>
+    </div>
+
+    <div class="status">
+        제시어: <span id="categoryName" style="color: #d9534f;">(대기중)</span> | 
+        남은 시간: <span id="timer" style="color: #f0ad4e;">대기중</span> |
+        점수: <span id="score" style="color: #0275d8;">0</span>
+    </div>
+
+    <div id="board-container">
+        <canvas id="lineCanvas"></canvas>
+        <div id="board"></div>
+    </div>
+
+    <script>
+        const dictionary = {
+            "과일": ["사과", "포도", "수박", "참외", "망고", "딸기", "자두"],
+            "지역이름": ["노은", "반석", "유성", "대전", "서울", "부산", "제주"],
+            "나라이름": ["한국", "미국", "영국", "호주", "중국", "일본", "독일"]
+        };
+
+        // 게임 상태 관리 변수들
+        let score = 0;
+        let currentTargetWords = []; // 보드 내 숨겨진 2개의 정답 단어를 담는 배열로 변경
+        let currentCategory = ""; 
+        let currentLengthLimit = 0; 
+        let currentBlockCount = 0;  
+        
+        let isDragging = false;
+        let selectedBlocks = [];
+        let solvedWords = []; 
+        
+        // 타이머 관련 변수
+        let timerInterval = null;
+        let timeLeft = 60;
+        let isGameActive = false; 
+
+        const board = document.getElementById('board');
+        const canvas = document.getElementById('lineCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function startGame() {
+            clearInterval(timerInterval); 
+            
+            currentBlockCount = parseInt(document.getElementById('blockCount').value);
+            currentLengthLimit = parseInt(document.getElementById('wordLength').value);
+            
+            // 2개의 단어가 들어가야 하므로 최소 블록 개수 조건 조정
+            if (currentBlockCount < (currentLengthLimit * 2)) {
+                alert(`블록 개수가 너무 적습니다. 최소 ${currentLengthLimit * 2}개 이상이어야 합니다.`);
+                return;
+            }
+
+            const categories = Object.keys(dictionary);
+            let validCategories = [];
+            for (let cat of categories) {
+                const matchingWords = dictionary[cat].filter(w => w.length === currentLengthLimit);
+                // 최소 2개 이상의 단어가 카테고리에 존재해야 함
+                if (matchingWords.length >= 2) {
+                    validCategories.push(cat);
+                }
+            }
+
+            if(validCategories.length === 0) {
+                alert(`사전에 ${currentLengthLimit}글자 단어가 2개 이상 있는 카테고리가 없습니다. 설정을 변경해주세요.`);
+                return;
+            }
+
+            currentCategory = validCategories[Math.floor(Math.random() * validCategories.length)];
+            document.getElementById('categoryName').textContent = currentCategory;
+
+            score = 0;
+            timeLeft = 60;
+            isGameActive = true;
+            solvedWords = []; 
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('timer').textContent = `${timeLeft}초`;
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = `${timeLeft}초`;
+                
+                if (timeLeft <= 0) {
+                    endGameByTimeOut();
+                }
+            }, 1000);
+
+            generateNewRound();
+        }
+
+        function resetBoard() {
+            if (!isGameActive) {
+                alert("게임 시작 버튼을 먼저 눌러주세요.");
+                return;
+            }
+            generateNewRound();
+        }
+
+        function stopGame() {
+            clearInterval(timerInterval); 
+            isGameActive = false; 
+            currentCategory = ""; 
+            solvedWords = [];
+            
+            document.getElementById('timer').textContent = "대기중";
+            document.getElementById('categoryName').textContent = "(대기중)";
+            
+            board.innerHTML = "";
+            clearCanvas();
+            
+            alert("게임이 종료되었습니다. 다시 시작하려면 '게임 시작'을 눌러주세요.");
+        }
+
+        // 라운드 내부 생성 로직 (제시어는 유지됨)
+        function generateNewRound() {
+            if (!currentCategory) return;
+
+            // 현재 고정된 제시어 안에서 글자 수가 맞는 단어 필터링
+            let words = dictionary[currentCategory].filter(w => w.length === currentLengthLimit);
+            
+            // 무작위로 배열을 섞어 상위 2개 추출
+            words.sort(() => Math.random() - 0.5);
+            currentTargetWords = [words[0], words[1]];
+
+            generateBoard(currentBlockCount, currentTargetWords);
+        }
+
+        // 보드 생성 함수
+        function generateBoard(totalBlocks, targetWords) {
+            board.innerHTML = "";
+            selectedBlocks = [];
+            clearCanvas();
+            
+            const cols = Math.ceil(Math.sqrt(totalBlocks));
+            board.style.width = `${cols * 84}px`; 
+
+            const commonChars = "가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허고노도로모보소오조초코토포호구누두루무부수우주추쿠투푸후기니디리미비시이지치키티피히강건경고과관광구국군권금기길김남대도동명문미민박방배백번부북분산서석선설성세수숙순승시신심안양연영오용우원유윤은이인임장전정제조종주지진찬창채천철최추춘태하한해현호홍화환회효훈흥희";
+
+            // 2개의 단어 글자들을 모두 합침
+            let chars = [];
+            targetWords.forEach(word => {
+                chars = chars.concat(word.split(''));
+            });
+
+            // 나머지 빈칸 채우기
+            while (chars.length < totalBlocks) {
+                const randomIndex = Math.floor(Math.random() * commonChars.length);
+                chars.push(commonChars.charAt(randomIndex));
+            }
+            
+            // 블록 완전 무작위 셔플
+            for (let i = chars.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [chars[i], chars[j]] = [chars[j], chars[i]];
+            }
+
+            chars.forEach((char, index) => {
+                const div = document.createElement('div');
+                div.classList.add('block');
+                div.textContent = char;
+                div.dataset.index = index;
+                
+                div.addEventListener('mousedown', startConnect);
+                div.addEventListener('mouseenter', continueConnect);
+                
+                board.appendChild(div);
+            });
+
+            setTimeout(resizeCanvas, 0); 
+        }
+
+        function endGameByTimeOut() {
+            clearInterval(timerInterval);
+            isGameActive = false; 
+            currentCategory = ""; 
+            solvedWords = [];
+            
+            clearCanvas();
+            resetSelection();
+            alert(`시간이 종료되었습니다! 최종 점수: ${score}점`);
+            
+            document.getElementById('timer').textContent = "대기중";
+            document.getElementById('categoryName').textContent = "(대기중)";
+            board.innerHTML = "";
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('board-container');
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+        }
+
+        function startConnect(e) {
+            if (!isGameActive) return;
+            isDragging = true;
+            selectedBlocks = [e.target];
+            e.target.classList.add('selected');
+            drawLines();
+        }
+
+        function continueConnect(e) {
+            if (!isGameActive || !isDragging) return;
+            const block = e.target;
+            
+            if (!selectedBlocks.includes(block)) {
+                selectedBlocks.push(block);
+                block.classList.add('selected');
+                drawLines();
+            }
+        }
+
+        document.addEventListener('mouseup', () => {
+            if (!isGameActive || !isDragging) return;
+            isDragging = false;
+            
+            if (selectedBlocks.length === 0) return;
+
+            if (selectedBlocks.length !== currentLengthLimit) {
+                alert(`실패! 처음에 설정한 ${currentLengthLimit}글자로 연결해야 합니다.`);
+                resetSelection();
+                return;
+            }
+
+            const formedWord = selectedBlocks.map(b => b.textContent).join('');
+            
+            // 생성된 2개의 목표 단어 중 유저가 만든 단어가 포함되어 있는지 확인
+            if (currentTargetWords.includes(formedWord)) {
+                if (solvedWords.includes(formedWord)) {
+                    alert(`이미 맞춘 단어입니다! 다른 숨겨진 단어를 찾아보세요.`);
+                    resetSelection();
+                    return;
+                }
+
+                alert(`성공! '${formedWord}'을(를) 맞추셨습니다.`);
+                score++;
+                solvedWords.push(formedWord); 
+                document.getElementById('score').textContent = score;
+                generateNewRound(); // 맞추면 새로운 2개 단어가 조합된 판으로 교체
+            } else {
+                alert(`실패! '${formedWord}'은(는) 정답이 아닙니다. 다시 시도해보세요.`);
+                resetSelection();
+            }
+        });
+
+        function drawLines() {
+            clearCanvas();
+            if (selectedBlocks.length < 2) return;
+
+            const containerRect = document.getElementById('board-container').getBoundingClientRect();
+            
+            ctx.beginPath();
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = "#17a2b8";
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            selectedBlocks.forEach((block, index) => {
+                const rect = block.getBoundingClientRect();
+                const x = rect.left - containerRect.left + (rect.width / 2);
+                const y = rect.top - containerRect.top + (rect.height / 2);
+
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function resetSelection() {
+            selectedBlocks.forEach(b => b.classList.remove('selected'));
+            selectedBlocks = [];
+            clearCanvas();
+        }
+    </script>
+</body>
+</html>
