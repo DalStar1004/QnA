@@ -21,9 +21,11 @@
 같은 네트워크의 다른 PC는 그 창에 표시된 `http://192.168.x.x:3000` 형태의 주소로 접속하면 됩니다.
 (처음 켤 때 Windows 방화벽 창이 뜨면 **[액세스 허용]** 을 눌러야 다른 PC에서 들어올 수 있습니다.)
 
-> **`tools/node` 폴더가 없다면** — 저장소에는 포함되지 않습니다(용량 문제로 `.gitignore` 처리).
-> <https://nodejs.org/ko/download> 에서 **Windows 64-bit ZIP**을 받아 압축을 풀고,
-> 폴더 이름을 `node`로 바꿔 `QnA/tools/node/node.exe` 가 되도록 넣으면 됩니다.
+> `tools/node` 는 **저장소에 함께 들어 있습니다.** `git clone` 으로 받아도 그대로 있으므로
+> Node.js를 따로 설치할 필요가 없습니다.
+>
+> 혹시 그 폴더가 지워졌다면 <https://nodejs.org/ko/download> 에서 **Windows 64-bit ZIP**을 받아
+> 압축을 풀고 폴더 이름을 `node`로 바꿔 `QnA/tools/node/node.exe` 가 되도록 넣으면 됩니다.
 > 설치 프로그램(.msi)으로 Node.js를 정식 설치해도 똑같이 동작합니다.
 
 ### Docker

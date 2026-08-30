@@ -51,8 +51,10 @@
 
 ## 개발자용 메모
 
-- `.gitignore` 는 `tools/` 와 `node_modules/` 를 저장소에서 빼 둡니다(용량 때문입니다).
-  그래서 **폴더를 통째로 복사하면 그대로 돌아가지만, `git clone` 으로 받으면** 그 둘이 없습니다.
-  그때는 `서버 켜기.bat` 이 안내하는 대로 Node.js를 `tools/node/` 에 넣고,
-  스크립트가 자동으로 `npm install` 을 돌립니다(이 과정에만 인터넷이 필요합니다).
+- **저장소에도 실행 환경이 함께 들어 있습니다.** `tools/node/`(Node.js)와
+  `server/node_modules/`(express·socket.io)를 `.gitignore` 에서 빼지 않았습니다.
+  폴더를 복사하든 `git clone` 으로 받든, 아무것도 설치하지 않고 바로 실행할 수 있습니다.
+  (그만큼 저장소가 커집니다 — 약 130MB, 그중 `node.exe` 하나가 89MB입니다.)
+- `.gitattributes` 가 위 두 경로의 줄바꿈 변환을 막습니다.
+  Windows 기본값(`core.autocrlf=true`)을 그대로 두면 받아 쓸 때 파일 내용이 바뀔 수 있습니다.
 - 작업 기록은 `docs/작업기록/작업기록.md` 에 한 건씩 쌓입니다.
