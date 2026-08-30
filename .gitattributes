@@ -1,0 +1,10 @@
+# 폴더째 저장소에 담아 두는 실행 파일과 라이브러리는 줄바꿈을 건드리지 않는다.
+# core.autocrlf 가 켜져 있어서, 이 설정이 없으면 받아 쓸 때 파일 내용이 바뀔 수 있다.
+tools/**            -text
+server/node_modules/** -text
+
+# 게임 자원(이진 파일)
+*.png   binary
+*.woff2 binary
+*.woff  binary
+*.ttf   binary

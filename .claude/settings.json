@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/docs/작업기록/_프롬프트기록.py\" 2>/dev/null || true",
+            "timeout": 10,
+            "statusMessage": "프롬프트 기록 중..."
+          }
+        ]
+      }
+    ]
+  }
+}

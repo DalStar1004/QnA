@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "currentFeature": "word-connection-multiplayer",
+  "features": {
+    "word-connection-game": {
+      "phase": "do",
+      "matchRate": null,
+      "iterationCount": 0,
+      "startedAt": "2026-08-23T00:00:00Z",
+      "updatedAt": "2026-08-23T00:00:00Z",
+      "artifacts": {
+        "plan": "docs/01-plan/features/word-connection-game.plan.md",
+        "design": "docs/02-design/features/word-connection-game.design.md",
+        "implementation": "word_connection_game.html"
+      },
+      "note": "구현 완료. 사용자 브라우저 수동 테스트 대기 중."
+    },
+    "word-connection-multiplayer": {
+      "phase": "do",
+      "matchRate": null,
+      "iterationCount": 0,
+      "startedAt": "2026-08-23T00:00:00Z",
+      "updatedAt": "2026-08-23T00:00:00Z",
+      "artifacts": {
+        "plan": "docs/01-plan/features/word-connection-multiplayer.plan.md",
+        "design": "docs/02-design/features/word-connection-multiplayer.design.md",
+        "implementation": "server/"
+      },
+      "note": "module-1~4 전체 구현 완료. 정적 검증(구조/모듈 배선/이벤트 계약) 통과. Docker 실행 수동 검증 대기 중."
+    }
+  }
+}

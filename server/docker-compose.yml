@@ -1,0 +1,19 @@
+# Design Ref: §11.1 / Plan §7.2 — 앱 서비스 1개.
+# 상태를 메모리에만 두므로 DB 서비스가 없다. 훗날 Redis를 붙일 경우 여기에 서비스를 추가하면 된다.
+
+services:
+  app:
+    build: .
+    container_name: word-connection-multiplayer
+    ports:
+      # 호스트 포트를 바꾸려면 왼쪽 숫자만 수정하세요 (예: "8080:3000")
+      - "3000:3000"
+    environment:
+      PORT: 3000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

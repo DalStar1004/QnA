@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "suggestions": [
+    {
+      "id": "btw-001",
+      "timestamp": "2026-08-30T17:02:06+09:00",
+      "suggestion": "Node 프로젝트 실행 환경이 없을 때 포터블 런타임을 자동으로 준비하는 스킬 — node/npm/docker 부재를 감지해 공식 zip 다운로드 + 체크섬 검증 + 실행 배치 생성까지 하는 흐름",
+      "context": {
+        "file": "서버 켜기.bat, server/src/server.js",
+        "pdcaPhase": null,
+        "feature": "word-connection-multiplayer"
+      },
+      "category": "skill-request",
+      "status": "pending",
+      "promotedTo": null,
+      "priority": null,
+      "teamContext": {
+        "isTeamSession": false,
+        "phase": null,
+        "role": "user",
+        "pattern": null
+      }
+    }
+  ],
+  "stats": {
+    "total": 1,
+    "promoted": 0,
+    "dismissed": 0,
+    "lastAnalyzed": null
+  }
+}

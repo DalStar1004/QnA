@@ -1,0 +1,17 @@
+{
+  "name": "word-connection-multiplayer",
+  "version": "0.2.0",
+  "description": "단어 연결 게임 실시간 멀티플레이 서버 (Express + Socket.IO)",
+  "main": "src/server.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
