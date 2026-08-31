@@ -1066,6 +1066,9 @@
         .block {
             width: 72px;
             height: 72px;
+            /* 클릭으로 고르는 방식이라 글자가 끌려 선택되면 방해가 된다 */
+            user-select: none;
+            -webkit-user-select: none;
             background: linear-gradient(160deg, #ffffff, #ffeef2);
             border-radius: 20px;
             display: flex;
@@ -1724,11 +1727,13 @@
         <div class="screen" id="screen-game">
             <!-- 모드별 규칙 안내 (혼자 하기의 rule-banner 와 같은 모양) -->
             <div class="rule-banner" id="wordRuleBanner">
+                <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
                 <span class="rule-chip">🔤 글자 수 제한 없음</span>
                 <span class="rule-text">2글자든 5글자든, <b id="ruleCategoryName">카테고리</b>의 단어면 모두 정답!</span>
             </div>
             <div class="rule-banner quiz" id="quizRuleBanner" hidden>
                 <span class="rule-chip" id="quizRoundChip">🤖 AI 스무고개</span>
+                <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
                 <span class="rule-text">AI가 <b id="quizRuleCategoryName">카테고리</b>에서 고른 낱말을 10초마다 열리는 힌트로 맞혀보세요!</span>
             </div>
 
@@ -1924,7 +1929,6 @@
             boardLocked: true,
             inGame: false,
             selectedBlocks: [],
-            isDragging: false,
             get isHost() { return this.myId && this.myId === this.hostId; },
             get myScore() {
                 const me = this.players.find((p) => p.id === this.myId);
@@ -2034,8 +2038,7 @@
                     div.className = 'block';
                     div.textContent = char;
                     div.dataset.index = String(index);
-                    div.addEventListener('mousedown', GameController.startConnect);
-                    div.addEventListener('mouseenter', GameController.continueConnect);
+                    // 클릭은 보드 한 곳에서 위임받는다 (아래 초기화 부분 참고)
                     boardEl.appendChild(div);
                 });
 
@@ -2421,29 +2424,31 @@
             }
         };
 
-        /* ---------- Controller: 게임 보드 입력 처리 ---------- */
+        /* ---------- Controller: 게임 보드 입력 처리 ----------
+           혼자 하기(word_connection_game.html)와 같은 조작이다.
+           왼쪽 클릭으로 블록을 하나씩 고르고, 오른쪽 클릭으로 고르기를 끝낸다. */
         const GameController = {
-            startConnect(event) {
+            /**
+             * 왼쪽 클릭 — 누른 순서대로 블록을 고른다.
+             * 이미 고른 블록을 다시 누르면 그 블록부터 뒤를 모두 되돌린다.
+             * 잘못 누르고도 되돌릴 방법이 없으면 오답을 낼 수밖에 없어서 넣었다.
+             */
+            pickBlock(block) {
                 if (ClientState.boardLocked) return;
-                ClientState.isDragging = true;
-                ClientState.selectedBlocks = [event.target];
-                event.target.classList.add('selected');
+
+                const already = ClientState.selectedBlocks.indexOf(block);
+                if (already !== -1) {
+                    ClientState.selectedBlocks.splice(already)
+                        .forEach((b) => b.classList.remove('selected'));
+                } else {
+                    ClientState.selectedBlocks.push(block);
+                    block.classList.add('selected');
+                }
                 UIManager.drawLines();
             },
 
-            continueConnect(event) {
-                if (ClientState.boardLocked || !ClientState.isDragging) return;
-                const block = event.target;
-                if (!ClientState.selectedBlocks.includes(block)) {
-                    ClientState.selectedBlocks.push(block);
-                    block.classList.add('selected');
-                    UIManager.drawLines();
-                }
-            },
-
-            async finishConnect() {
-                if (!ClientState.isDragging) return;
-                ClientState.isDragging = false;
+            /** 오른쪽 클릭 — 고르기를 끝내고 만들어진 낱말을 서버에 보낸다. */
+            async finishSelection() {
                 if (ClientState.selectedBlocks.length === 0) return;
 
                 const blocks = ClientState.selectedBlocks.slice();
@@ -2738,7 +2743,21 @@
             if (event.key === 'Enter') LobbyController.createRoom();
         });
 
-        document.addEventListener('mouseup', GameController.finishConnect);
+        /* 블록은 판마다 새로 만들어지므로 보드 한 곳에서 클릭을 위임받는다. */
+        document.getElementById('board').addEventListener('click', (event) => {
+            const block = event.target.closest('.block');
+            if (block) GameController.pickBlock(block);
+        });
+
+        /* 오른쪽 클릭은 브라우저 메뉴 대신 '고르기 끝'으로 쓴다.
+           블록 사이 빈틈에서 눌러도 되도록 보드 영역 전체에서 받되,
+           힌트 패널 글은 그대로 복사할 수 있게 그 위에서는 가로채지 않는다. */
+        document.getElementById('board-container').addEventListener('contextmenu', (event) => {
+            if (event.target.closest('#hintPanel')) return;
+            event.preventDefault();
+            GameController.finishSelection();
+        });
+
         window.addEventListener('resize', UIManager.resizeCanvas);
 
         UIManager.populateCategorySelect();

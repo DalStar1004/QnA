@@ -1209,6 +1209,9 @@
         .block {
             width: 72px;
             height: 72px;
+            /* 클릭으로 고르는 방식이라 글자가 끌려 선택되면 방해가 된다 */
+            user-select: none;
+            -webkit-user-select: none;
             background: linear-gradient(160deg, #ffffff, #ffeef2);
             border: none;
             border-radius: 20px;
@@ -1909,6 +1912,38 @@
         }
 
         /* ---------- 랭킹 모달 ---------- */
+        /* 모드별 랭킹 탭 — 두 모드는 점수 폭이 달라서 기록을 나눠서 본다 */
+        .rank-tabs {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            background: rgba(255, 240, 230, 0.9);
+            border-radius: 20px;
+            padding: 6px;
+            margin: 10px 0 2px;
+        }
+        .rank-tab {
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink);
+            background: transparent;
+            border: none;
+            border-radius: 15px;
+            padding: 9px 16px;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .rank-tab:hover { background: rgba(255, 214, 226, 0.6); }
+        .rank-tab.active {
+            background: linear-gradient(160deg, #ff9db3, var(--pink));
+            color: #fff;
+            box-shadow: 0 3px 0 var(--pink-dark);
+        }
+        .rank-tab.active[data-board="quiz"] {
+            background: linear-gradient(160deg, #bda6ff, var(--purple));
+            box-shadow: 0 3px 0 var(--purple-dark);
+        }
         .rank-list {
             display: flex;
             flex-direction: column;
@@ -2498,7 +2533,7 @@
         <div class="champion-banner" id="championBanner" style="display:none;">
             <img class="champion-badge-img" src="assets/champion-badge.png" alt="챔피언 뱃지">
             <div class="champion-text">
-                <div class="champion-label">👑 현재 챔피언</div>
+                <div class="champion-label" id="championLabel">👑 현재 챔피언</div>
                 <div class="champion-name" id="championName">-</div>
             </div>
             <div class="champion-score" id="championScore">0점</div>
@@ -2539,6 +2574,7 @@
 
         <!-- 규칙 안내: '글자 수 제한 없음'을 게임 진행 화면에 상시 노출한다 -->
         <div class="rule-banner" id="ruleBanner">
+            <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
             <span class="rule-chip">🔤 글자 수 제한 없음</span>
             <span class="rule-text">2글자든 5글자든, <b id="ruleCategoryName">카테고리</b>의 단어면 모두 정답!</span>
         </div>
@@ -2546,6 +2582,7 @@
         <!-- 모드 2 안내 배너 -->
         <div class="rule-banner" id="quizRuleBanner" style="display:none;">
             <span class="rule-chip" id="quizRoundChip">🤖 AI 스무고개</span>
+            <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
             <span class="rule-text">AI가 <b id="quizRuleCategoryName">카테고리</b>에서 고른 낱말을 10초마다 열리는 힌트 6개로 맞혀보세요!</span>
         </div>
 
@@ -2580,7 +2617,7 @@
     <div class="modal-overlay" id="settingsOverlay">
         <div class="modal-card wide">
             <h2>⚙️ 게임 설정</h2>
-            <div class="modal-sub">블록 개수, 카테고리, 배경을 정해주세요</div>
+            <div class="modal-sub">블록 개수, 카테고리, 배경과 AI 스무고개 설정을 정해주세요</div>
             <div class="settings-body">
                 <div class="settings-row">
                     <label for="nickname">🙋 내 닉네임</label>
@@ -2654,6 +2691,31 @@
                         </button>
                     </div>
                 </div>
+                <!-- 모드 2(AI 스무고개) 설정.
+                     시작 화면을 [스무고개 시작] 하나로 두려고 여기로 옮겼다. -->
+                <div class="settings-row">
+                    <label for="quizRoundsInput">🔁 스무고개 횟수</label>
+                    <input type="number" id="quizRoundsInput" value="3" min="1" max="10">
+                </div>
+                <div class="settings-row settings-row-col">
+                    <label>⚙️ qwen2.5:7b 연결 (Ollama)</label>
+                    <div class="llm-fields">
+                        <input type="text" id="llmEndpointInput" placeholder="http://localhost:11434" aria-label="Ollama 주소">
+                        <input type="text" id="llmModelInput" placeholder="qwen2.5:7b" aria-label="모델 이름">
+                        <button type="button" class="jelly-btn btn-file-ghost" onclick="testLlmConnection()">연결 확인</button>
+                        <button type="button" class="jelly-btn btn-file-ghost" id="llmCloseBtn" onclick="closeLlmConnection()">연결 닫기</button>
+                    </div>
+                    <div class="llm-status" id="llmSettingsStatus">연결 상태를 보려면 [연결 확인]을 눌러주세요.</div>
+                    <div class="settings-note">
+                        <div class="guide-rule">
+                            ✅ 여기를 건드리지 않아도 [스무고개 시작]이 알아서 연결합니다.
+                            준비 방법은 스무고개 시작 화면의 [준비 방법] 버튼에서 볼 수 있어요.
+                        </div>
+                        <div class="guide-rule">
+                            🔌 [연결 닫기]는 예열해 둔 모델을 램에서 내립니다(7B 기준 약 4.4GB).
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-actions">
                 <button class="jelly-btn btn-close-settings" onclick="closeSettings()">완료 ✔</button>
@@ -2674,6 +2736,8 @@
             <!-- 정답을 모두 맞혔을 때만 걸린 시간을 보여준다 -->
             <div class="gameover-time" id="gameOverTime" style="display:none;">⏱ 걸린 시간 0초</div>
             <div class="gameover-highscore" id="gameOverHighScore">최고 점수: 0점</div>
+            <!-- 랭킹에 새로 등록됐는지 / 왜 등록되지 않았는지 -->
+            <div class="gameover-highscore" id="gameOverRankNote" style="display:none;">-</div>
             <div class="modal-actions">
                 <button class="jelly-btn btn-start" onclick="restartFromGameOver()">
                     <img class="btn-icon" src="assets/icon-restart.png" alt="">다시하기
@@ -2753,38 +2817,41 @@
         </div>
     </div>
 
-    <!-- 모드 2 시작 모달: 스무고개를 몇 번 진행할지 + qwen2.5:7b(Ollama) 연결 설정 -->
+    <!-- 모드 2 시작 모달: 여기서 누를 것은 [스무고개 시작] 하나다.
+         횟수와 Ollama 주소·모델·연결 확인/닫기는 ⚙️ 게임 설정으로 옮겼고,
+         준비 방법은 [준비 방법] 버튼으로 펼쳐 본다. -->
     <div class="modal-overlay" id="quizSetupOverlay">
         <div class="modal-card wide">
             <h2>🤖 AI 스무고개</h2>
-            <div class="modal-sub">스무고개를 몇 번 진행할지 먼저 정해주세요.<br>다음 화면에서 카테고리를 한 번 고르면 그 카테고리로 끝까지 진행하고, 10초마다 힌트가 하나씩 열려요!</div>
+            <div class="modal-sub">[스무고개 시작]을 누르면 AI 연결까지 알아서 맞춰요.<br>다음 화면에서 카테고리를 한 번 고르면 그 카테고리로 끝까지 진행하고, 10초마다 힌트가 하나씩 열려요!</div>
+            <!-- 몇 번 진행되는지는 여기서 읽기만 한다. 바꾸는 곳은 ⚙️ 게임 설정이다. -->
+            <div class="gameover-highscore" id="quizSetupRounds">🔁 스무고개 3회</div>
             <div class="settings-body">
-                <div class="settings-row">
-                    <label for="quizRoundsInput">🔁 스무고개 횟수</label>
-                    <input type="number" id="quizRoundsInput" value="3" min="1" max="10">
-                </div>
                 <div class="settings-row settings-row-col">
-                    <label>⚙️ qwen2.5:7b 연결 (Ollama)</label>
-                    <div class="llm-fields">
-                        <input type="text" id="llmEndpointInput" placeholder="http://localhost:11434" aria-label="Ollama 주소">
-                        <input type="text" id="llmModelInput" placeholder="qwen2.5:7b" aria-label="모델 이름">
-                        <button type="button" class="jelly-btn btn-file-ghost" onclick="testLlmConnection()">연결 확인</button>
-                        <button type="button" class="jelly-btn btn-file-ghost" id="llmCloseBtn" onclick="closeLlmConnection()">연결 닫기</button>
+                    <div class="file-actions">
+                        <button type="button" class="jelly-btn btn-file-ghost" id="llmGuideBtn"
+                                onclick="toggleLlmGuide()" aria-expanded="false"
+                                aria-controls="llmGuide">준비 방법 ▾</button>
                     </div>
-                    <div class="llm-status" id="llmStatus">연결 상태를 보려면 [연결 확인]을 눌러주세요.</div>
-                    <div class="settings-note">
+                    <!-- qwen2.5:7b 준비 방법: 평소에는 접어 두고 버튼으로 펼친다 -->
+                    <div class="settings-note" id="llmGuide" style="display:none;">
                         <div class="guide-item">
-                            <b>준비 방법</b>
+                            <b>qwen2.5:7b 준비 방법</b>
                             <pre>1) https://ollama.com 에서 Ollama 설치
 2) ollama pull qwen2.5:7b
 3) 브라우저에서 접속할 수 있게 CORS 허용 후 실행
    Windows PowerShell:
      $env:OLLAMA_ORIGINS="*"; ollama serve</pre>
                         </div>
+                        <div class="guide-item">
+                            <b>주소·모델을 바꾸려면</b> — ⚙️ 게임 설정 › qwen2.5:7b 연결
+                            <pre>기본값: http://localhost:11434 · qwen2.5:7b</pre>
+                        </div>
                         <div class="guide-rule">
                             ✅ AI에 연결하지 못해도 게임은 진행됩니다. 이때는 내장 사전으로 문제를 만들어 드려요.
                         </div>
                     </div>
+                    <div class="llm-status" id="llmStatus">[스무고개 시작]을 누르면 AI 연결을 확인합니다.</div>
                 </div>
             </div>
             <div class="modal-actions">
@@ -2839,12 +2906,17 @@
     <div class="modal-overlay" id="quizFinalOverlay">
         <div class="modal-card wide">
             <img class="result-trophy" id="quizFinalTrophy" src="assets/trophy.png" alt="우승 트로피" style="display:none;">
+            <!-- 스무고개 랭킹 1위를 차지하면 챔피언 뱃지.png 노출 -->
+            <img class="modal-badge-img" id="quizFinalChampionBadge" src="assets/champion-badge.png"
+                 alt="챔피언 뱃지" style="display:none;">
             <div class="record-badge" id="quizFinalRecordBadge" style="display:none;">🎉 신기록!</div>
             <h2>🏁 스무고개 결과</h2>
             <div class="modal-sub" id="quizFinalSub">-</div>
             <div class="modal-score" id="quizFinalScore">0</div>
             <div class="quiz-round-list" id="quizFinalList"></div>
             <div class="gameover-highscore" id="quizFinalHigh">최고 점수: 0점</div>
+            <!-- 랭킹에 새로 등록됐는지 / 왜 등록되지 않았는지 -->
+            <div class="gameover-highscore" id="quizFinalRankNote" style="display:none;">-</div>
             <div class="modal-actions">
                 <button class="jelly-btn btn-quiz" onclick="restartQuizSession()">
                     <img class="btn-icon" src="assets/icon-restart.png" alt="">다시 도전
@@ -2866,11 +2938,16 @@
     <div class="modal-overlay" id="rankingOverlay">
         <div class="modal-card wide">
             <h2>🏅 명예의 전당</h2>
-            <div class="modal-sub">닉네임별 최고 기록 TOP 10</div>
+            <!-- 모드별로 랭킹을 따로 본다. 지금 보고 있는 탭이 '기록 초기화' 대상이기도 하다. -->
+            <div class="rank-tabs" id="rankTabs">
+                <button class="rank-tab active" data-board="classic" onclick="selectRankingBoard('classic')">🍬 제시어 맞추기</button>
+                <button class="rank-tab" data-board="quiz" onclick="selectRankingBoard('quiz')">🤖 AI 스무고개</button>
+            </div>
+            <div class="modal-sub" id="rankSub">닉네임별 최고 기록 TOP 10</div>
             <div class="rank-list" id="rankList"></div>
             <div class="modal-actions">
                 <button class="jelly-btn btn-close-settings" onclick="closeRanking()">닫기</button>
-                <button class="jelly-btn btn-close-gameover" onclick="clearRanking()">기록 초기화</button>
+                <button class="jelly-btn btn-close-gameover" onclick="clearRanking()">이 기록 초기화</button>
             </div>
         </div>
     </div>
@@ -3071,7 +3148,6 @@
             comboCount: 0,
             selectedCategoryOption: "random",
             selectedBlocks: [],
-            isDragging: false,
             resetForNewGame() {
                 this.score = 0;
                 this.timeLeft = this.duration;
@@ -3085,7 +3161,6 @@
                 this.solvedWords = [];
                 this.comboCount = 0;
                 this.selectedBlocks = [];
-                this.isDragging = false;
             }
         };
 
@@ -3227,6 +3302,8 @@
             const MULTIPLAYER_URL_KEY = 'wordConnectionGame.multiplayerUrl';
             const DEFAULT_MULTIPLAYER_URL = 'http://localhost:3000';
             const LEADERBOARD_KEY = 'wordConnectionGame.leaderboard';
+            // 모드 2는 세션 총점이라 점수 폭이 달라서, 최고 점수처럼 랭킹도 키를 분리한다.
+            const QUIZ_LEADERBOARD_KEY = 'wordConnectionGame.quizLeaderboard';
             const NICKNAME_KEY = 'wordConnectionGame.nickname';
             const BACKGROUND_KEY = 'wordConnectionGame.background';
             const CUSTOM_CATEGORY_KEY = 'wordConnectionGame.customCategories';
@@ -3234,7 +3311,7 @@
             // localStorage를 못 쓰는 환경(파일 프로토콜 제한/시크릿 모드)에서는
             // 이 메모리 사본으로 degrade 해서 게임 진행 자체는 막히지 않게 한다.
             const memory = {
-                leaderboard: null, nickname: null, background: null, customCategories: null,
+                leaderboard: null, quizLeaderboard: null, nickname: null, background: null, customCategories: null,
                 llmEndpoint: null, llmModel: null, quizCategory: null, quizRounds: null,
                 multiplayerUrl: null
             };
@@ -3326,9 +3403,12 @@
                     memory.quizRounds = count;
                     writeRaw(QUIZ_ROUNDS_KEY, String(count));
                 },
-                getLeaderboard() {
-                    if (memory.leaderboard) return memory.leaderboard;
-                    const raw = readRaw(LEADERBOARD_KEY);
+                // kind: 'quiz' 이면 모드 2 랭킹, 그 외에는 모드 1 랭킹
+                getLeaderboard(kind) {
+                    const isQuiz = kind === 'quiz';
+                    const slot = isQuiz ? 'quizLeaderboard' : 'leaderboard';
+                    if (memory[slot]) return memory[slot];
+                    const raw = readRaw(isQuiz ? QUIZ_LEADERBOARD_KEY : LEADERBOARD_KEY);
                     if (!raw) return [];
                     try {
                         const parsed = JSON.parse(raw);
@@ -3337,9 +3417,10 @@
                         return [];
                     }
                 },
-                setLeaderboard(list) {
-                    memory.leaderboard = list;
-                    writeRaw(LEADERBOARD_KEY, JSON.stringify(list));
+                setLeaderboard(list, kind) {
+                    const isQuiz = kind === 'quiz';
+                    memory[isQuiz ? 'quizLeaderboard' : 'leaderboard'] = list;
+                    writeRaw(isQuiz ? QUIZ_LEADERBOARD_KEY : LEADERBOARD_KEY, JSON.stringify(list));
                 },
                 getNickname() {
                     if (memory.nickname !== null) return memory.nickname;
@@ -3602,6 +3683,8 @@
         })();
 
         // 닉네임별 최고 기록 랭킹. 1위가 곧 '챔피언'이며 챔피언 뱃지.png를 받는다.
+        // 모드 1(제시어 맞추기)과 모드 2(AI 스무고개)는 점수 폭이 달라서 랭킹을 따로 둔다.
+        // kind 는 'quiz' 또는 'classic' 이며, 빠뜨리면 모드 1 랭킹을 뜻한다.
         const LeaderboardManager = (function () {
             const MAX_ENTRIES = 30;
 
@@ -3610,45 +3693,59 @@
             }
 
             return {
-                getAll() {
-                    return sorted(StorageManager.getLeaderboard());
+                getAll(kind) {
+                    return sorted(StorageManager.getLeaderboard(kind));
                 },
-                getChampion() {
-                    const all = this.getAll();
+                getChampion(kind) {
+                    const all = this.getAll(kind);
                     return all.length ? all[0] : null;
                 },
                 /**
-                 * 한 판의 결과를 등록한다. 닉네임당 최고 기록 1건만 유지한다.
-                 * @returns {{isPersonalBest:boolean, isChampion:boolean, becameChampion:boolean}}
+                 * 한 판(모드 2는 한 세션)의 결과를 등록한다. 닉네임당 최고 기록 1건만 남는다.
+                 * 지금 랭킹에 올라 있는 내 점수를 '넘었을 때만' 새로 등록한다.
+                 * 같은 점수는 등록하지 않는다 — 순위는 그대로인데 기록 시각만 밀려서
+                 * 먼저 올린 사람이 동점자에게 밀리는 일을 막는다.
+                 * @returns {{registered:boolean, previousScore:number, isPersonalBest:boolean,
+                 *            isChampion:boolean, becameChampion:boolean}}
                  */
-                submit(name, score) {
+                submit(name, score, kind) {
                     const trimmed = (name || '').trim() || '게스트';
-                    const result = { isPersonalBest: false, isChampion: false, becameChampion: false };
-                    if (score <= 0) return result;
+                    const result = {
+                        registered: false, previousScore: 0, isPersonalBest: false,
+                        isChampion: false, becameChampion: false
+                    };
+                    if (!(score > 0)) return result;
 
-                    const previousChampion = this.getChampion();
-                    const list = StorageManager.getLeaderboard();
+                    const previousChampion = this.getChampion(kind);
+                    const list = StorageManager.getLeaderboard(kind);
                     const existing = list.find(entry => entry.name === trimmed);
+                    result.previousScore = existing ? existing.score : 0;
+
+                    // 최신 랭킹에 올라 있는 점수를 넘지 못하면 아무것도 바꾸지 않는다.
+                    if (existing && score <= existing.score) {
+                        result.isChampion = !!previousChampion && previousChampion.name === trimmed;
+                        return result;
+                    }
 
                     if (!existing) {
                         list.push({ name: trimmed, score, ts: Date.now() });
-                        result.isPersonalBest = true;
-                    } else if (score > existing.score) {
+                    } else {
                         existing.score = score;
                         existing.ts = Date.now();
-                        result.isPersonalBest = true;
                     }
+                    result.registered = true;
+                    result.isPersonalBest = true;
 
-                    StorageManager.setLeaderboard(sorted(list).slice(0, MAX_ENTRIES));
+                    StorageManager.setLeaderboard(sorted(list).slice(0, MAX_ENTRIES), kind);
 
-                    const champion = this.getChampion();
+                    const champion = this.getChampion(kind);
                     result.isChampion = !!champion && champion.name === trimmed;
                     result.becameChampion = result.isChampion &&
                         (!previousChampion || previousChampion.name !== trimmed);
                     return result;
                 },
-                clear() {
-                    StorageManager.setLeaderboard([]);
+                clear(kind) {
+                    StorageManager.setLeaderboard([], kind);
                 }
             };
         })();
@@ -3821,13 +3918,16 @@
             }
 
             // 기록 1위(챔피언)를 상단 배너에 챔피언 뱃지.png 와 함께 노출한다.
+            // 랭킹이 모드별로 나뉘므로 지금 고른 모드의 1위를 보여준다.
             function updateChampionBanner() {
-                const champion = LeaderboardManager.getChampion();
+                const champion = LeaderboardManager.getChampion(appMode === 'quiz' ? 'quiz' : 'classic');
                 if (!champion) {
                     championBanner.style.display = 'none';
                     return;
                 }
                 championBanner.style.display = 'flex';
+                dom('championLabel').textContent = appMode === 'quiz'
+                    ? '👑 스무고개 챔피언' : '👑 제시어 맞추기 챔피언';
                 dom('championName').textContent = champion.name;
                 dom('championScore').textContent = `${champion.score}점`;
             }
@@ -3858,7 +3958,7 @@
 
             /**
              * 블록 중심 좌표를 판이 만들어질 때 한 번만 재어 둔다.
-             * 드래그 중에 블록마다 getBoundingClientRect 를 부르면 매번 레이아웃이 다시 계산되고,
+             * 고를 때마다 블록마다 getBoundingClientRect 를 부르면 매번 레이아웃이 다시 계산되고,
              * 선택된 블록에 걸린 transform 때문에 선이 흔들린다. 레이아웃 위치를 쓰면 둘 다 없어진다.
              */
             function cacheBlockCenters() {
@@ -4042,13 +4142,45 @@
                 });
             }
 
+            /**
+             * '이 점수가 랭킹에 올라갔는지'를 결과 모달에 한 줄로 적는다.
+             * 지금 랭킹에 올라 있는 내 점수를 넘지 못하면 등록되지 않으므로, 그 이유를 알려준다.
+             */
+            function describeRankResult(el, result, score, label) {
+                if (!el) return;
+                const r = result || {};
+                el.style.display = 'block';
+                if (r.registered) {
+                    el.textContent = r.previousScore > 0
+                        ? `🏅 ${label} 기록을 ${r.previousScore}점 → ${score}점으로 새로 올렸어요`
+                        : `🏅 ${label}에 새로 등록했어요`;
+                } else if (r.previousScore > 0) {
+                    el.textContent = `📌 이미 등록된 ${r.previousScore}점보다 낮아서 ${label}은 그대로예요`;
+                } else {
+                    el.style.display = 'none';
+                }
+            }
+
+            // 랭킹 모달에서 지금 보고 있는 탭. 모달을 열 때 현재 모드에 맞춰 정해진다.
+            let rankingBoard = 'classic';
+
             function renderRanking() {
-                const list = LeaderboardManager.getAll().slice(0, 10);
+                document.querySelectorAll('#rankTabs .rank-tab').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.board === rankingBoard);
+                });
+                const isQuizBoard = rankingBoard === 'quiz';
+                dom('rankSub').textContent = isQuizBoard
+                    ? '스무고개 세션 총점 · 닉네임별 최고 기록 TOP 10'
+                    : '한 판 점수 · 닉네임별 최고 기록 TOP 10';
+
+                const list = LeaderboardManager.getAll(rankingBoard).slice(0, 10);
                 const container = dom('rankList');
                 container.innerHTML = '';
 
                 if (list.length === 0) {
-                    container.appendChild(makeEl('div', 'rank-empty', '아직 기록이 없어요. 게임을 한 판 즐겨보세요!'));
+                    container.appendChild(makeEl('div', 'rank-empty', isQuizBoard
+                        ? '아직 스무고개 기록이 없어요. 한 세션을 끝까지 마쳐보세요!'
+                        : '아직 기록이 없어요. 게임을 한 판 즐겨보세요!'));
                     return;
                 }
 
@@ -4076,9 +4208,16 @@
                 renderAnswerList,
                 syncBackgroundPicker,
                 renderRanking,
+                describeRankResult,
                 openSettings() {
                     syncBackgroundPicker();
                     renderCustomCategories();
+                    // 모드 2 설정(횟수 · Ollama 주소 · 모델)도 저장값으로 채워 둔다.
+                    dom('quizRoundsInput').value = StorageManager.getQuizRounds();
+                    dom('llmEndpointInput').value = StorageManager.getLlmEndpoint();
+                    dom('llmModelInput').value = StorageManager.getLlmModel();
+                    writeLlmStatus(dom('llmSettingsStatus'),
+                        '연결 상태를 보려면 [연결 확인]을 눌러주세요.', '');
                     // 설명은 항상 접힌 상태로 열어 설정 화면이 길어지지 않게 한다.
                     const guide = dom('formatGuide');
                     const guideBtn = dom('formatGuideBtn');
@@ -4106,6 +4245,8 @@
                     const timeEl = dom('gameOverTime');
                     timeEl.style.display = info.cleared ? 'inline-block' : 'none';
                     timeEl.textContent = `⏱ 걸린 시간 ${info.elapsedSeconds || 0}초 (남은 시간 ${info.remainSeconds || 0}초)`;
+
+                    describeRankResult(dom('gameOverRankNote'), championResult, finalScore, '랭킹');
 
                     const badge = dom('gameOverChampionBadge');
                     const sub = dom('gameOverSub');
@@ -4186,8 +4327,17 @@
                     Overlay.close('answerListOverlay');
                 },
                 openRanking() {
+                    // 지금 고른 모드의 랭킹부터 보여준다.
+                    rankingBoard = (appMode === 'quiz') ? 'quiz' : 'classic';
                     renderRanking();
                     Overlay.open('rankingOverlay');
+                },
+                setRankingBoard(board) {
+                    rankingBoard = (board === 'quiz') ? 'quiz' : 'classic';
+                    renderRanking();
+                },
+                currentRankingBoard() {
+                    return rankingBoard;
                 },
                 closeRanking() {
                     Overlay.close('rankingOverlay');
@@ -4862,6 +5012,18 @@
             // 닉네임은 설정을 닫을 때 확정 저장한다.
             const nicknameInput = dom('nickname');
             StorageManager.setNickname((nicknameInput.value || '').trim());
+
+            // 모드 2 설정도 여기서 확정한다. [스무고개 시작]은 저장된 값만 읽는다.
+            saveLlmSettingsFromForm();
+            const rounds = parseInt(dom('quizRoundsInput').value, 10);
+            if (Number.isFinite(rounds) && rounds >= 1 && rounds <= QUIZ_MAX_ROUNDS) {
+                StorageManager.setQuizRounds(rounds);
+            } else {
+                // 잘못된 값을 저장하면 다음에 게임이 시작되지 않는다. 이전 값을 지킨다.
+                UIManager.showToast(
+                    `스무고개 횟수는 1~${QUIZ_MAX_ROUNDS}회 사이여야 해요. 이전 값(${StorageManager.getQuizRounds()}회)을 그대로 씁니다.`,
+                    'warn');
+            }
             ModalManager.closeSettings();
         }
 
@@ -5098,6 +5260,8 @@
             // 두 모드는 점수 폭이 달라서 최고 기록도 따로 관리한다.
             GameState.highScore = StorageManager.getHighScore(next === 'quiz' ? 'quiz' : 'classic');
             UIManager.syncHud();
+            // 랭킹도 모드별이라 상단 챔피언 배너를 새 모드 기준으로 다시 그린다.
+            UIManager.updateChampionBanner();
 
             UIManager.showToast(next === 'quiz'
                 ? "🤖 모드 2 — AI 스무고개! '스무고개 시작'을 눌러 카테고리를 정해주세요."
@@ -5123,8 +5287,18 @@
 
         /* ---------- 모드 2: AI(qwen2.5:7b) 스무고개 ---------- */
 
+        // 연결 상태 줄은 [스무고개 시작] 화면과 ⚙️ 게임 설정 두 곳에 있다.
+        // 어느 쪽에서 시작했든 같은 내용을 보여줘야 해서 둘 다 갱신한다.
         function setLlmStatus(message, kind) {
-            const el = dom('llmStatus');
+            document.querySelectorAll('.llm-status').forEach(el => {
+                writeLlmStatus(el, message, kind);
+            });
+        }
+
+        // 화면을 막 열었을 때의 안내는 그 화면의 상태 줄에만 적는다.
+        // 시작 화면과 설정 화면은 눌러야 할 버튼이 서로 달라서 안내 문구도 다르다.
+        function writeLlmStatus(el, message, kind) {
+            if (!el) return;
             el.className = 'llm-status' + (kind ? ' ' + kind : '');
             el.textContent = message;
         }
@@ -5273,10 +5447,17 @@
             hideQuizFinal();
             closeQuizCategory();
 
-            dom('quizRoundsInput').value = StorageManager.getQuizRounds();
-            dom('llmEndpointInput').value = StorageManager.getLlmEndpoint();
-            dom('llmModelInput').value = StorageManager.getLlmModel();
-            setLlmStatus('연결 상태를 보려면 [연결 확인]을 눌러주세요.', '');
+            // 준비 방법은 항상 접힌 상태로 연다.
+            const guide = dom('llmGuide');
+            const guideBtn = dom('llmGuideBtn');
+            if (guide && guideBtn) {
+                guide.style.display = 'none';
+                guideBtn.textContent = '준비 방법 ▾';
+                guideBtn.setAttribute('aria-expanded', 'false');
+            }
+            dom('quizSetupRounds').textContent =
+                `🔁 스무고개 ${StorageManager.getQuizRounds()}회 · 횟수는 ⚙️ 게임 설정에서 바꿔요`;
+            writeLlmStatus(dom('llmStatus'), '[스무고개 시작]을 누르면 AI 연결을 확인합니다.', '');
             Overlay.open('quizSetupOverlay');
         }
 
@@ -5292,16 +5473,10 @@
         async function startQuizSession() {
             if (quizStarting) return;
 
-            const rounds = parseInt(dom('quizRoundsInput').value, 10);
-            if (!Number.isFinite(rounds) || rounds < 1 || rounds > QUIZ_MAX_ROUNDS) {
-                UIManager.showToast(`스무고개 횟수는 1~${QUIZ_MAX_ROUNDS}회 사이로 정해주세요.`, 'warn');
-                return;
-            }
+            // 횟수와 연결 설정은 ⚙️ 게임 설정에서 정한다. 여기서는 저장된 값을 그대로 쓴다.
+            const rounds = Math.min(Math.max(StorageManager.getQuizRounds(), 1), QUIZ_MAX_ROUNDS);
 
-            saveLlmSettingsFromForm();
-            StorageManager.setQuizRounds(rounds);
-
-            // 시작을 누르면 연결을 자동으로 맞춘다. 설정 화면을 열어 둔 채 진행 상황을 보여 준다.
+            // 시작을 누르면 연결을 자동으로 맞춘다. 시작 화면을 열어 둔 채 진행 상황을 보여 준다.
             // 연결에 실패해도 게임은 내장 사전으로 진행하므로 멈추지 않고, 무엇이 안 됐는지만 알린다.
             quizStarting = true;
             const startBtn = dom('quizStartBtn');
@@ -5616,22 +5791,36 @@
             GameState.highScore = StorageManager.getHighScore('quiz');
             UIManager.updateHighScoreDisplay();
 
-            showQuizFinal(history, total, isNewRecord);
+            // 스무고개 랭킹에는 세션 총점을 올린다.
+            // 이미 랭킹에 올라 있는 내 점수보다 높을 때만 등록된다.
+            const championResult = LeaderboardManager.submit(currentNickname(), total, 'quiz');
+            UIManager.updateChampionBanner();
+
+            showQuizFinal(history, total, isNewRecord, championResult);
             AudioManager.playWin();
         }
 
-        function showQuizFinal(history, total, isNewRecord) {
+        function showQuizFinal(history, total, isNewRecord, championResult) {
             const clearedCount = history.filter(h => h.cleared).length;
             const allCleared = history.length > 0 && clearedCount === history.length;
 
+            const isChampion = !!(championResult && championResult.isChampion);
             const trophy = dom('quizFinalTrophy');
-            trophy.style.display = allCleared ? 'block' : 'none';
+            trophy.style.display = (allCleared && !isChampion) ? 'block' : 'none';
             dom('quizFinalRecordBadge').style.display = isNewRecord ? 'inline-block' : 'none';
-            dom('quizFinalSub').textContent =
-                `${history.length}번 중 ${clearedCount}번 맞혔어요`;
+            const clearedText = `${history.length}번 중 ${clearedCount}번 맞혔어요`;
+            dom('quizFinalSub').textContent = isChampion
+                ? (championResult.becameChampion
+                    ? `${clearedText} · 🏅 스무고개 랭킹 1위 등극!`
+                    : `${clearedText} · 👑 챔피언 자리를 지켰어요`)
+                : clearedText;
             dom('quizFinalScore').textContent = total;
             dom('quizFinalHigh').textContent =
                 `최고 점수: ${StorageManager.getHighScore('quiz')}점`;
+
+            dom('quizFinalChampionBadge').style.display = isChampion ? 'block' : 'none';
+            ModalManager.describeRankResult(
+                dom('quizFinalRankNote'), championResult, total, '스무고개 랭킹');
 
             const list = dom('quizFinalList');
             list.innerHTML = '';
@@ -5744,7 +5933,7 @@
         // 한 플레이어의 차례가 끝났을 때 (대결 모드 전용)
         function finishVersusTurn(finalScore) {
             VersusManager.recordTurn(finalScore);
-            LeaderboardManager.submit(VersusManager.players[VersusManager.turn].name, finalScore);
+            LeaderboardManager.submit(VersusManager.players[VersusManager.turn].name, finalScore, 'classic');
             UIManager.updateChampionBanner();
             UIManager.updateVersusBar();
 
@@ -5810,12 +5999,18 @@
         function openRanking() { ModalManager.openRanking(); }
         function closeRanking() { ModalManager.closeRanking(); }
 
+        // 랭킹 모달의 탭 전환. 모드 1 / 모드 2 기록을 따로 본다.
+        function selectRankingBoard(board) { ModalManager.setRankingBoard(board); }
+
+        // 지금 보고 있는 탭의 기록만 지운다. 다른 모드 기록은 건드리지 않는다.
         function clearRanking() {
-            if (!confirm('모든 랭킹 기록을 지울까요? 되돌릴 수 없습니다.')) return;
-            LeaderboardManager.clear();
+            const board = ModalManager.currentRankingBoard();
+            const label = board === 'quiz' ? 'AI 스무고개' : '제시어 맞추기';
+            if (!confirm(`${label} 랭킹 기록을 모두 지울까요? 되돌릴 수 없습니다.`)) return;
+            LeaderboardManager.clear(board);
             ModalManager.renderRanking();
             UIManager.updateChampionBanner();
-            UIManager.showToast("랭킹 기록을 초기화했습니다.", "info");
+            UIManager.showToast(`${label} 랭킹 기록을 초기화했습니다.`, "info");
         }
 
         /* ---------- 배경 선택 ---------- */
@@ -5854,6 +6049,16 @@
         }
 
         // '작성 예시' 버튼: 파일 작성법 설명을 펼치고 접는다.
+        // qwen2.5:7b 준비 방법 — 시작 화면이 길어지지 않게 평소에는 접어 둔다.
+        function toggleLlmGuide() {
+            const guide = dom('llmGuide');
+            const button = dom('llmGuideBtn');
+            const willShow = guide.style.display === 'none';
+            guide.style.display = willShow ? 'block' : 'none';
+            button.textContent = willShow ? '준비 방법 ▴' : '준비 방법 ▾';
+            button.setAttribute('aria-expanded', willShow ? 'true' : 'false');
+        }
+
         function toggleFormatGuide() {
             const guide = dom('formatGuide');
             const button = dom('formatGuideBtn');
@@ -6019,7 +6224,7 @@
                 return;
             }
 
-            const championResult = LeaderboardManager.submit(currentNickname(), finalScore);
+            const championResult = LeaderboardManager.submit(currentNickname(), finalScore, 'classic');
             UIManager.updateChampionBanner();
             ModalManager.showGameOver(finalScore, GameState.highScore, isNewRecord, championResult,
                 { cleared, remainSeconds, elapsedSeconds, solvedCount: solvedCount });
@@ -6043,37 +6248,44 @@
             ModalManager.hideGameOver();
         }
 
-        // 블록을 눌러 연결을 시작한다.
-        function startConnect(block) {
+        /**
+         * 왼쪽 클릭 — 블록을 누른 순서대로 하나씩 고른다.
+         * 이미 고른 블록을 다시 누르면 그 블록부터 뒤를 모두 되돌린다.
+         * 잘못 누르고도 되돌릴 방법이 없으면 오답을 낼 수밖에 없어서 넣었다.
+         */
+        function pickBlock(block) {
             if (!GameState.isGameActive) return;
-            GameState.isDragging = true;
-            GameState.selectedBlocks = [block];
-            block.classList.add('selected');
+
+            const already = GameState.selectedBlocks.indexOf(block);
+            if (already !== -1) {
+                GameState.selectedBlocks.splice(already)
+                    .forEach(b => b.classList.remove('selected'));
+            } else {
+                GameState.selectedBlocks.push(block);
+                block.classList.add('selected');
+            }
             UIManager.drawLines();
         }
 
-        // 누른 채로 지나간 블록을 이어 붙인다. 이미 고른 블록은 무시한다.
-        function continueConnect(block) {
-            if (!GameState.isGameActive || !GameState.isDragging) return;
-            if (GameState.selectedBlocks.includes(block)) return;
-            GameState.selectedBlocks.push(block);
-            block.classList.add('selected');
-            UIManager.drawLines();
-        }
-
-        // Plan SC: 정답/오답/콤보 판정 — 기존 mouseup 핸들러 로직을 GameState/Manager 기반으로 재구성
-        document.addEventListener('mouseup', () => {
-            if (!GameState.isGameActive || !GameState.isDragging) return;
-            GameState.isDragging = false;
-
+        /**
+         * 오른쪽 클릭 — 고르기를 끝내고 낱말을 확인한다.
+         * 두 글자가 안 되면 실수로 보고 콤보 손해 없이 선택만 푼다.
+         */
+        function finishSelection() {
+            if (!GameState.isGameActive) return;
             if (GameState.selectedBlocks.length === 0) return;
-
-            // 블록 하나만 눌린 경우는 실수 클릭으로 보고 콤보 손해 없이 선택만 해제한다.
             if (GameState.selectedBlocks.length < 2) {
                 UIManager.resetSelection();
                 return;
             }
+            submitSelectedWord();
+        }
 
+        /**
+         * 고른 블록으로 만들어진 낱말의 정답/오답/콤보를 판정한다.
+         * 예전에는 드래그를 놓는 순간(mouseup)에 불렀고, 지금은 finishSelection() 이 부른다.
+         */
+        function submitSelectedWord() {
             const formedWord = GameState.selectedBlocks.map(b => b.textContent).join('');
             const isQuiz = GameState.mode === 'quiz';
 
@@ -6149,7 +6361,7 @@
                 ComboManager.reset();
                 setTimeout(() => UIManager.resetSelection(), 380);
             }
-        });
+        }
 
         /* =========================================================
            초기화 (페이지 로드 시 1회 실행)
@@ -6192,15 +6404,20 @@
             UIManager.showToast(`'${name}' 카테고리를 삭제했습니다.`, "info");
         });
 
-        /* 블록은 판마다 새로 만들어지므로 리스너를 블록마다 달지 않고
-           보드 한 곳에서 위임받는다. (mouseenter 는 버블링되지 않아 mouseover 를 쓴다) */
-        board.addEventListener('mousedown', (e) => {
+        /* 블록은 판마다 새로 만들어지므로 리스너를 블록마다 달지 않고 보드 한 곳에서 위임받는다.
+           왼쪽 클릭으로 고르고, 오른쪽 클릭으로 고르기를 끝낸다. */
+        board.addEventListener('click', (e) => {
             const block = e.target.closest('.block');
-            if (block) startConnect(block);
+            if (block) pickBlock(block);
         });
-        board.addEventListener('mouseover', (e) => {
-            const block = e.target.closest('.block');
-            if (block) continueConnect(block);
+
+        /* 오른쪽 클릭은 브라우저 메뉴 대신 '고르기 끝'으로 쓴다.
+           블록 사이 빈틈에서 눌러도 되도록 보드가 아니라 보드 영역 전체에서 받는다.
+           다만 힌트 패널 글은 그대로 복사할 수 있게 브라우저 메뉴를 남겨 둔다. */
+        boardContainer.addEventListener('contextmenu', (e) => {
+            if (e.target.closest('#hintPanel')) return;
+            e.preventDefault();
+            finishSelection();
         });
 
         // 창 크기가 바뀌면 캔버스 크기와 블록 좌표를 다시 재서 선이 어긋나지 않게 한다.

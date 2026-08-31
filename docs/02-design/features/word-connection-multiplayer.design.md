@@ -9,6 +9,20 @@ version: 1.3
 > 지금은 **`word_connection_game.html`** 입니다. v2 의 내용을 원래 파일로 옮기고 v2 는 없앴습니다.
 > 아래 본문은 당시 결정을 그대로 남겨 둔 기록이라 예전 이름을 그대로 씁니다.
 
+> **현재 코드와의 차이 안내 (2026-09-01 정리)** — 이 문서는 2026-08-23 설계 시점의 기록입니다.
+> **지금 구조를 설명하는 부분(4장 이벤트 카탈로그, 5장 화면)은 현재 코드에 맞춰 고쳤고**,
+> 그때의 결정과 진행 계획을 남긴 부분(Context Anchor, 2.0 아키텍처 비교, 11장 구현 순서)은
+> **기록이라 그대로 두었습니다.**
+>
+> | 무엇이 | 설계 당시 | 지금 | 작업기록 |
+> |---|---|---|---|
+> | 블록 조작 | 드래그해서 선으로 잇기 | **왼쪽 클릭으로 고르고 오른쪽 클릭으로 완성** | 046 |
+> | 게임 종류 | 제시어 맞추기 하나 | **제시어 맞추기 + AI 스무고개** (방장이 고른다) | 033 · 034 |
+> | 목표 글자 수 | 방장이 지정 (`wordLength`) | **기능 없음**. 대신 **게임 시간**(30~300초)을 고른다 | 031 |
+> | 카테고리 | 8종 | **20종** | 032 |
+> | 게임 배경 | 없음 | 배경1~4 고르기 (혼자 하기와 같은 방식) | 035 |
+> | 나가기 | 없음 | 게임 화면에서 [게임에서 나가기] | 032 |
+
 
 > **Summary**: Node.js + Express + Socket.IO 기반 실시간 멀티플레이 서버를 클린 아키텍처(Domain/Application/Infrastructure/Presentation 완전 분리)로 설계하고, Socket.IO 이벤트 명세와 방/라운드 상태 모델을 정의한다.
 >
@@ -217,21 +231,35 @@ N/A — 인메모리 저장소(Plan §7.2에서 확정)만 사용. `InMemoryRoom
 |-------|---------|---------------|-------------|
 | `room:create` | `{ nickname: string }` | `{ ok:true, roomCode, playerId }` \| `{ ok:false, error }` | 방 생성, 생성자가 방장이 됨 |
 | `room:join` | `{ nickname: string, roomCode: string }` | `{ ok:true, roomCode, playerId, players, hostId, settings }` \| `{ ok:false, error }` | 기존 방에 참가 |
-| `game:start` | `{ blockCount:number, wordLength:number, category:string }` | `{ ok:true }` \| `{ ok:false, error }` | 방장 전용. 게임 시작 |
-| `answer:submit` | `{ word: string }` | `{ ok:true, correct:boolean, alreadySolved?:boolean }` | 정답 제출 (제출자에게만 즉시 응답) |
+| `game:start` | 제시어 맞추기: `{ mode:'word', blockCount, category, durationSeconds }`<br>AI 스무고개: `{ mode:'quiz', rounds, category, blockCount }` | `{ ok:true }` \| `{ ok:false, error }` | 방장 전용. 게임 시작. 스무고개는 첫 문제를 LLM 으로 만드는 동안 기다리므로 비동기 |
+| `answer:submit` | `{ word: string }` | `{ ok:true, correct:boolean, duplicate?:boolean, alreadySolved?:boolean }` | 정답 제출 (제출자에게만 즉시 응답) |
 | `game:restart` | `{}` | `{ ok:true }` \| `{ ok:false, error }` | 방장 전용. 게임오버 후 재시작 (game:start 재사용) |
+| `ai:status` | `{}` | `{ ok:true, ready:boolean, … }` | 서버가 Ollama 에 붙을 수 있는지 확인 (036) |
+
+> `wordLength`(목표 글자 수)는 031 에서 없앴고, 그 자리에 `durationSeconds`(게임 시간, 30~300초)가 들어왔다.
+> `duplicate` 는 낱말 자체는 맞지만 이번 게임에서 이미 나온 경우다 (036).
 
 ### 4.2 Server → Room Broadcast
 
 | Event | Payload | When |
 |-------|---------|------|
 | `room:players` | `{ players: [{id,nickname,score,connected}], hostId }` | 참가/퇴장/방장 변경 시마다 |
-| `game:started` | `{ category, blockCount, wordLength }` | 방장이 게임 시작 시 |
-| `round:started` | `{ board: string[], roundIndex: number }` | 새 라운드 시작 시 (게임 시작 직후 및 정답 발생 직후) |
+| `game:started` | `{ mode, category, blockCount, durationSeconds }` | 방장이 게임 시작 시 |
+| `round:started` | `{ board: string[], roundIndex: number }` | 제시어 맞추기의 새 라운드 (게임 시작 직후 및 정답 발생 직후) |
 | `round:result` | `{ winnerId, winnerNickname, word, players:[{id,nickname,score}] }` | 누군가 정답을 맞혔을 때 |
-| `game:tick` | `{ timeLeft: number }` | 1초마다 |
-| `game:over` | `{ players:[{id,nickname,score}] }` (점수 내림차순 정렬됨) | 60초 타이머 종료 시 |
+| `game:tick` | `{ timeLeft }` (스무고개는 `nextHintIn` 도 함께) | 1초마다 |
+| `game:over` | `{ players:[{id,nickname,score}] }` (점수 내림차순 정렬됨) | 정한 시간이 끝났을 때 (스무고개는 정한 라운드를 모두 마쳤을 때) |
 | `error:notice` | `{ message: string }` | 특정 플레이어에게만: 잘못된 행동(방 없음, 방 꽉 참 등) 안내 |
+
+**AI 스무고개 전용 (033 · 034 에서 추가)** — 제시어 맞추기의 `round:*` 대신 이 이벤트들을 쓴다.
+
+| Event | Payload | When |
+|-------|---------|------|
+| `quiz:preparing` | `{ roundIndex }` | 다음 문제를 만드는 동안 (모두에게 대기 화면) |
+| `quiz:round:started` | `{ board, roundIndex, totalRounds, category }` | 문제가 준비돼 라운드가 시작될 때 |
+| `quiz:hint` | `{ index, text, … }` | 10초마다 힌트가 하나씩 열릴 때 |
+| `quiz:round:result` | `{ answer, winnerId, winnerNickname, gained, players }` | 한 라운드가 끝났을 때 |
+| `quiz:ai` | `{ ready, message }` | 서버가 Ollama 에 붙었는지/못 붙어 내장 사전으로 가는지 알릴 때 |
 
 ### 4.3 상세 예시 — `answer:submit` 처리 흐름
 
@@ -271,14 +299,16 @@ N/A — 인메모리 저장소(Plan §7.2에서 확정)만 사용. `InMemoryRoom
 │               2명 이상일 때만)  │
 └────────────────────────────┘
 
-[3] 게임 화면 (기존 v2 스타일 재사용 + 확장)
-┌────────────────────────────┐
-│ 🎯제시어 ⏱ 남은시간            │
-│ 🏆 실시간 순위: 철수2 영희1 민수0 │
-│  (보드 + 캔버스 라인, 기존과 동일) │
-│  "🎉 철수님 정답! 사과"          │
-│      (라운드 결과 플로팅)        │
-└────────────────────────────┘
+[3] 게임 화면 (혼자 하기 스타일 재사용 + 확장)
+┌──────────────────────────────────────┐
+│ 🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성 │
+│ 🎯제시어 ⏱ 남은시간                      │
+│ 🏆 실시간 순위: 철수2 영희1 민수0           │
+│  (보드 + 캔버스 라인)  │ 🤖 AI 힌트 패널    │
+│                      │ (스무고개에서만)    │
+│  "🎉 철수님 정답! 사과" (라운드 결과 플로팅)  │
+│  [🚪 게임에서 나가기]                     │
+└──────────────────────────────────────┘
 
 [4] 게임오버 화면 (모달, 기존 modal-card 재사용)
 ┌────────────────────────────┐
@@ -295,7 +325,7 @@ N/A — 인메모리 저장소(Plan §7.2에서 확정)만 사용. `InMemoryRoom
 ```
 로비(닉네임 입력) → [방 만들기] → 대기실(방코드 공유) → [게임 시작(방장)]
                   → [방 코드로 참가] → 대기실 →
-  → 게임 화면(공유 보드, 실시간 순위) → 정답 시도 반복 → 60초 종료
+  → 게임 화면(공유 보드, 실시간 순위) → 정답 시도 반복 → 정한 시간(30~300초) 종료
   → 게임오버 모달(최종 순위) → [다시하기(방장)] → 게임 화면으로 복귀
 ```
 
@@ -306,7 +336,7 @@ N/A — 인메모리 저장소(Plan §7.2에서 확정)만 사용. `InMemoryRoom
 | `NetworkManager` | `public/index.html` `<script>` | `socket.io-client` 연결, 이벤트 emit/on 래핑 (Infrastructure adapter 역할) |
 | `GameState` (client) | `public/index.html` `<script>` | 클라이언트 로컬 상태(내 playerId, players 목록, board, timeLeft 등) — 서버 상태의 read-only 사본 |
 | `UIManager` (client) | `public/index.html` `<script>` | 로비/대기실/게임/게임오버 화면 전환, 보드 렌더링, 순위 표시, 기존 v2의 토스트/컨페티/플로팅텍스트 재사용 |
-| `LobbyController`, `GameController` (client) | `public/index.html` `<script>` | 사용자 입력(버튼 클릭, 드래그)을 NetworkManager emit 호출로 변환 |
+| `LobbyController`, `GameController` (client) | `public/index.html` `<script>` | 사용자 입력(버튼 클릭, 블록 왼쪽/오른쪽 클릭)을 NetworkManager emit 호출로 변환 |
 
 ### 5.4 Page UI Checklist
 
@@ -320,13 +350,17 @@ N/A — 인메모리 저장소(Plan §7.2에서 확정)만 사용. `InMemoryRoom
 - [ ] Text: 방 코드 표시 (복사 가능하도록 클릭 시 클립보드 복사)
 - [ ] List: 참가자 닉네임 목록 (방장은 👑 아이콘 표시)
 - [ ] Button: ▶ 게임 시작 — 방장에게만 표시, 참가자 2명 미만이면 비활성화 + 안내 문구
-- [ ] Settings: 블록 개수/글자수/카테고리 선택 (싱글플레이 v2의 설정 모달 재사용)
+- [ ] Settings: 게임 종류(제시어 맞추기 / AI 스무고개), 블록 개수, 게임 시간(30~300초),
+      카테고리(20종) 선택 (혼자 하기의 설정 모달 재사용)
+      — 설계 당시의 "글자수" 설정은 031 에서 없어지고 그 자리에 게임 시간이 들어왔다
+- [ ] Button: 🖼 게임 배경 — 배경1~4 고르기 (035, 로비에서도 고를 수 있다)
 
 #### 게임 화면
 - [ ] Status card: 실시간 순위 (닉네임 + 점수, 점수 내림차순, 본인은 강조 표시)
 - [ ] Status card: 남은 시간 (`game:tick` 수신마다 갱신)
 - [ ] Status card: 제시어(카테고리)
-- [ ] Board: 기존 v2와 동일한 블록 드래그 UI (단, 보드 배열은 서버가 보낸 값을 그대로 사용)
+- [ ] Board: 혼자 하기와 동일한 블록 클릭 UI — 왼쪽 클릭으로 고르고 오른쪽 클릭으로 완성
+      (단, 보드 배열은 서버가 보낸 값을 그대로 사용)
 - [ ] Floating text: 라운드 결과 알림 ("🎉 {닉네임}님 정답! {단어}") — `round:result` 수신 시 전원에게 표시
 - [ ] Toast: 오답/이미 풀림 안내 — 제출자 본인에게만 표시
 
@@ -581,3 +615,6 @@ server/
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 0.1 | 2026-08-23 | Initial draft (Option B 클린 아키텍처, Socket.IO 이벤트 카탈로그 확정) | cupid4rang |
+| 0.2 | 2026-08-30 | 파일 이름 통합 안내 추가 (`_v2` → 원래 파일) | cupid4rang |
+| 0.3 | 2026-09-01 | 조작 방식 변경 반영(드래그 → 왼쪽/오른쪽 클릭) — 작업기록 046 | cupid4rang |
+| 0.4 | 2026-09-01 | 현재 코드와 어긋난 서술 정리 — Socket.IO 이벤트 카탈로그(스무고개 이벤트·게임 시간·중복 응답), 게임 화면, 설정 체크리스트 갱신 (작업기록 048) | cupid4rang |
