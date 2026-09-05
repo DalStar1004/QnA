@@ -13,6 +13,7 @@ const { Server } = require('socket.io');
 const { RoomService } = require('./application/RoomService');
 const { RoundService } = require('./application/RoundService');
 const { QuizService } = require('./application/QuizService');
+const { ExamService } = require('./application/ExamService');
 
 // 3. Infrastructure
 const { InMemoryRoomRepository } = require('./infrastructure/InMemoryRoomRepository');
@@ -22,6 +23,9 @@ const { OllamaHintGenerator } = require('./infrastructure/OllamaHintGenerator');
 
 // 4. Presentation
 const { registerSocketHandlers } = require('./presentation/socketHandlers');
+
+// 5. Domain — 모드 3 문제 파일 (서버를 켤 때 미리 읽어 준비 상태를 알린다)
+const { getExamQuestions } = require('./domain/examContent');
 
 const PORT = Number(process.env.PORT) || 3000;
 // AI 스무고개 힌트를 만들 로컬 LLM. 다른 PC의 Ollama 를 쓰려면 환경변수로 바꾼다.
@@ -58,8 +62,10 @@ const hintGenerator = new OllamaHintGenerator({ endpoint: OLLAMA_URL, model: OLL
 const roomService = new RoomService({ roomRepository, broadcaster, codeGenerator: roomCodeGenerator });
 const roundService = new RoundService({ roomRepository, broadcaster });
 const quizService = new QuizService({ roomRepository, broadcaster, hintGenerator });
+// 모드 3은 문제 파일만 있으면 되므로 LLM 을 주입하지 않는다.
+const examService = new ExamService({ roomRepository, broadcaster });
 
-registerSocketHandlers(io, { roomService, roundService, quizService });
+registerSocketHandlers(io, { roomService, roundService, quizService, examService });
 
 /* ---------- 화면 두 개를 어느 주소에 둘지 ----------
  * 인터넷에 올리면 사람들은 주소창에 서버 주소만 치고 들어온다(예: http://123.45.67.89).
@@ -121,6 +127,14 @@ httpServer.listen(PORT, () => {
     console.log('');
     console.log(`  · AI 스무고개 힌트  ${OLLAMA_URL} (${OLLAMA_MODEL})`);
     console.log('    AI 가 꺼져 있어도 글자 수·초성 힌트로 게임은 진행됩니다.');
+    console.log('');
+
+    // 모드 3은 문제 파일이 있어야 한다. 서버를 켤 때 미리 읽어 두면, 없을 때 여기서 바로 알 수 있다.
+    // (게임을 시작하려다 실패하고 나서야 알게 되면 원인을 찾기 어렵다)
+    const examCount = getExamQuestions().length;
+    console.log(examCount > 0
+        ? `  · 산업재산권 문제  ${examCount}문제 준비됨`
+        : '  · 산업재산권 문제  파일을 찾지 못했습니다 — 모드 3을 쓸 수 없습니다');
     console.log('');
     console.log('  종료하려면 Ctrl+C 를 누르거나 이 창을 닫으세요.');
     console.log('');
