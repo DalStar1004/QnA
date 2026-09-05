@@ -1595,9 +1595,9 @@
             <ol>
                 <li>프로젝트 폴더의 <code>서버 켜기.bat</code> 을 더블클릭해 서버를 켭니다.</li>
                 <li>검은 창에 <b>멀티플레이 서버가 켜졌습니다!</b> 가 보이면 준비 완료입니다.</li>
-                <li>아래 단추를 눌러 <code>http://localhost:3000</code> 으로 다시 들어옵니다.</li>
+                <li>아래 단추를 눌러 <code>http://localhost:3000/multi</code> 로 다시 들어옵니다.</li>
             </ol>
-            <a class="go" id="bootErrorGo" href="http://localhost:3000">🚪 http://localhost:3000 열기</a>
+            <a class="go" id="bootErrorGo" href="http://localhost:3000/multi">🚪 http://localhost:3000/multi 열기</a>
         </div>
     </div>
 
@@ -1841,13 +1841,14 @@
                 : '서버와 통신하는 부분(socket.io)을 불러오지 못했어요. 서버가 꺼져 있거나 주소가 잘못됐을 수 있어요. '
                   + '그래서 [방 만들기] · [참가하기] 를 눌러도 아무 반응이 없습니다.';
             if (!openedAsFile) {
-                // 다른 PC의 서버로 들어온 경우엔 그 주소로 다시 시도하는 편이 맞다
-                var here = window.location.origin;
+                // 다른 PC(또는 인터넷에 올린 서버)로 들어온 경우엔 그 주소로 다시 시도하는 편이 맞다.
+                // 멀티 화면은 '/multi' 에 있으므로 뿌리 주소가 아니라 그쪽을 가리킨다.
+                var here = window.location.origin + '/multi';
                 document.getElementById('bootErrorGo').href = here;
                 document.getElementById('bootErrorGo').textContent = '🚪 ' + here + ' 다시 열기';
             }
             document.getElementById('bootError').classList.add('show');
-            throw new Error('socket.io 클라이언트를 불러오지 못했습니다 — 서버 주소(http://localhost:3000)로 열어주세요');
+            throw new Error('socket.io 클라이언트를 불러오지 못했습니다 — 서버 주소(http://localhost:3000/multi)로 열어주세요');
         }
 
         /* =========================================================

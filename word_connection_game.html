@@ -2477,7 +2477,8 @@
                     </button>
                 </div>
                 <div class="start-server-status" id="multiplayerStatus">서버 상태를 확인하는 중…</div>
-                <div class="start-server-guide">
+                <!-- 서버를 통해 열린 경우엔 서버가 이미 켜져 있으므로 이 안내를 숨긴다 (chooseMultiplayer 참고) -->
+                <div class="start-server-guide" id="startServerGuide">
                     <b>서버를 켜는 방법</b>
                     <pre>게임 파일이 있는 폴더에서 [서버 켜기.bat] 을 더블클릭</pre>
                     <div class="guide-steps">
@@ -3300,7 +3301,17 @@
             const LLM_MODEL_MIGRATED_KEY = 'wordConnectionGame.llmModelMigrated';
             // 멀티플레이 서버 주소. 다른 PC가 서버일 수 있어서 사용자가 고칠 수 있게 두고 기억해 둔다.
             const MULTIPLAYER_URL_KEY = 'wordConnectionGame.multiplayerUrl';
-            const DEFAULT_MULTIPLAYER_URL = 'http://localhost:3000';
+            /*
+             * 이 화면이 **서버를 통해** 열렸다면(http://…) 그 서버가 곧 멀티플레이 서버다.
+             * 인터넷에 올린 경우 접속자는 서버 주소만 알고 들어오는데, 여기에 'localhost' 가 박혀 있으면
+             * [접속하기] 가 접속자 **자기 PC**를 찌르게 되어 아무도 멀티를 못 한다.
+             * 그래서 지금 보고 있는 주소에서 자동으로 뽑는다. 게임 파일을 두 번 눌러 연 경우(file://)에만
+             * 예전 기본값을 쓴다 — 그때는 뽑아낼 주소가 없다.
+             */
+            const DEFAULT_MULTIPLAYER_URL =
+                location.protocol === 'http:' || location.protocol === 'https:'
+                    ? location.origin + '/multi'
+                    : 'http://localhost:3000';
             const LEADERBOARD_KEY = 'wordConnectionGame.leaderboard';
             // 모드 2는 세션 총점이라 점수 폭이 달라서, 최고 점수처럼 랭킹도 키를 분리한다.
             const QUIZ_LEADERBOARD_KEY = 'wordConnectionGame.quizLeaderboard';
@@ -3355,8 +3366,21 @@
                 },
                 /* ---------- 시작 화면: 멀티플레이 서버 주소 ---------- */
                 getMultiplayerUrl() {
-                    if (memory.multiplayerUrl !== null) return memory.multiplayerUrl;
-                    return readRaw(MULTIPLAYER_URL_KEY) || DEFAULT_MULTIPLAYER_URL;
+                    const saved = memory.multiplayerUrl !== null
+                        ? memory.multiplayerUrl
+                        : readRaw(MULTIPLAYER_URL_KEY);
+                    if (!saved) return DEFAULT_MULTIPLAYER_URL;
+                    /*
+                     * 멀티 화면이 '/' 에서 '/multi' 로 옮겨 갔다. 예전에 [접속하기] 를 눌러 본 사람의
+                     * 브라우저에는 'http://localhost:3000' 처럼 **경로 없는 주소**가 저장돼 있는데,
+                     * 그대로 두면 시작 화면으로 되돌아와 아무리 눌러도 멀티로 못 간다.
+                     * 저장값이 지금 보고 있는 서버를 가리키면 항상 새 주소로 바꿔 준다.
+                     * 다른 PC를 가리키는 주소는 사용자가 일부러 적은 것이므로 건드리지 않는다.
+                     */
+                    try {
+                        if (new URL(saved).origin === location.origin) return DEFAULT_MULTIPLAYER_URL;
+                    } catch (e) { /* 주소가 아니면 저장값을 그대로 쓴다 */ }
+                    return saved;
                 },
                 setMultiplayerUrl(url) {
                     let value = (url || '').trim() || DEFAULT_MULTIPLAYER_URL;
@@ -5148,6 +5172,15 @@
             panel.classList.add('show');
             const input = dom('multiplayerUrlInput');
             input.value = StorageManager.getMultiplayerUrl();
+            // 이 화면이 서버를 통해 열렸다면 서버는 이미 켜져 있다. '서버 켜는 방법' 을 보여 주면
+            // 인터넷에 올린 주소로 들어온 사람이 [서버 켜기.bat] 을 찾아 헤매게 된다.
+            const servedByServer = location.protocol === 'http:' || location.protocol === 'https:';
+            dom('startServerGuide').style.display = servedByServer ? 'none' : '';
+            if (servedByServer) {
+                dom('startMultiPanel').querySelector('.panel-sub').textContent =
+                    '이 게임을 열어 준 서버로 그대로 들어갑니다. [접속하기] 를 누르세요.'
+                    + ' 다른 PC가 서버라면 그 주소를 적어주세요.';
+            }
             panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             probeMultiplayerServer(input.value);
         }
@@ -5177,8 +5210,16 @@
             setMultiplayerStatus('🔌 서버 상태를 확인하는 중…', '');
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 4000);
+            // 주소가 'http://<IP>/multi' 처럼 경로를 달고 오므로 그냥 이어 붙이면 '/multi/healthz' 가 된다.
+            // 서버 뿌리의 /healthz 를 보도록 주소를 다시 조립한다.
+            let healthUrl;
             try {
-                await fetch(target + '/healthz', { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+                healthUrl = new URL('/healthz', target).href;
+            } catch (e) {
+                healthUrl = target + '/healthz';
+            }
+            try {
+                await fetch(healthUrl, { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
                 setMultiplayerStatus('✅ 서버가 켜져 있어요. [접속하기]를 누르면 이동합니다.', 'ok');
             } catch (e) {
                 setMultiplayerStatus(

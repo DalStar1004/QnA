@@ -3,13 +3,23 @@
 
 services:
   app:
-    build: .
+    build:
+      # 저장소 루트를 컨텍스트로 쓴다. 루트에 있는 word_connection_game.html 과 그림들을
+      # 이미지에 담아야 해서다 (Dockerfile 첫 주석 참고). 루트 .dockerignore 가 함께 필요하다.
+      context: ..
+      dockerfile: server/Dockerfile
     container_name: word-connection-multiplayer
     ports:
-      # 호스트 포트를 바꾸려면 왼쪽 숫자만 수정하세요 (예: "8080:3000")
-      - "3000:3000"
+      # 왼쪽이 바깥에서 접속할 포트다. 80 으로 두면 주소창에 IP(또는 도메인)만 쳐도 들어온다.
+      # 로컬에서 3000 번으로 쓰던 습관을 유지하려면 "3000:3000" 으로 바꾸면 된다.
+      - "80:3000"
     environment:
       PORT: 3000
+      # AI 문장 힌트를 쓰려면 Ollama 주소를 여기에 넣는다. 없으면 글자 수·초성 힌트로 진행된다.
+      # OLLAMA_URL: http://host.docker.internal:11434
+      # OLLAMA_MODEL: qwen2.5:7b
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/healthz"]

@@ -3,6 +3,7 @@
 
 // 1. Node 내장/외부 라이브러리
 const path = require('path');
+const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const express = require('express');
@@ -28,6 +29,24 @@ const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
+/* ---------- 혼자 하기 게임 파일을 어디서 찾을 것인가 ----------
+ * 이 파일(word_connection_game.html)과 그 화면이 쓰는 그림은 **저장소 루트**에 있다.
+ * 원본을 한 벌로 두려고 server/public/ 으로 복사하지 않았기 때문에, 실행 환경에 따라 위치가 다르다.
+ *
+ *   · 도커로 띄운 경우 — Dockerfile 이 빌드할 때 public/ 안으로 넣어 준다.
+ *   · 이 폴더에서 그냥 node 로 켠 경우(서버 켜기.bat) — 저장소 루트(server/ 의 한 단계 위)에 그대로 있다.
+ *
+ * 아래에서 그 두 경우를 모두 받아 준다. 도커 컨테이너에서는 ROOT_DIR 이 '/' 가 되지만
+ * 거기에 게임 파일이 없으므로 LOCAL_RUN 이 false 가 되고, 루트를 뒤지는 길은 아예 열리지 않는다.
+ */
+const ROOT_DIR = path.join(__dirname, '..', '..');
+const SOLO_FILE = 'word_connection_game.html';
+const LOCAL_RUN = !fs.existsSync(path.join(PUBLIC_DIR, SOLO_FILE))
+    && fs.existsSync(path.join(ROOT_DIR, SOLO_FILE));
+const SOLO_PATH = LOCAL_RUN ? path.join(ROOT_DIR, SOLO_FILE) : path.join(PUBLIC_DIR, SOLO_FILE);
+// 루트에서만 꺼내 줄 파일 목록. 한글 파일명이라 주소는 퍼센트 인코딩되어 들어온다.
+const ROOT_BACKGROUNDS = ['배경1.png', '배경2.png', '배경3.png', '배경4.png'];
+
 const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer);
@@ -44,8 +63,38 @@ const quizService = new QuizService({ roomRepository, broadcaster, hintGenerator
 
 registerSocketHandlers(io, { roomService, roundService, quizService });
 
+/* ---------- 화면 두 개를 어느 주소에 둘지 ----------
+ * 인터넷에 올리면 사람들은 주소창에 서버 주소만 치고 들어온다(예: http://123.45.67.89).
+ * 그때 처음 만나는 화면이 멀티플레이 대기실이면, 방 코드를 받을 데가 없는 사람은 아무것도 못 한다.
+ * 그래서 '/' 에는 **시작 화면이 있는 혼자 하기 게임**을 두고, 멀티플레이는 '/multi' 로 옮겼다.
+ * 시작 화면의 [접속하기] 가 '/multi' 로 데려다 준다.
+ *
+ * 이 라우트는 반드시 express.static 보다 **먼저** 등록해야 한다.
+ * express.static 은 기본으로 '/' 요청에 public/index.html(= 멀티 화면)을 돌려주기 때문이다.
+ * 같은 이유로 static 쪽은 index:false 로 그 기본 동작을 꺼 둔다.
+ */
+app.get('/', (req, res) => res.sendFile(SOLO_PATH));
+app.get('/multi', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+
 // 클라이언트 정적 파일 서빙 — socket.io 클라이언트 스크립트는 Socket.IO가 /socket.io/ 로 자동 제공한다
-app.use(express.static(PUBLIC_DIR));
+app.use(express.static(PUBLIC_DIR, { index: false }));
+
+/* 도커 없이 이 폴더에서 켠 경우에만, 혼자 하기 화면이 쓰는 그림을 저장소 루트에서 마저 꺼내 준다.
+ * public/assets 에 없는 아이콘(icon-*.png · champion-badge.png)과 배경 4장이 여기 해당한다.
+ * 이름을 목록으로 못박아 두었으므로 루트의 다른 파일(문서·설정)은 절대 나가지 않는다. */
+if (LOCAL_RUN) {
+    app.use('/assets', express.static(path.join(ROOT_DIR, 'assets'), { index: false }));
+    app.use((req, res, next) => {
+        let name;
+        try {
+            name = decodeURIComponent(req.path).replace(/^\//, '');
+        } catch (error) {
+            return next();
+        }
+        if (ROOT_BACKGROUNDS.indexOf(name) === -1) return next();
+        return res.sendFile(path.join(ROOT_DIR, name));
+    });
+}
 
 // 컨테이너 헬스체크용 엔드포인트
 app.get('/healthz', (req, res) => {
@@ -77,6 +126,8 @@ httpServer.listen(PORT, () => {
     lanAddresses().forEach((address) => {
         console.log(`  · 같은 인터넷의 PC는  http://${address}:${PORT}`);
     });
+    console.log('');
+    console.log('    그 주소로 들어가면 시작 화면이 뜹니다. [접속하기] 를 누르면 멀티플레이(/multi)로 갑니다.');
     console.log('');
     console.log(`  · AI 스무고개 힌트  ${OLLAMA_URL} (${OLLAMA_MODEL})`);
     console.log('    AI 가 꺼져 있어도 글자 수·초성 힌트로 게임은 진행됩니다.');
