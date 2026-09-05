@@ -2726,8 +2726,18 @@
                      시작 화면을 [스무고개 시작] 하나로 두려고 여기로 옮겼다. -->
                 <div class="settings-section">🤖 모드 2 · AI 스무고개</div>
                 <div class="settings-row">
+                    <label for="quizBlockCount">🧩 블록 개수</label>
+                    <input type="number" id="quizBlockCount" value="16" min="4" max="36">
+                </div>
+                <div class="settings-row">
                     <label for="quizRoundsInput">🔁 스무고개 횟수</label>
                     <input type="number" id="quizRoundsInput" value="3" min="1" max="10">
+                </div>
+                <div class="settings-note">
+                    <div class="guide-rule">
+                        ⏱ 모드 2의 시간은 힌트에 맞춰 자동으로 정해집니다
+                        (힌트 하나당 10초 + 마지막 힌트 뒤 여유 20초).
+                    </div>
                 </div>
                 <div class="settings-row settings-row-col">
                     <label>⚙️ qwen2.5:7b 연결 (Ollama)</label>
@@ -3414,6 +3424,9 @@
             const LLM_MODEL_KEY = 'wordConnectionGame.llmModel';
             const QUIZ_CATEGORY_KEY = 'wordConnectionGame.quizCategory';
             const QUIZ_ROUNDS_KEY = 'wordConnectionGame.quizRounds';
+            // 모드 2의 블록 개수. 예전에는 모드 1의 칸을 같이 썼는데, 두 모드는 판의 성격이 달라
+            // (모드 1은 여러 단어를 찾고, 모드 2는 낱말 하나를 맞힌다) 알맞은 값이 서로 다르다.
+            const QUIZ_BLOCKS_KEY = 'wordConnectionGame.quizBlocks';
             const DEFAULT_LLM_ENDPOINT = 'http://localhost:11434';
             const DEFAULT_LLM_MODEL = 'qwen2.5:7b';
             // 예전 기본 모델. 아래 migrateLegacyModel() 이 한 번만 새 기본값으로 옮긴다.
@@ -3574,6 +3587,14 @@
                 setQuizRounds(count) {
                     memory.quizRounds = count;
                     writeRaw(QUIZ_ROUNDS_KEY, String(count));
+                },
+                // 모드 2의 블록 개수 (모드 1·모드 3과 서로 다른 값이다)
+                getQuizBlocks() {
+                    const value = parseInt(readRaw(QUIZ_BLOCKS_KEY) || '', 10);
+                    return Number.isFinite(value) ? value : QUIZ_DEFAULT_BLOCKS;
+                },
+                setQuizBlocks(count) {
+                    writeRaw(QUIZ_BLOCKS_KEY, String(count));
                 },
                 // kind: 'quiz'(모드 2) · 'exam'(모드 3) · 그 외에는 모드 1 랭킹
                 getLeaderboard(kind) {
@@ -4477,7 +4498,8 @@
                     // 목록에 '기본 문제 몇 개'를 적어 주려면 파일을 읽어야 한다. 실패해도 그냥 넘어간다.
                     ExamBank.load().catch(() => {}).then(renderExamExtras);
                     renderExamExtras();
-                    // 모드 2 설정(횟수 · Ollama 주소 · 모델)도 저장값으로 채워 둔다.
+                    // 모드 2 설정(블록 개수 · 횟수 · Ollama 주소 · 모델)도 저장값으로 채워 둔다.
+                    dom('quizBlockCount').value = StorageManager.getQuizBlocks();
                     dom('quizRoundsInput').value = StorageManager.getQuizRounds();
                     dom('llmEndpointInput').value = StorageManager.getLlmEndpoint();
                     dom('llmModelInput').value = StorageManager.getLlmModel();
@@ -4630,6 +4652,10 @@
         const QUIZ_LOADING_DELAY = 200;
         const QUIZ_EXTRA_TIME = 20;     // 마지막 힌트 이후에 더 주는 여유 시간(초)
         const QUIZ_MAX_ROUNDS = 10;     // 한 세션에서 진행할 수 있는 최대 스무고개 횟수
+        // 모드 2의 블록 개수 기본값과 허용 범위. 예전에 모드 1의 칸을 같이 쓸 때의 기본값이 16이라
+        // 쓰던 사람에게 갑자기 판이 달라 보이지 않도록 같은 값으로 둔다.
+        const QUIZ_DEFAULT_BLOCKS = 16;
+        const QUIZ_BLOCKS_MIN = 4, QUIZ_BLOCKS_MAX = 36;
         const QUIZ_ANSWER_RE = /^[가-힣]{2,6}$/;
 
         /* ---------- 힌트 문장 만들기 / 다듬기 (LLM 응답 유무와 무관하게 항상 필요) ---------- */
@@ -5541,11 +5567,16 @@
                     'warn');
             }
 
-            // 모드 3 설정. 모드 1의 블록 개수(#blockCount)와는 다른 칸이라 서로 영향을 주지 않는다.
-            saveExamSetting(dom('examBlockCount'), EXAM_BLOCKS_MIN, EXAM_BLOCKS_MAX,
-                StorageManager.getExamBlocks(), '블록 개수', '개', (v) => StorageManager.setExamBlocks(v));
-            saveExamSetting(dom('examTimeInput'), EXAM_TIME_MIN, EXAM_TIME_MAX,
-                StorageManager.getExamTime(), '한 문제 시간', '초', (v) => StorageManager.setExamTime(v));
+            // 모드 2·3의 블록 개수와 시간. 셋 다 각자의 칸이라 서로 영향을 주지 않는다.
+            saveNumberSetting(dom('quizBlockCount'), QUIZ_BLOCKS_MIN, QUIZ_BLOCKS_MAX,
+                StorageManager.getQuizBlocks(), '모드 2', '블록 개수', '개',
+                (v) => StorageManager.setQuizBlocks(v));
+            saveNumberSetting(dom('examBlockCount'), EXAM_BLOCKS_MIN, EXAM_BLOCKS_MAX,
+                StorageManager.getExamBlocks(), '모드 3', '블록 개수', '개',
+                (v) => StorageManager.setExamBlocks(v));
+            saveNumberSetting(dom('examTimeInput'), EXAM_TIME_MIN, EXAM_TIME_MAX,
+                StorageManager.getExamTime(), '모드 3', '한 문제 시간', '초',
+                (v) => StorageManager.setExamTime(v));
 
             // 모드 3 화면에 시간이 적혀 있으므로, 설정을 바꾸면 바로 반영한다.
             if (appMode === 'exam' && !ExamSession.active) resetExamPanel();
@@ -5555,10 +5586,10 @@
         }
 
         /**
-         * 모드 3 설정 한 칸을 저장한다.
+         * 모드별 숫자 설정 한 칸을 저장한다.
          * 잘못된 값을 저장하면 다음 판이 이상해지므로, 범위를 벗어나면 이전 값을 지키고 알려 준다.
          */
-        function saveExamSetting(input, min, max, previous, label, unit, save) {
+        function saveNumberSetting(input, min, max, previous, modeLabel, label, unit, save) {
             const value = parseInt(input.value, 10);
             if (Number.isFinite(value) && value >= min && value <= max) {
                 save(value);
@@ -5566,7 +5597,7 @@
             }
             input.value = previous;
             UIManager.showToast(
-                `모드 3 ${label}는 ${min}~${max}${unit} 사이여야 해요. 이전 값(${previous}${unit})을 그대로 씁니다.`,
+                `${modeLabel} ${label}는 ${min}~${max}${unit} 사이여야 해요. 이전 값(${previous}${unit})을 그대로 씁니다.`,
                 'warn');
         }
 
@@ -6171,9 +6202,10 @@
         async function runQuizRound(category) {
             if (!QuizSession.active) return;
 
-            const blockCount = parseInt(dom('blockCount').value, 10);
-            if (!Number.isFinite(blockCount) || blockCount < 4) {
-                UIManager.showToast('블록 개수는 4개 이상으로 정해주세요. (⚙️ 설정)', 'warn');
+            // 모드 2 전용 설정을 읽는다. 모드 1의 칸(#blockCount)과는 다른 값이다.
+            const blockCount = StorageManager.getQuizBlocks();
+            if (!Number.isFinite(blockCount) || blockCount < QUIZ_BLOCKS_MIN) {
+                UIManager.showToast('블록 개수는 4개 이상으로 정해주세요. (⚙️ 설정 → 모드 2)', 'warn');
                 openQuizRound();
                 return;
             }
