@@ -62,6 +62,18 @@ npm install
 npm start
 ```
 
+저장소 루트에서도 켤 수 있습니다. 루트 `package.json` 이 진입점 역할을 합니다
+(`npm install` 은 이어서 `server/` 의 의존성까지 설치합니다).
+
+```bash
+npm install
+npm start
+```
+
+이 루트 `package.json` 은 Render 처럼 "저장소 루트에 `package.json` 이 있다"고 보는
+배포 서비스를 위해 둔 것입니다. 라이브러리를 추가할 때는 지금까지처럼
+**`server/package.json` 만** 고치면 됩니다 — 루트에는 의존성 목록이 없습니다.
+
 ## 게임 방법
 
 > ⚠️ 이 화면은 **반드시 서버 주소로** 열어야 합니다 (`http://localhost:3000/multi`).

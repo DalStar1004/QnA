@@ -4,10 +4,10 @@
 전제: [Vultr-배포-계획.md](Vultr-배포-계획.md) 3장의 1단계 코드 수정이 끝나 있어야 합니다
 ([1단계-코드수정-기록.md](1단계-코드수정-기록.md) 참고). 이미 끝났습니다.
 
-> 사내 공유 가이드(`render_deployment_guide.html`)의 절차를 따르되, **이 프로젝트에서만
-> 달라지는 부분**을 짚어 둔 문서입니다. 가이드는 "저장소 루트에 `package.json`·`server.js`·
-> `public/` 이 있는 구조"를 전제하는데, 우리 구조는 그것들이 전부 `server/` 안에 있습니다.
-> 그래서 대시보드에서 **두 칸을 직접 지정**해야 합니다.
+> 사내 공유 가이드(`render_deployment_guide.html`)의 절차를 그대로 따르면 됩니다.
+> 가이드는 "저장소 루트에 `package.json` 이 있는 구조"를 전제하는데 우리는 그것이 `server/` 안에
+> 있었습니다. 그래서 **루트에 `package.json` 을 하나 두어** 구조를 맞췄고, 이제 대시보드에서
+> 따로 지정할 칸이 없습니다.
 
 ---
 
@@ -15,10 +15,32 @@
 
 | 가이드가 요구하는 것 | 우리 상태 |
 |---|---|
-| `package.json` 의 `scripts.start` | ✅ `server/package.json` → `"start": "node src/server.js"` |
+| `package.json` 의 `scripts.start` | ✅ **루트에 `package.json` 을 두었습니다** (아래 설명) |
 | `process.env.PORT` 수용 | ✅ `server/src/server.js` → `Number(process.env.PORT) \|\| 3000` |
 | GitHub 업로드 (Step 1) | ✅ `github.com/DalStar1004/QnA` (main) |
-| 폴더 구조 | ⚠️ **다름** — 루트에 `package.json` 이 없고 `server/` 안에 있습니다 → 2장에서 처리 |
+| 폴더 구조 | ✅ 루트 `package.json` 으로 맞췄습니다 |
+
+### 루트 `package.json` — 무엇을 하는 파일인가
+
+실제 서버 코드는 그대로 `server/` 에 있습니다. 루트의 것은 **진입점 역할만** 합니다.
+
+```json
+{
+  "scripts": {
+    "start": "node server/src/server.js",
+    "postinstall": "npm install --omit=dev --prefix server"
+  }
+}
+```
+
+- `start` — Render 가 `npm start` 를 부르면 `server/` 의 서버를 켭니다.
+- `postinstall` — Render 가 `npm install` 을 돌리면 npm 이 이어서 이걸 자동으로 실행해
+  `server/` 의 의존성(express · socket.io)을 설치합니다.
+  **의존성 목록을 두 군데에 적지 않으려고** 이렇게 했습니다. 라이브러리를 추가할 때는
+  지금까지처럼 `server/package.json` 만 고치면 됩니다.
+
+이 파일 덕분에 대시보드에서 Root Directory 를 따로 지정할 필요가 없고,
+루트에는 `Dockerfile` 이 없으므로 런타임이 Docker 로 잘못 잡히는 일도 없습니다.
 
 `server/node_modules` 에 네이티브 모듈(`*.node`)이 하나도 없습니다. 순수 JavaScript 라
 윈도우에서 커밋된 것이 리눅스에서도 그대로 동작합니다. 다만 Render 는 어차피 `npm install` 을
@@ -29,16 +51,16 @@
 ## 2. Render 대시보드에 입력할 값
 
 **New + ➔ Web Service ➔ GitHub ➔ `QnA` 저장소 선택** 까지는 가이드와 같습니다.
-그다음 설정 화면에서 아래 값을 넣습니다. **굵게 표시한 두 칸이 가이드와 다른 부분입니다.**
+그다음 설정 화면은 대부분 자동으로 채워집니다. 아래만 확인하세요.
 
-| 칸 | 넣을 값 | 왜 |
+| 칸 | 넣을 값 | 비고 |
 |---|---|---|
 | Name | 원하는 이름 (예: `word-connection-game`) | 이 이름이 주소가 됩니다 → `https://<이름>.onrender.com` |
-| Language / Runtime | **Node** | 아래 3장 참고. 자동으로 **Docker** 가 잡히면 반드시 Node 로 바꿉니다 |
+| Language / Runtime | **Node** | 루트에 `package.json` 이 있으므로 보통 자동으로 잡힙니다 |
 | Branch | `main` | |
-| **Root Directory** | **`server`** | 루트에 `package.json` 이 없습니다. 비워 두면 빌드가 실패합니다 |
-| Build Command | `npm install` | |
-| Start Command | `npm start` | `node src/server.js` 를 직접 적어도 같습니다 |
+| Root Directory | **비워 둡니다** | 루트 `package.json` 이 진입점 역할을 합니다 |
+| Build Command | `npm install` | 기본값 그대로 |
+| Start Command | `npm start` | 기본값 그대로 |
 | Instance Type | **Free ($0/month)** | |
 | 나머지 | 그대로 | 환경변수도 넣을 것이 없습니다 (`PORT` 는 Render 가 알아서 넘겨줍니다) |
 
@@ -54,15 +76,15 @@
 
 ## 3. 이 프로젝트에서 걸릴 만한 것 (미리 알아두기)
 
-### 3.1 Render 가 Docker 를 잡을 수 있습니다 — Node 로 바꾸세요
+### 3.1 런타임이 Docker 로 잡히면 안 됩니다
 
-Root Directory 를 `server` 로 두면 그 안에 `Dockerfile` 이 있어서, Render 가 런타임을
-**Docker** 로 자동 선택할 수 있습니다. 그러면 **빌드가 실패합니다.**
+`server/Dockerfile` 이 있긴 하지만 그것은 **Vultr 용**이고, 빌드 컨텍스트가 저장소 루트라는
+전제로 쓰여 있습니다(`COPY server/package*.json ./`). Render 가 그것으로 빌드하면 경로를 찾지
+못해 실패합니다.
 
-우리 `server/Dockerfile` 은 빌드 컨텍스트가 **저장소 루트**라는 전제로 쓰여 있습니다
-(`COPY server/package*.json ./` 처럼 경로 앞에 `server/` 가 붙어 있습니다). Render 는 Root Directory
-를 컨텍스트로 잡으므로 그 경로들을 찾지 못합니다. 그 Dockerfile 은 Vultr 용이며 Render 와는
-무관하니, **Language 를 Node 로 지정**하면 그만입니다.
+Root Directory 를 비워 두면 Render 는 루트를 봅니다. 루트에는 `Dockerfile` 이 없고
+`package.json` 만 있으므로 **Node 로 잡힙니다.** 혹시 화면에 Docker 가 선택돼 있으면
+Node 로 바꾸세요.
 
 ### 3.2 15분 절전 (Free 플랜)
 
