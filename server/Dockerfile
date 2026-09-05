@@ -18,15 +18,11 @@ COPY server/public ./public
 
 # 혼자 하기 화면과 그 화면이 쓰는 그림들.
 # COPY 는 디렉터리 내용을 합쳐 넣으므로, public/assets 의 글꼴·bg1~4.png 는 남고
-# 루트 assets 의 아이콘(icon-*.png, champion-badge.png, thumb-bg*.png)이 더해진다.
+# 루트 assets 의 아이콘(icon-*.png, champion-badge.png, thumb-bg*.png)과
+# 배경(backgrounds/배경1~4.png)이 더해진다.
+# 배경도 assets 안으로 들어와서, 한글 파일명을 여기에 적을 일이 없어졌다.
 COPY word_connection_game.html ./public/
 COPY assets ./public/assets
-
-# 배경 그림(배경1~4.png). 파일 이름이 한글이라 여기에 직접 적으면 빌드 환경의 문자 인코딩에 따라
-# 못 찾을 수 있어서, 이름을 적지 않고 *.png 로 받는다. 루트의 나머지 png(아이콘·우승·챔피언 뱃지)는
-# .dockerignore 에서 빼 두었으므로 실제로 들어오는 것은 배경 4장뿐이다.
-# → 루트에 새 png 를 두면 여기로 딸려 들어온다. 그럴 때는 .dockerignore 에 한 줄 추가할 것.
-COPY *.png ./public/
 
 ENV NODE_ENV=production
 ENV PORT=3000

@@ -44,8 +44,6 @@ const SOLO_FILE = 'word_connection_game.html';
 const LOCAL_RUN = !fs.existsSync(path.join(PUBLIC_DIR, SOLO_FILE))
     && fs.existsSync(path.join(ROOT_DIR, SOLO_FILE));
 const SOLO_PATH = LOCAL_RUN ? path.join(ROOT_DIR, SOLO_FILE) : path.join(PUBLIC_DIR, SOLO_FILE);
-// 루트에서만 꺼내 줄 파일 목록. 한글 파일명이라 주소는 퍼센트 인코딩되어 들어온다.
-const ROOT_BACKGROUNDS = ['배경1.png', '배경2.png', '배경3.png', '배경4.png'];
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -80,20 +78,10 @@ app.get('/multi', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')
 app.use(express.static(PUBLIC_DIR, { index: false }));
 
 /* 도커 없이 이 폴더에서 켠 경우에만, 혼자 하기 화면이 쓰는 그림을 저장소 루트에서 마저 꺼내 준다.
- * public/assets 에 없는 아이콘(icon-*.png · champion-badge.png)과 배경 4장이 여기 해당한다.
- * 이름을 목록으로 못박아 두었으므로 루트의 다른 파일(문서·설정)은 절대 나가지 않는다. */
+ * public/assets 에 없는 아이콘(icon-*.png · champion-badge.png)과 배경(backgrounds/)이 여기 해당한다.
+ * 루트의 assets 폴더 하나만 열어 주므로 문서·설정 같은 다른 파일은 나가지 않는다. */
 if (LOCAL_RUN) {
     app.use('/assets', express.static(path.join(ROOT_DIR, 'assets'), { index: false }));
-    app.use((req, res, next) => {
-        let name;
-        try {
-            name = decodeURIComponent(req.path).replace(/^\//, '');
-        } catch (error) {
-            return next();
-        }
-        if (ROOT_BACKGROUNDS.indexOf(name) === -1) return next();
-        return res.sendFile(path.join(ROOT_DIR, name));
-    });
 }
 
 // 컨테이너 헬스체크용 엔드포인트

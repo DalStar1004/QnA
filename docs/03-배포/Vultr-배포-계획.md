@@ -33,7 +33,7 @@
 | 서버가 **3000번 포트**로 뜬다 | `http://<IP>` 로는 안 들어가지고 `http://<IP>:3000` 을 쳐야 한다 → 목표 실패 |
 | `/` 가 **멀티플레이 대기 화면**이다 | IP만 치고 들어온 사람이 닉네임·방 코드부터 만나서, 혼자서는 놀 수가 없다 |
 | 혼자 하기 게임(`word_connection_game.html`)이 **서버에 없다** | `server/public/` 안에 들어 있지 않아 아예 서빙되지 않는다 |
-| 혼자 하기가 쓰는 그림이 서버에 없다 | `assets/icon-*.png`, `champion-badge.png`, `배경1~4.png` 가 `server/public/` 에 없다 (`public/assets` 에는 `bg1~4.png`·글꼴만 있다) |
+| 혼자 하기가 쓰는 그림이 서버에 없다 | `assets/icon-*.png`, `champion-badge.png`, `assets/backgrounds/배경1~4.png` 가 `server/public/` 에 없다 (`public/assets` 에는 `bg1~4.png`·글꼴만 있다) |
 | 멀티 서버 주소 기본값이 `http://localhost:3000` 이다 | 접속자가 [접속하기]를 누르면 **자기 PC**를 찌른다 → 연결 실패 |
 | `tools/node` 는 **Windows용 node.exe** 다 | 리눅스 서버에서는 실행이 안 된다 |
 | Ollama 기본 주소가 `127.0.0.1:11434` 다 | 서버에 Ollama가 없으면 AI 문장 힌트는 안 나온다 (게임은 글자 수·초성 힌트로 계속 진행됨) |
@@ -127,7 +127,6 @@ COPY server/public ./public
 # 혼자 하기 화면과 그 화면이 쓰는 그림들 (원본은 저장소 루트에 그대로 둔다)
 COPY word_connection_game.html ./public/
 COPY assets ./public/assets
-COPY *.png ./public/          # 배경1~4.png. 나머지 루트 png 는 .dockerignore 에서 뺐다
 
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -137,9 +136,9 @@ CMD ["node", "src/server.js"]
 
 - `COPY assets ./public/assets` 는 **덮어쓰기가 아니라 합치기**다. 기존 `bg1~4.png`·글꼴은 남고
   아이콘(`icon-*.png`, `champion-badge.png`, `thumb-bg*.png`)이 더해진다.
-- 배경 그림은 파일명이 한글(`배경1.png`)이라 Dockerfile에 직접 적으면 빌드 환경의 문자 인코딩에 따라
-  못 찾을 수 있다. 그래서 이름을 적지 않고 `COPY *.png` 로 받고, 나머지 루트 png(`아이콘.png` ·
-  `우승.png` · `챔피언 뱃지.png`)는 `.dockerignore` 에서 빼는 방식으로 처리했다.
+- 배경 그림은 `assets/backgrounds/` 안에 있으므로 위의 `COPY assets` 한 줄로 같이 들어온다.
+  덕분에 한글 파일명을 Dockerfile 에 적을 일이 없다. 원본 그림(`아이콘.png` · `우승.png` ·
+  `챔피언 뱃지.png`)은 `source-images/` 에 있고 `.dockerignore` 에서 빼 두었다.
 
 **빌드 컨텍스트가 저장소 루트가 되므로 `.dockerignore` 를 루트에 새로 만든다.**
 이걸 빼먹으면 106MB짜리 `tools/node` 와 52MB짜리 `.git` 이 전부 빌드에 딸려 들어간다.
@@ -246,7 +245,7 @@ docker compose logs -f              # 로그 보기 (Ctrl+C 로 빠져나옴)
 윈도우에서 `scp` 로 필요한 파일만 올리는 것이다.
 
 > 받는 용량이 부담되면(약 150MB) `git clone --depth 1 --filter=blob:none` 을 쓰거나,
-> `word_connection_game.html`·`assets`·`배경*.png`·`server/` 만 `scp` 로 올려도 된다.
+> `word_connection_game.html`·`assets`·`server/` 만 `scp` 로 올려도 된다 (배경은 `assets` 안에 있다).
 
 ### 5.1 도커를 쓰지 않는 대안 (systemd)
 
@@ -264,7 +263,6 @@ cd /opt/qna/server && npm install --omit=dev
 cd /opt/qna
 cp word_connection_game.html server/public/
 cp -r assets/. server/public/assets/
-cp 배경*.png server/public/
 ```
 
 `/etc/systemd/system/qna.service`:
