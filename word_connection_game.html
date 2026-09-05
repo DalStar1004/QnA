@@ -3420,6 +3420,9 @@
             const QUIZ_HIGH_SCORE_KEY = 'wordConnectionGame.quizHighScore';
             // 모드 3(산업재산권 문제)도 같은 이유로 따로 둔다.
             const EXAM_HIGH_SCORE_KEY = 'wordConnectionGame.examHighScore';
+            // 모드 1 설정. 예전에는 저장하지 않아서 화면을 새로 열 때마다 기본값으로 돌아갔다.
+            const BLOCK_COUNT_KEY = 'wordConnectionGame.blockCount';
+            const CATEGORY_KEY = 'wordConnectionGame.category';
             const LLM_ENDPOINT_KEY = 'wordConnectionGame.llmEndpoint';
             const LLM_MODEL_KEY = 'wordConnectionGame.llmModel';
             const QUIZ_CATEGORY_KEY = 'wordConnectionGame.quizCategory';
@@ -3588,6 +3591,23 @@
                     memory.quizRounds = count;
                     writeRaw(QUIZ_ROUNDS_KEY, String(count));
                 },
+                /* ---------- 모드 1 설정 ---------- */
+                // 블록 개수. 모드 2·3의 값과는 별개다.
+                getBlockCount() {
+                    const value = parseInt(readRaw(BLOCK_COUNT_KEY) || '', 10);
+                    return Number.isFinite(value) ? value : CLASSIC_DEFAULT_BLOCKS;
+                },
+                setBlockCount(count) {
+                    writeRaw(BLOCK_COUNT_KEY, String(count));
+                },
+                // 고른 카테고리. 'random' 이거나 카테고리 이름이다.
+                getCategoryOption() {
+                    return readRaw(CATEGORY_KEY) || 'random';
+                },
+                setCategoryOption(value) {
+                    writeRaw(CATEGORY_KEY, value || 'random');
+                },
+
                 // 모드 2의 블록 개수 (모드 1·모드 3과 서로 다른 값이다)
                 getQuizBlocks() {
                     const value = parseInt(readRaw(QUIZ_BLOCKS_KEY) || '', 10);
@@ -4656,6 +4676,9 @@
         // 쓰던 사람에게 갑자기 판이 달라 보이지 않도록 같은 값으로 둔다.
         const QUIZ_DEFAULT_BLOCKS = 16;
         const QUIZ_BLOCKS_MIN = 4, QUIZ_BLOCKS_MAX = 36;
+        // 모드 1의 블록 개수 기본값과 허용 범위 (마크업의 value/min/max 와 같은 값)
+        const CLASSIC_DEFAULT_BLOCKS = 16;
+        const CLASSIC_BLOCKS_MIN = 4, CLASSIC_BLOCKS_MAX = 36;
         const QUIZ_ANSWER_RE = /^[가-힣]{2,6}$/;
 
         /* ---------- 힌트 문장 만들기 / 다듬기 (LLM 응답 유무와 무관하게 항상 필요) ---------- */
@@ -5567,7 +5590,11 @@
                     'warn');
             }
 
-            // 모드 2·3의 블록 개수와 시간. 셋 다 각자의 칸이라 서로 영향을 주지 않는다.
+            // 모드 1·2·3의 블록 개수와 시간. 셋 다 각자의 칸이라 서로 영향을 주지 않는다.
+            saveNumberSetting(dom('blockCount'), CLASSIC_BLOCKS_MIN, CLASSIC_BLOCKS_MAX,
+                StorageManager.getBlockCount(), '모드 1', '블록 개수', '개',
+                (v) => StorageManager.setBlockCount(v));
+            StorageManager.setCategoryOption(dom('categorySelect').value);
             saveNumberSetting(dom('quizBlockCount'), QUIZ_BLOCKS_MIN, QUIZ_BLOCKS_MAX,
                 StorageManager.getQuizBlocks(), '모드 2', '블록 개수', '개',
                 (v) => StorageManager.setQuizBlocks(v));
@@ -5654,10 +5681,19 @@
             GameState.currentBlockCount = parseInt(dom('blockCount').value, 10);
             GameState.selectedCategoryOption = dom('categorySelect').value;
 
-            if (!Number.isFinite(GameState.currentBlockCount) || GameState.currentBlockCount < 4) {
+            if (!Number.isFinite(GameState.currentBlockCount) || GameState.currentBlockCount < CLASSIC_BLOCKS_MIN) {
                 UIManager.showToast("블록 개수는 4개 이상으로 정해주세요.", "warn");
                 return false;
             }
+
+            // 실제로 판을 연 값을 기억해 둔다. 설정 창을 [완료] 로 닫지 않고 시작해도
+            // 다음에 화면을 열었을 때 같은 값으로 시작할 수 있다.
+            // 숫자 칸에는 36을 넘겨 적을 수도 있는데(그런 판도 그대로 돌아간다), 기억은
+            // 설정 화면이 다룰 수 있는 범위 안으로 맞춰 둔다. 그러지 않으면 다음에 설정을 닫을 때
+            // '범위를 벗어났다'는 안내가 계속 뜬다.
+            StorageManager.setBlockCount(Math.min(CLASSIC_BLOCKS_MAX,
+                Math.max(CLASSIC_BLOCKS_MIN, GameState.currentBlockCount)));
+            StorageManager.setCategoryOption(GameState.selectedCategoryOption);
 
             // 글자 수 제한이 없으므로, 두 단어가 블록 안에 들어가는 카테고리인지만 확인한다.
             const validCategories = Dictionary.getValidCategories(GameState.currentBlockCount);
@@ -7406,7 +7442,10 @@
         ========================================================= */
         // 파일로 추가해 둔 카테고리를 먼저 사전에 합친 뒤 목록을 만든다.
         CategoryManager.rebuild();
-        ModalManager.populateCategorySelect();
+        // 모드 1 설정을 저장값으로 되돌린다. 지난번에 정한 블록 개수와 카테고리로 바로 시작할 수 있다.
+        // (저장해 둔 카테고리가 지워졌으면 populateCategorySelect 가 '랜덤'으로 되돌린다)
+        dom('blockCount').value = StorageManager.getBlockCount();
+        ModalManager.populateCategorySelect(StorageManager.getCategoryOption());
         ModalManager.renderCustomCategories();
         GameState.highScore = StorageManager.getHighScore();
         UIManager.updateHighScoreDisplay();
