@@ -12,12 +12,15 @@ const { GameMode } = require('../domain/Room');
  * @param {import('../application/RoundService').RoundService} services.roundService
  * @param {import('../application/QuizService').QuizService} services.quizService
  */
-function registerSocketHandlers(io, { roomService, roundService, quizService }) {
+function registerSocketHandlers(io, { roomService, roundService, quizService, examService }) {
     // 방이 어떤 모드인지에 따라 진행을 맡을 유스케이스가 갈린다.
     // 소켓 이벤트 이름은 하나로 두고, 여기서 방의 모드를 보고 갈라 준다.
     const serviceFor = (playerId) => {
         const room = roomService.findRoomByPlayer(playerId);
-        return room && room.mode === GameMode.QUIZ ? quizService : roundService;
+        if (!room) return roundService;
+        if (room.mode === GameMode.QUIZ) return quizService;
+        if (room.mode === GameMode.EXAM) return examService;
+        return roundService;
     };
 
     io.on('connection', (socket) => {
@@ -69,6 +72,15 @@ function registerSocketHandlers(io, { roomService, roundService, quizService }) 
                         });
                     });
                 return undefined;
+            }
+            // 모드 3은 문제를 만들 것이 없어서(파일에 있는 것을 그대로 낸다) 동기다.
+            if (payload && payload.mode === GameMode.EXAM) {
+                const examResult = examService.startGame({
+                    playerId: socket.id,
+                    blockCount: payload.blockCount,
+                    secondsPerQuestion: payload.secondsPerQuestion
+                });
+                return respond(socket, ack, examResult);
             }
             const result = roundService.startGame({
                 playerId: socket.id,
@@ -124,6 +136,8 @@ function registerSocketHandlers(io, { roomService, roundService, quizService }) 
                     // 방에 아무도 남지 않음 → 타이머를 정리해 좀비 인터벌을 막는다
                     if (result.room.mode === GameMode.QUIZ) {
                         quizService.disposeRoom(result.room);
+                    } else if (result.room.mode === GameMode.EXAM) {
+                        examService.disposeRoom(result.room);
                     } else {
                         roundService.disposeRoom(result.room);
                     }

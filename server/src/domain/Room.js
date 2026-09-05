@@ -12,11 +12,17 @@ const MAX_GAME_DURATION_SECONDS = 300;
 // 이 방에서 무슨 게임을 하는가. 방장이 대기실에서 고른다.
 const GameMode = {
     WORD: 'word',   // 제시어 맞추기 — 블록을 이어 카테고리 단어를 만든다
-    QUIZ: 'quiz'    // AI 스무고개 — 힌트를 보고 정답 낱말을 맞힌다
+    QUIZ: 'quiz',   // AI 스무고개 — 힌트를 보고 정답 낱말을 맞힌다
+    EXAM: 'exam'    // 산업재산권 문제 — 문제 파일에 있는 문제를 순서대로 푼다
 };
 
 const MIN_QUIZ_ROUNDS = 1;
 const MAX_QUIZ_ROUNDS = 10;
+
+// 모드 3: 한 문제에 주는 시간. 혼자 하기와 같은 기본값·범위를 쓴다.
+const EXAM_SECONDS_PER_QUESTION = 10;
+const MIN_EXAM_SECONDS = 5;
+const MAX_EXAM_SECONDS = 120;
 
 const RoomStatus = {
     WAITING: 'waiting',
@@ -34,6 +40,12 @@ class Room {
         this.settings = { blockCount: 16, category: 'random', durationSeconds: GAME_DURATION_SECONDS };
         // 스무고개는 시간이 아니라 라운드 수로 끝난다. 그래서 설정을 따로 둔다.
         this.quizSettings = { rounds: 5, blockCount: 16, category: 'random' };
+        /* 모드 3도 설정을 따로 둔다. 세 모드는 판의 성격이 달라 알맞은 블록 개수가 서로 다르므로
+           (혼자 하기에서 겪은 것과 같은 이유) 값을 나눠 쓰지 않는다.
+           문제 수는 방장이 정하지 않는다 — 문제 파일에 있는 것을 처음부터 끝까지 낸다. */
+        this.examSettings = { blockCount: 12, secondsPerQuestion: EXAM_SECONDS_PER_QUESTION };
+        this.examRound = null;
+        this.examQuestions = [];   // 이번 게임에서 낼 문제 목록 (파일에 적힌 순서 그대로)
         // settings.category가 'random'일 수 있으므로, 실제로 뽑힌 카테고리는 따로 보관한다
         this.activeCategory = null;
         this.currentRound = null;
@@ -115,6 +127,9 @@ module.exports = {
     GameMode,
     MIN_QUIZ_ROUNDS,
     MAX_QUIZ_ROUNDS,
+    EXAM_SECONDS_PER_QUESTION,
+    MIN_EXAM_SECONDS,
+    MAX_EXAM_SECONDS,
     MAX_PLAYERS,
     MIN_PLAYERS_TO_START,
     GAME_DURATION_SECONDS,

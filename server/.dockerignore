@@ -1,3 +1,8 @@
+# ⚠ 이제 쓰이지 않는 파일입니다.
+# 도커는 빌드 컨텍스트 최상단의 .dockerignore 만 읽는데, server/docker-compose.yml 의
+# context 가 저장소 루트(..)로 바뀌면서 실제로 적용되는 것은 저장소 루트의 .dockerignore 입니다.
+# 제외 목록을 고칠 일이 있으면 그쪽을 고치세요.
+
 node_modules
 npm-debug.log
 .git

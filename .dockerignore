@@ -1,0 +1,45 @@
+# 도커 빌드에 딸려 보낼 필요가 없는 것들.
+#
+# server/docker-compose.yml 의 build.context 가 이 폴더(저장소 루트)라서, 이 파일이 없으면
+# 106MB 짜리 tools/node 와 52MB 짜리 .git 까지 통째로 빌드에 실려 간다. 빌드가 느려질 뿐 아니라
+# 이미지에 들어갈 이유도 없다. (예전 server/.dockerignore 는 컨텍스트가 바뀌면서 더 이상 쓰이지 않는다)
+#
+# 반대로 **지워서는 안 되는 것**: word_connection_game.html, assets/(배경 포함),
+# server/src, server/public, server/package*.json — 이미지에 꼭 들어가야 한다.
+
+# 윈도우 전용 포터블 Node. 리눅스 컨테이너에서는 실행조차 되지 않는다.
+tools
+
+# 소스 이력과 편집기·도구 설정
+.git
+.gitattributes
+.gitignore
+.claude
+.bkit
+
+# 문서 (게임 실행과 무관)
+docs
+README.md
+CLAUDE.md
+server/README.md
+
+# 컨테이너 안에서 npm install 을 새로 하므로 호스트 것은 보내지 않는다
+server/node_modules
+npm-debug.log
+
+# 윈도우에서만 쓰는 실행 스크립트
+서버 켜기.bat
+
+# 원본 그림(아이콘.png · 우승.png · 챔피언 뱃지.png).
+# assets/ 에 잘라 놓은 것들을 쓰므로 게임 실행에는 필요 없다.
+source-images
+
+# 도커 설정 자체
+server/Dockerfile
+server/docker-compose.yml
+server/.dockerignore
+
+# 운영체제 부스러기
+Thumbs.db
+desktop.ini
+.DS_Store

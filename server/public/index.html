@@ -1595,9 +1595,9 @@
             <ol>
                 <li>프로젝트 폴더의 <code>서버 켜기.bat</code> 을 더블클릭해 서버를 켭니다.</li>
                 <li>검은 창에 <b>멀티플레이 서버가 켜졌습니다!</b> 가 보이면 준비 완료입니다.</li>
-                <li>아래 단추를 눌러 <code>http://localhost:3000</code> 으로 다시 들어옵니다.</li>
+                <li>아래 단추를 눌러 <code>http://localhost:3000/multi</code> 로 다시 들어옵니다.</li>
             </ol>
-            <a class="go" id="bootErrorGo" href="http://localhost:3000">🚪 http://localhost:3000 열기</a>
+            <a class="go" id="bootErrorGo" href="http://localhost:3000/multi">🚪 http://localhost:3000/multi 열기</a>
         </div>
     </div>
 
@@ -1669,17 +1669,24 @@
                             <span class="mode-title">AI 스무고개</span>
                             <span class="mode-desc">힌트를 보고 낱말 맞히기</span>
                         </button>
+                        <button type="button" class="mode-choice" id="modeExamBtn" data-mode="exam">
+                            <span class="mode-emoji">📜</span>
+                            <span class="mode-title">산업재산권 문제</span>
+                            <span class="mode-desc">문제를 읽고 짧은 시간 안에 맞히기</span>
+                        </button>
                     </div>
+
+                    <!-- 아래 설정은 **고른 모드의 것만** 보인다 (renderModeChoice).
+                         블록 개수는 세 모드가 각자 따로 가진다. 판의 성격이 달라 알맞은 값이
+                         서로 다르기 때문이다 (혼자 하기에서 겪은 것과 같은 이유). -->
 
                     <!-- 제시어 맞추기 설정 -->
-                    <!-- 블록 개수는 두 모드가 함께 쓴다 (스무고개도 보드에서 블록을 이어 맞힌다) -->
-                    <div class="field-row">
-                        <label for="blockCountInput">🧩 블록 개수</label>
-                        <input type="number" id="blockCountInput" value="16" min="4" max="36">
-                    </div>
-
                     <div id="wordSettings">
                         <div class="panel-sub">🔤 글자 수 제한은 없어요 — 카테고리의 단어면 2글자든 5글자든 모두 정답!</div>
+                        <div class="field-row">
+                            <label for="blockCountInput">🧩 블록 개수</label>
+                            <input type="number" id="blockCountInput" value="16" min="4" max="36">
+                        </div>
                         <div class="field-row">
                             <label for="durationInput">⏱️ 게임 시간</label>
                             <select id="durationInput">
@@ -1697,6 +1704,10 @@
                     <div id="quizSettings" hidden>
                         <div class="panel-sub">🤖 힌트는 10초마다 하나씩 열려요. 보드에서 블록을 이어 정답을 만드세요 — 힌트를 적게 보고 맞힐수록 높은 점수!</div>
                         <div class="field-row">
+                            <label for="quizBlockCountInput">🧩 블록 개수</label>
+                            <input type="number" id="quizBlockCountInput" value="16" min="4" max="36">
+                        </div>
+                        <div class="field-row">
                             <label for="quizRoundsInput">🔁 문제 수</label>
                             <select id="quizRoundsInput">
                                 <option value="3">3문제</option>
@@ -1708,7 +1719,29 @@
                         <div class="ai-status" id="aiStatus">AI 연결 상태를 확인하는 중…</div>
                     </div>
 
-                    <div class="field-row">
+                    <!-- 산업재산권 문제 설정.
+                         문제 수는 방장이 정하지 않는다 — 서버의 문제 파일에 있는 것을 전부 낸다. -->
+                    <div id="examSettings" hidden>
+                        <div class="panel-sub">📜 서버에 있는 문제를 처음부터 끝까지 냅니다. 한 문제의 시간이 지나면 정답을 알려줘요!</div>
+                        <div class="field-row">
+                            <label for="examBlockCountInput">🧩 블록 개수</label>
+                            <input type="number" id="examBlockCountInput" value="12" min="4" max="36">
+                        </div>
+                        <div class="field-row">
+                            <label for="examSecondsInput">⏱️ 한 문제 시간</label>
+                            <select id="examSecondsInput">
+                                <option value="10" selected>10초</option>
+                                <option value="15">15초</option>
+                                <option value="20">20초</option>
+                                <option value="30">30초</option>
+                                <option value="60">60초</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 카테고리는 사전에서 낱말을 뽑는 두 모드만 쓴다.
+                         모드 3은 문제 파일이 정해져 있어 고를 것이 없다. -->
+                    <div class="field-row" id="categoryRow">
                         <label for="categorySelect">📚 카테고리</label>
                         <select id="categorySelect"></select>
                     </div>
@@ -1735,6 +1768,13 @@
                 <span class="rule-chip" id="quizRoundChip">🤖 AI 스무고개</span>
                 <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
                 <span class="rule-text">AI가 <b id="quizRuleCategoryName">카테고리</b>에서 고른 낱말을 10초마다 열리는 힌트로 맞혀보세요!</span>
+            </div>
+
+            <!-- 산업재산권 문제 안내 (스무고개와 같은 화면 틀을 쓴다) -->
+            <div class="rule-banner quiz" id="examRuleBanner" hidden>
+                <span class="rule-chip" id="examRoundChip">📜 산업재산권 문제</span>
+                <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
+                <span class="rule-text">문제를 읽고 <b id="examSecondsLabel">10</b>초 안에 정답을 만들어보세요. 시간이 지나면 정답을 알려줘요!</span>
             </div>
 
             <div class="status-grid">
@@ -1841,13 +1881,14 @@
                 : '서버와 통신하는 부분(socket.io)을 불러오지 못했어요. 서버가 꺼져 있거나 주소가 잘못됐을 수 있어요. '
                   + '그래서 [방 만들기] · [참가하기] 를 눌러도 아무 반응이 없습니다.';
             if (!openedAsFile) {
-                // 다른 PC의 서버로 들어온 경우엔 그 주소로 다시 시도하는 편이 맞다
-                var here = window.location.origin;
+                // 다른 PC(또는 인터넷에 올린 서버)로 들어온 경우엔 그 주소로 다시 시도하는 편이 맞다.
+                // 멀티 화면은 '/multi' 에 있으므로 뿌리 주소가 아니라 그쪽을 가리킨다.
+                var here = window.location.origin + '/multi';
                 document.getElementById('bootErrorGo').href = here;
                 document.getElementById('bootErrorGo').textContent = '🚪 ' + here + ' 다시 열기';
             }
             document.getElementById('bootError').classList.add('show');
-            throw new Error('socket.io 클라이언트를 불러오지 못했습니다 — 서버 주소(http://localhost:3000)로 열어주세요');
+            throw new Error('socket.io 클라이언트를 불러오지 못했습니다 — 서버 주소(http://localhost:3000/multi)로 열어주세요');
         }
 
         /* =========================================================
@@ -2162,13 +2203,21 @@
                 renderModeChoice();
             }
 
-            /** 고른 게임 종류에 맞춰 설정 칸을 바꾼다 */
+            /**
+             * 고른 게임 종류에 맞춰 **그 모드의 설정만** 보여 준다.
+             * 세 모드 설정을 한꺼번에 펼치면 어느 것이 지금 게임에 적용되는지 알기 어렵고,
+             * 다른 모드의 블록 개수를 고쳐 놓고 왜 안 바뀌냐고 헤매기 쉽다 (혼자 하기와 같은 이유).
+             */
             function renderModeChoice() {
-                const quiz = ClientState.mode === 'quiz';
-                document.getElementById('modeWordBtn').classList.toggle('is-picked', !quiz);
-                document.getElementById('modeQuizBtn').classList.toggle('is-picked', quiz);
-                document.getElementById('wordSettings').hidden = quiz;
-                document.getElementById('quizSettings').hidden = !quiz;
+                const mode = ClientState.mode || 'word';
+                document.getElementById('modeWordBtn').classList.toggle('is-picked', mode === 'word');
+                document.getElementById('modeQuizBtn').classList.toggle('is-picked', mode === 'quiz');
+                document.getElementById('modeExamBtn').classList.toggle('is-picked', mode === 'exam');
+                document.getElementById('wordSettings').hidden = mode !== 'word';
+                document.getElementById('quizSettings').hidden = mode !== 'quiz';
+                document.getElementById('examSettings').hidden = mode !== 'exam';
+                // 카테고리는 사전에서 낱말을 뽑는 두 모드만 쓴다.
+                document.getElementById('categoryRow').hidden = mode === 'exam';
             }
 
             /** AI 연결 상태 안내 — 꺼져 있어도 시작은 막지 않는다 */
@@ -2198,14 +2247,19 @@
                 hintListEl.appendChild(empty);
             }
 
-            /** 모드에 맞춰 화면을 갈아 끼운다. 두 모드가 같은 게임 화면을 쓴다. */
+            /** 모드에 맞춰 화면을 갈아 끼운다. 세 모드가 같은 게임 화면을 쓴다. */
             function applyMode(mode) {
                 const quiz = mode === 'quiz';
-                document.body.classList.toggle('quiz-layout', quiz);
-                boardContainer.classList.toggle('quiz-mode', quiz);
-                document.getElementById('wordRuleBanner').hidden = quiz;
+                const exam = mode === 'exam';
+                // 스무고개와 산업재산권 문제는 보드 옆에 패널이 붙는 같은 틀을 쓴다.
+                const usesPanel = quiz || exam;
+                document.body.classList.toggle('quiz-layout', usesPanel);
+                boardContainer.classList.toggle('quiz-mode', usesPanel);
+                document.getElementById('wordRuleBanner').hidden = usesPanel;
                 document.getElementById('quizRuleBanner').hidden = !quiz;
-                document.getElementById('categoryLabel').textContent = quiz ? '📚 카테고리' : '🎯 제시어';
+                document.getElementById('examRuleBanner').hidden = !exam;
+                document.getElementById('categoryLabel').textContent =
+                    exam ? '📜 문제' : (quiz ? '📚 카테고리' : '🎯 제시어');
             }
 
             /** 새 문제가 시작될 때 패널을 비운다 */
@@ -2214,6 +2268,30 @@
                 hintMessage('첫 힌트를 준비하고 있어요…');
                 hintNextEl.textContent = '준비 중';
                 hintFootEl.textContent = '힌트를 적게 볼수록 점수가 높아요';
+            }
+
+            /**
+             * 모드 3: 패널에 문제 문장을 띄운다. 힌트 목록 자리에 문제를 한 줄로 넣는다.
+             * 스무고개의 패널을 그대로 쓰되 제목과 안내만 바꿔 끼운다.
+             */
+            function showExamQuestion({ roundIndex, totalRounds, question, answerCount, timeLeft }) {
+                hintTitleEl.textContent = `📜 산업재산권 ${roundIndex}/${totalRounds}`;
+                hintListEl.innerHTML = '';
+                const row = document.createElement('div');
+                row.className = 'hint-item fresh';
+                const no = document.createElement('span');
+                no.className = 'hint-no';
+                no.textContent = `${roundIndex}.`;
+                const text = document.createElement('span');
+                text.textContent = question;
+                row.appendChild(no);
+                row.appendChild(text);
+                hintListEl.appendChild(row);
+
+                hintNextEl.textContent = `${timeLeft}초 남음`;
+                hintFootEl.textContent = answerCount > 1
+                    ? `정답이 ${answerCount}개예요. 그중 하나만 만들어도 정답!`
+                    : '보드에서 글자를 눌러 정답을 만들어보세요';
             }
 
             /** 힌트 한 줄을 덧붙인다. 마지막 항목에 등장 애니메이션을 준다. */
@@ -2323,7 +2401,7 @@
                 shakeBlocks, popBlocks, renderBoard, setBoardLocked, resizeCanvas, clearCanvas,
                 drawLines, resetSelection, renderWaitingRoom, renderRanking, updateTimer,
                 showGameOver, hideGameOver, populateCategorySelect,
-                renderModeChoice, setAiStatus, applyMode,
+                renderModeChoice, setAiStatus, applyMode, showExamQuestion,
                 resetHintPanel, appendHint, updateNextHint, appendHintAnswer, setHintFoot, hintMessage
             };
         })();
@@ -2369,12 +2447,21 @@
                         mode: 'quiz',
                         rounds: Number(document.getElementById('quizRoundsInput').value),
                         // 스무고개도 보드에서 블록을 이어 맞히므로 블록 개수가 필요하다
-                        blockCount: Number(document.getElementById('blockCountInput').value),
+                        blockCount: Number(document.getElementById('quizBlockCountInput').value),
                         category
                     });
                     startBtn.disabled = false;
                     startBtn.textContent = '▶ 게임 시작';
                     return result;
+                }
+
+                if (ClientState.mode === 'exam') {
+                    // 문제 수는 보내지 않는다 — 서버의 문제 파일에 있는 것을 전부 낸다.
+                    return NetworkManager.emit('game:start', {
+                        mode: 'exam',
+                        blockCount: Number(document.getElementById('examBlockCountInput').value),
+                        secondsPerQuestion: Number(document.getElementById('examSecondsInput').value)
+                    });
                 }
 
                 return NetworkManager.emit('game:start', {
@@ -2541,6 +2628,17 @@
                 return;
             }
 
+            if (ClientState.mode === 'exam') {
+                ClientState.quizRound = 0;
+                ClientState.quizTotalRounds = payload.totalRounds;
+                document.getElementById('examSecondsLabel').textContent = payload.secondsPerQuestion;
+                document.getElementById('examRoundChip').textContent =
+                    `📜 산업재산권 문제 ${payload.totalRounds}문제`;
+                UIManager.hintMessage(`📜 문제 ${payload.totalRounds}개를 순서대로 냅니다…`);
+                UIManager.updateTimer(payload.secondsPerQuestion);
+                return;
+            }
+
             // 게임 시간은 방장이 정하므로 서버가 알려 준 값으로 맞춘다
             document.getElementById('ruleCategoryName').textContent = payload.category;
             ClientState.durationSeconds = payload.durationSeconds;
@@ -2594,6 +2692,52 @@
             UIManager.appendHint(payload);
         });
 
+        /* ---------- 산업재산권 문제 (모드 3) ----------
+           스무고개와 같은 게임 화면을 쓰지만 힌트가 없고 문제 문장을 그대로 보여 준다.
+           그래서 이벤트만 따로 받고, 그리는 일은 같은 UIManager 를 쓴다. */
+
+        NetworkManager.on('exam:round:started', (payload) => {
+            ClientState.quizRound = payload.roundIndex;
+            ClientState.quizTotalRounds = payload.totalRounds;
+            ClientState.timeLeft = payload.timeLeft;
+
+            document.getElementById('categoryName').textContent = `${payload.roundIndex}번 문제`;
+            document.getElementById('examRoundChip').textContent =
+                `📜 ${payload.roundIndex} / ${payload.totalRounds} 문제`;
+            UIManager.updateTimer(payload.timeLeft);
+            UIManager.showExamQuestion(payload);
+
+            // 제시어 맞추기와 똑같이, 보드에서 블록을 이어 정답을 만든다
+            UIManager.resetSelection();
+            UIManager.renderBoard(payload.board);
+            UIManager.setBoardLocked(false);
+        });
+
+        NetworkManager.on('exam:round:result', (payload) => {
+            ClientState.players = payload.players;
+            UIManager.setBoardLocked(true);
+            UIManager.renderRanking();
+            UIManager.appendHintAnswer(payload.answer);
+            document.getElementById('hintNext').textContent = '시간 종료';
+
+            if (!payload.winnerId) {
+                UIManager.setHintFoot('⏰ 아무도 맞히지 못했어요. 다음 문제로 넘어갑니다.');
+                UIManager.spawnFloatText(`⏰ 정답은 '${payload.answer}'`, 'bad');
+                return;
+            }
+            const isMe = payload.winnerId === ClientState.myId;
+            UIManager.setHintFoot(
+                isMe ? `🎯 정답! +${payload.points}점` : `${payload.winnerNickname}님이 +${payload.points}점`);
+            UIManager.spawnFloatText(
+                isMe ? `🎯 정답! +${payload.points}` : `🎉 ${payload.winnerNickname}님 정답! ${payload.answer}`,
+                isMe ? 'good' : 'winner');
+            if (isMe) {
+                UIManager.spawnConfetti();
+                UIManager.flashBoard('success');
+                UIManager.pulseScore();
+            }
+        });
+
         NetworkManager.on('quiz:round:result', (payload) => {
             ClientState.players = payload.players;
             UIManager.setBoardLocked(true);
@@ -2640,6 +2784,12 @@
         NetworkManager.on('game:tick', (payload) => {
             ClientState.timeLeft = payload.timeLeft;
             UIManager.updateTimer(payload.timeLeft);
+            // 모드 3은 열릴 힌트가 없다. 그 자리에 남은 시간을 적어 준다.
+            if (ClientState.mode === 'exam') {
+                document.getElementById('hintNext').textContent =
+                    `${Math.max(0, payload.timeLeft)}초 남음`;
+                return;
+            }
             UIManager.updateNextHint(payload.nextHintIn);
         });
 
@@ -2711,6 +2861,7 @@
         // 게임 종류 고르기 (방장 전용 화면에만 보인다)
         document.getElementById('modeWordBtn').addEventListener('click', () => LobbyController.pickMode('word'));
         document.getElementById('modeQuizBtn').addEventListener('click', () => LobbyController.pickMode('quiz'));
+        document.getElementById('modeExamBtn').addEventListener('click', () => LobbyController.pickMode('exam'));
 
         document.getElementById('createRoomBtn').addEventListener('click', LobbyController.createRoom);
         document.getElementById('joinRoomBtn').addEventListener('click', LobbyController.joinRoom);

@@ -1,0 +1,13 @@
+{
+  "name": "word-connection-game",
+  "version": "0.2.0",
+  "description": "단어 연결 게임 — 저장소 루트에서 바로 서버를 켜기 위한 진입점 (실제 서버 코드는 server/ 에 있다)",
+  "private": true,
+  "scripts": {
+    "start": "node server/src/server.js",
+    "postinstall": "npm install --omit=dev --prefix server"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
