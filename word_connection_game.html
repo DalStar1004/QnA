@@ -3069,7 +3069,9 @@
             <div class="record-badge" id="examFinalRecordBadge" style="display:none;">🎉 신기록!</div>
             <h2>🏁 산업재산권 문제 결과</h2>
             <div class="modal-sub" id="examFinalSub">-</div>
-            <div class="modal-score" id="examFinalScore">0</div>
+            <!-- 가장 궁금한 '몇 개를 맞혔나'를 크게 띄운다. 점수는 그 아래 줄에 적는다. -->
+            <div class="modal-score" id="examFinalScore">0 / 0</div>
+            <div class="gameover-highscore" id="examFinalPoints">⭐ 점수 0점</div>
             <div class="quiz-round-list" id="examFinalList"></div>
             <div class="gameover-highscore" id="examFinalHigh">최고 점수: 0점</div>
             <div class="gameover-highscore" id="examFinalRankNote" style="display:none;">-</div>
@@ -6604,22 +6606,39 @@
             const isNewRecord = StorageManager.trySetHighScore(total, 'exam');
             GameState.highScore = StorageManager.getHighScore('exam');
 
+            // 이 화면에서 가장 궁금한 것은 '몇 개나 맞혔나'다. 그래서 점수 대신 그 숫자를 크게 띄운다.
+            const rate = history.length > 0 ? Math.round((solved / history.length) * 100) : 0;
+            dom('examFinalScore').textContent = `${solved} / ${history.length}`;
             dom('examFinalSub').textContent =
-                `${history.length}문제 중 ${solved}문제를 맞혔어요`;
-            dom('examFinalScore').textContent = String(total);
+                `${history.length}문제 중 ${solved}문제를 맞혔어요 · 정답률 ${rate}%`;
+            dom('examFinalPoints').textContent = `⭐ 점수 ${total}점`;
             dom('examFinalHigh').textContent = `최고 점수: ${GameState.highScore}점`;
             dom('examFinalRecordBadge').style.display = isNewRecord ? '' : 'none';
             dom('examFinalTrophy').style.display = (solved === history.length && history.length > 0) ? '' : 'none';
 
-            // 문제별로 맞혔는지와 정답을 한 줄씩 보여 준다.
+            /* 문제별로 한 줄씩. 어떤 문제를 틀렸는지 알아야 다시 볼 수 있으므로
+               **문제 문장까지** 함께 적는다. 정답을 여러 개 적어 둔 문제는 전부 보여 주고,
+               맞힌 경우에는 그중 무엇을 만들었는지도 알려 준다. */
             const listEl = dom('examFinalList');
             listEl.innerHTML = '';
             history.forEach((entry) => {
-                const row = makeEl('div', 'quiz-round-row');
-                row.appendChild(makeEl('span', 'quiz-round-no', `${entry.round}`));
-                row.appendChild(makeEl('span', 'quiz-round-word',
-                    `${entry.cleared ? '⭕' : '❌'} ${entry.answers.join(', ')}`));
-                row.appendChild(makeEl('span', 'quiz-round-score', `+${entry.score}`));
+                const body = makeEl('span', 'qr-body');
+                const question = entry.question.length > 42
+                    ? entry.question.slice(0, 42) + '…'
+                    : entry.question;
+                body.appendChild(makeEl('span', null, (entry.cleared ? '⭕ ' : '❌ ') + question));
+
+                let detail = `정답: ${entry.answers.join(', ')}`;
+                // 정답이 여러 개인 문제는 어느 것으로 맞혔는지가 궁금하다.
+                if (entry.cleared && entry.answers.length > 1 && entry.solved) {
+                    detail += ` · 내가 만든 답: ${entry.solved}`;
+                }
+                body.appendChild(makeEl('span', 'qr-cat', detail));
+
+                const row = makeEl('div', 'quiz-round-row' + (entry.cleared ? '' : ' missed'));
+                row.appendChild(makeEl('span', 'qr-no', `${entry.round}번`));
+                row.appendChild(body);
+                row.appendChild(makeEl('span', 'qr-score', `${entry.score}점`));
                 listEl.appendChild(row);
             });
 
