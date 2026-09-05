@@ -849,9 +849,63 @@
             --ink: #5b4b45;
             /* 보드 카드가 평소에 깔고 있는 그림자. 반짝임 애니메이션에서도 그대로 쓴다. */
             --board-shadow: 0 14px 0 rgba(255, 214, 226, 0.9), 0 22px 30px rgba(255, 140, 170, 0.18);
+
+            /* ---- 화면 정돈용 토큰 ----
+               게임 화면(상단 바 · 상태 줄 · 안내)은 아래 것만 쓴다.
+               기본 = 코랄(--pink), 강조 = 노랑(--yellow), 바탕 = 흰색/크림, 글자 = --ink.
+               빨강(--straw)은 오류와 시간 부족에만. 모달 안쪽 색은 그대로 둔다. */
+            --surface: #ffffff;
+            --surface-2: #fffaf3;
+            --line: rgba(120, 95, 90, 0.16);
+            /* 0.62 는 크림 바탕에서 명암비 3.0:1 이라 읽기 어려웠다.
+               0.82 로 올려 4.8:1 을 확보한다 (WCAG AA 기준 4.5:1). */
+            /* 0.82 는 크림 바탕에서 4.9:1 이었다. 글자가 커지면서 더 흐려 보여
+               0.9 로 올린다 (약 5.6:1). 라벨·보조 문구가 여기 걸린다. */
+            --muted: rgba(91, 75, 69, 0.9);
+            --chip-shadow: 0 2px 0 rgba(120, 95, 90, 0.10);
+            /* 알림 토스트가 상단 버튼 줄 아래에서 뜨도록 하는 기준선.
+               위쪽 층 높이를 내가 정하고 있으므로 계산해서 넣는다. */
+            --toast-top: 128px;
+
+            /* ---- 크기 체계 ----
+               예전에는 px 을 곳곳에 흩어 적고 미디어 쿼리로 덮어썼다.
+               그 탓에 2560px 화면에서도 1000px 로 고정돼 화면의 39% 만 썼다.
+               이제 화면 폭에 따라 자라는 clamp() 토큰만 쓰고, 미디어 쿼리는
+               '배치가 바뀌는 곳'에만 남긴다.
+
+               타일 치수는 CSS 와 JS(renderBoard) 가 함께 쓰므로 여기 한 곳에서만 정한다. */
+            /* 상단 바가 글자판보다 지나치게 넓으면 따로 노는 것처럼 보인다.
+               게임 화면은 1180px, 힌트 패널이 붙는 모드 2 만 더 넓게 쓴다. */
+            --content-max: min(94vw, 1180px);
+            --start-max: min(94vw, 1360px);
+            --tile: clamp(64px, 6.8vw, 110px);
+            --tile-gap: clamp(10px, 1.5vw, 26px);
+            --tile-font: clamp(26px, 2.75vw, 44px);
+            --tile-radius: clamp(14px, 1.4vw, 24px);
+            --board-min: min(100%, 860px);
+
+            /* 글자 크기 — 중요도에 따라 네 단계 */
+            --fs-title: clamp(30px, 3.4vw, 56px);   /* 첫 화면 제목 */
+            --fs-title-game: clamp(26px, 2.4vw, 42px);
+            --fs-key: clamp(22px, 1.9vw, 34px);     /* 제시어 · 시간 · 점수 */
+            --fs-body: clamp(16px, 1.25vw, 22px);   /* 설명 · 버튼 · AI 힌트 */
+            --fs-label: clamp(14px, 0.95vw, 18px);  /* 보조 라벨 */
+
+            --gap-v: clamp(10px, 1vh, 18px);
         }
 
         * { box-sizing: border-box; }
+
+        /* 버튼·입력칸은 글꼴만 물려받고 크기는 브라우저 기본값(Chrome 13.333px)을 썼다.
+           그래서 .choice-title{1.8em} 이 28.8px 이 아니라 24px 으로,
+           상단 버튼 1.02em 이 16.3px 이 아니라 13.6px 으로 계산됐다.
+           같은 클래스라도 button 이냐 div 냐에 따라 크기가 달라지던 것도 이 탓이다.
+           여기서 한 번에 맞춘다. */
+        button, input, select, textarea {
+            font-family: inherit;
+            font-size: inherit;
+        }
+        [hidden] { display: none !important; }
 
         body {
             font-family: 'Fredoka', 'Jua', 'Pretendard', sans-serif;
@@ -861,27 +915,27 @@
             background: linear-gradient(135deg, #fdf2f8 0%, #fff8ec 45%, #eef6ff 100%);
             color: var(--ink);
             margin: 0;
-            padding: 32px 20px;
+            padding: clamp(12px, 1.4vh, 26px) clamp(12px, 2vw, 36px) 32px;
             user-select: none;
             overflow-x: hidden;
             min-height: 100vh;
         }
 
         h1.title {
-            font-size: 1.9em;
+            font-size: var(--fs-title-game);
             font-weight: 700;
             color: var(--pink-dark);
-            text-shadow: 0 2px 0 #fff, 0 4px 0 rgba(255,107,139,0.25);
-            margin: 0 0 20px;
+            text-shadow: 0 2px 0 #fff;
+            margin: 0 0 var(--gap-v);
             letter-spacing: 0.5px;
         }
 
         .app-container {
             width: 100%;
-            max-width: 680px;
+            max-width: var(--content-max);
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: var(--gap-v);
         }
 
         /* ---------- Top nav (compact capsule buttons) ---------- */
@@ -889,7 +943,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 14px;
+            gap: 8px;
             flex-wrap: wrap;
         }
 
@@ -922,64 +976,134 @@
             line-height: 1;
         }
 
-        .btn-settings { --btn: var(--purple); --btn-dark: var(--purple-dark); }
-        .btn-start { --btn: var(--mint); --btn-dark: var(--mint-dark); }
-        .btn-stop { --btn: var(--straw); --btn-dark: var(--straw-dark); }
+        /* 상단 바는 '지금 눌러야 할 것' 하나만 진하게 보이도록 두 단계로 나눈다.
+           주 버튼(게임 시작 / 스무고개 시작 / 다시하기)만 코랄 단색이고,
+           나머지(설정 · 대결 · 랭킹 · 종료)는 크림색 고스트로 물러선다. */
+        .top-nav .jelly-btn {
+            padding: clamp(10px, 0.75vw, 15px) clamp(16px, 1.3vw, 26px);
+            font-size: var(--fs-body);
+            border-radius: 16px;
+            box-shadow: 0 3px 0 var(--btn-dark), 0 5px 10px rgba(0,0,0,0.06);
+        }
+        .top-nav .jelly-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 var(--btn-dark), 0 2px 5px rgba(0,0,0,0.06);
+        }
+        .top-nav .jelly-btn.icon-btn { padding: clamp(9px, 0.7vw, 14px) clamp(11px, 0.9vw, 16px); }
+        .top-nav .btn-icon {
+            width: clamp(22px, 1.35vw, 30px); height: clamp(22px, 1.35vw, 30px);
+            vertical-align: -0.25em; margin-right: 8px;
+            filter: none;
+        }
+        .top-nav .jelly-btn.icon-btn .btn-icon {
+            width: clamp(24px, 1.5vw, 32px); height: clamp(24px, 1.5vw, 32px); margin-right: 0;
+        }
 
-        /* ---------- Status HUD (arcade scoreboard) ---------- */
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 14px;
-        }
-        .status-card {
-            border-radius: 20px;
-            font-family: inherit;
-            color: inherit;
-            padding: 14px 10px;
-            text-align: center;
-            transition: transform 0.15s ease;
-            border: 3px solid rgba(255,255,255,0.6);
-        }
-        .status-card.card-category {
-            background: linear-gradient(160deg, #fff1b8, var(--yellow));
-            box-shadow: 0 6px 0 var(--yellow-dark), 0 10px 14px rgba(0,0,0,0.06);
-        }
-        .status-card.card-timer {
-            background: linear-gradient(160deg, #e6dcff, var(--purple));
-            box-shadow: 0 6px 0 var(--purple-dark), 0 10px 14px rgba(0,0,0,0.06);
-        }
-        .status-card.card-score {
-            background: linear-gradient(160deg, #ffe1c7, var(--orange));
-            box-shadow: 0 6px 0 var(--orange-dark), 0 10px 14px rgba(0,0,0,0.06);
-        }
-        .status-label {
-            font-size: 0.8em;
-            color: rgba(70, 50, 20, 0.65);
-            margin-bottom: 4px;
+        /* 주 버튼 — 화면 전체에서 코랄 단색은 여기 하나뿐이다 */
+        .btn-start { --btn: var(--pink); --btn-dark: var(--pink-dark); }
+
+        /* 보조 버튼 — 색으로 겨루지 않는다 */
+        .top-nav .btn-settings,
+        .top-nav .btn-versus,
+        .top-nav .btn-rank,
+        .top-nav .btn-stop {
+            background: var(--surface-2);
+            color: var(--ink);
+            border: 1px solid var(--line);
+            box-shadow: var(--chip-shadow);
             font-weight: 600;
         }
-        .status-val {
-            font-size: 1.4em;
-            font-weight: 700;
-            color: #fff;
-            text-shadow: 0 2px 0 rgba(0,0,0,0.12);
-        }
-        .card-category .status-val { color: #8a6400; text-shadow: 0 1px 0 #fff; }
+        .top-nav .btn-settings:hover,
+        .top-nav .btn-versus:hover,
+        .top-nav .btn-rank:hover,
+        .top-nav .btn-stop:hover { background: var(--surface); filter: none; }
+        .top-nav .btn-settings:active,
+        .top-nav .btn-versus:active,
+        .top-nav .btn-rank:active,
+        .top-nav .btn-stop:active { transform: translateY(1px); box-shadow: none; }
+        /* 되돌릴 수 없는 동작이라 글자만 빨갛게. 배경까지 빨갛게 하지는 않는다. */
+        .top-nav .btn-stop { color: var(--straw-dark); }
 
-        /* 제시어 카드는 버튼이므로 시작 전에만 눌리는 느낌을 준다 */
-        button.status-card {
-            border-width: 3px;
-            cursor: pointer;
-            display: block;
-            width: 100%;
+        /* 게임 중에는 '게임 시작'이 할 일이 없다.
+           없애면 버튼 줄이 흔들리므로 자리는 두고 물러서게만 한다. */
+        .top-nav .jelly-btn.is-idle {
+            background: var(--surface-2);
+            color: var(--muted);
+            border: 1px solid var(--line);
+            box-shadow: none;
+            cursor: default;
+            opacity: 0.7;
         }
-        button.status-card:hover:not(.locked) { transform: translateY(-2px); }
-        button.status-card.locked { cursor: default; }
-        .card-category .category-hint {
-            color: rgba(70, 50, 20, 0.62);
+        .top-nav .jelly-btn.is-idle:hover { filter: none; background: var(--surface-2); }
+        .top-nav .jelly-btn.is-idle:active { transform: none; box-shadow: none; }
+        .top-nav .jelly-btn.is-idle .btn-icon { filter: grayscale(1); opacity: 0.55; }
+
+        /* ---------- 상태 줄 (한 줄로 압축한 정보 영역) ----------
+           예전에는 노랑·보라·주황 카드 3장이 세로로 80px 넘게 차지했다.
+           지금은 크림색 띠 하나 안에 제시어 · 시간 · 점수를 나란히 놓는다. */
+        .status-grid {
+            display: flex;
+            align-items: stretch;
+            flex-wrap: wrap;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            box-shadow: var(--chip-shadow);
+            overflow: hidden;
+        }
+        .status-card {
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 4px 12px;
+            background: none;
+            border: none;
+            border-radius: 0;
+            font-family: inherit;
+            color: inherit;
+            padding: clamp(8px, 0.7vw, 14px) clamp(12px, 1vw, 20px);
+            text-align: center;
+            box-shadow: none;
+            transition: background 0.15s ease;
+        }
+        .status-card + .status-card { border-left: 1px solid var(--line); }
+        /* 제시어는 가장 자주 읽는 값이라 자리를 조금 더 준다 */
+        .status-card.card-category { flex: 1.5 1 0; }
+        .status-label {
+            font-size: var(--fs-label);
+            color: var(--muted);
+            font-weight: 600;
+            margin: 0;
+            white-space: nowrap;
+        }
+        /* 플레이 중 한눈에 읽어야 하는 값 — 화면에서 가장 큰 글자 축에 든다 */
+        .status-val {
+            font-size: var(--fs-key);
+            font-weight: 700;
+            color: var(--ink);
             text-shadow: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            /* flex 자식은 min-width:auto 라 줄어들지 않는다. 0 으로 풀어야
+               카테고리 이름이 길 때 줄이 늘어나지 않고 말줄임으로 처리된다. */
+            min-width: 0;
         }
+        /* 제시어만 기본색을 입혀 눈이 먼저 가게 한다 */
+        .card-category .status-val { color: var(--pink-dark); text-shadow: none; }
+
+        /* 제시어 카드는 버튼이므로 눌리는 느낌을 준다 */
+        button.status-card {
+            cursor: pointer;
+            width: auto;
+        }
+        button.status-card:hover:not(.locked) { background: rgba(255,255,255,0.9); }
+        button.status-card.locked { cursor: default; }
+        .card-category .category-hint { color: var(--muted); text-shadow: none; }
 
         /* 정답 목록 모달 */
         .answer-list {
@@ -1019,86 +1143,122 @@
         }
 
         /* 신규: 최고 점수 서브텍스트 (Design §3.3 / §5.4) */
+        /* 최고 기록·안내는 현재 점수보다 한 단계 흐리게 — 둘을 헷갈리지 않게 한다 */
         .status-sub {
-            font-size: 0.7em;
+            font-size: var(--fs-label);
             font-weight: 600;
-            color: rgba(255,255,255,0.85);
-            text-shadow: 0 1px 0 rgba(0,0,0,0.1);
-            margin-top: 3px;
+            color: var(--muted);
+            text-shadow: none;
+            margin: 0;
+            white-space: nowrap;
         }
 
         .status-card.pulse-score {
             animation: scorePulse 0.4s ease;
         }
         @keyframes scorePulse {
-            0% { transform: scale(1) rotate(0deg); }
-            30% { transform: scale(1.15) rotate(-3deg); }
-            60% { transform: scale(0.95) rotate(2deg); }
-            100% { transform: scale(1) rotate(0deg); }
+            0% { transform: scale(1); }
+            35% { transform: scale(1.08); }
+            100% { transform: scale(1); }
         }
+        /* 시간 부족은 빨강을 쓰는 몇 안 되는 자리다. 배경은 옅게만 깔고 글자로 알린다. */
         .status-card.timer-warning {
             animation: heartbeat 0.7s ease infinite;
-            background: linear-gradient(160deg, #ffd6d6, var(--straw));
-            box-shadow: 0 6px 0 var(--straw-dark), 0 10px 14px rgba(0,0,0,0.06);
+            background: #fff0ef;
         }
+        .status-card.timer-warning .status-val,
+        .status-card.timer-warning .status-label { color: var(--straw-dark); }
         @keyframes heartbeat {
             0%, 100% { transform: scale(1); }
-            25% { transform: scale(1.08); }
-            45% { transform: scale(0.98); }
-            65% { transform: scale(1.06); }
+            30% { transform: scale(1.04); }
+            60% { transform: scale(0.99); }
         }
 
-        /* ---------- 규칙 배너 (글자 수 제한 없음 안내) ---------- */
+        /* ---------- 안내 줄 ----------
+           예전에는 칩 2개 + 문장이 노란 상자 안에 3줄로 들어가 있었다.
+           지금은 핵심 한 문장만 두고, 자세한 조작은 [도움말] 안으로 접어 넣는다. */
         .rule-banner {
             display: flex;
             align-items: center;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 10px;
-            padding: 12px 18px;
-            border-radius: 22px;
-            background: linear-gradient(160deg, #fff6d8, #ffe08a);
-            border: 3px solid rgba(255,255,255,0.85);
-            box-shadow: 0 6px 0 var(--yellow-dark), 0 10px 18px rgba(0,0,0,0.08);
+            gap: 8px 14px;
+            padding: clamp(8px, 0.7vw, 14px) clamp(14px, 1.2vw, 24px);
+            border-radius: 16px;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            box-shadow: var(--chip-shadow);
             text-align: center;
         }
         .rule-banner .rule-chip {
-            background: var(--ink);
-            color: #fff;
-            font-size: 0.85em;
+            background: var(--yellow);
+            color: #6b4c05;
+            font-size: var(--fs-label);
             font-weight: 700;
-            padding: 6px 14px;
+            padding: 6px 15px;
             border-radius: 999px;
             white-space: nowrap;
-            box-shadow: 0 3px 0 rgba(0,0,0,0.18);
         }
         .rule-banner .rule-text {
-            font-size: 0.92em;
-            font-weight: 700;
-            color: #7a5411;
+            font-size: var(--fs-body);
+            line-height: 1.6;
+            font-weight: 600;
+            color: var(--ink);
         }
         .rule-banner .rule-text b {
             color: var(--pink-dark);
-            background: rgba(255,255,255,0.8);
-            padding: 2px 8px;
-            border-radius: 10px;
+            font-weight: 700;
         }
-        body.has-bg .rule-banner {
-            box-shadow: 0 6px 0 var(--yellow-dark), 0 12px 22px rgba(50, 30, 40, 0.3);
+
+        /* 접을 수 있는 도움말 — 기본은 닫힘. 열어도 배너 안에서만 늘어난다. */
+        .rule-help { font-size: var(--fs-label); }
+        .rule-help > summary {
+            list-style: none;
+            cursor: pointer;
+            color: var(--muted);
+            font-weight: 600;
+            padding: 3px 10px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: var(--surface);
+            white-space: nowrap;
         }
+        .rule-help > summary::-webkit-details-marker { display: none; }
+        .rule-help > summary:hover { color: var(--ink); }
+        .rule-help[open] > summary { color: var(--ink); }
+        .rule-help ul {
+            margin: 8px 0 2px;
+            padding: 0;
+            list-style: none;
+            text-align: left;
+            color: var(--muted);
+            font-weight: 600;
+            line-height: 1.7;
+            flex-basis: 100%;
+        }
+        .rule-help li::before { content: "· "; }
+        body.has-bg .rule-banner { box-shadow: 0 4px 12px rgba(50, 30, 40, 0.22); }
 
         /* ---------- Game board card (claymorphic candy box) ---------- */
         #board-container {
             position: relative;
             background: linear-gradient(160deg, #ffffff, #fff6ec);
-            padding: 32px;
-            border-radius: 28px;
+            padding: clamp(18px, 1.6vw, 34px);
+            /* 타일 묶음을 감싸는 크기로 둔다. 4열이면 타일 묶음이 500px 남짓이라
+               카드를 콘텐츠 폭(1400px)까지 늘리면 안이 텅 비어 보인다.
+               fit-content 와 margin-inline:auto 는 짝이다 — 한 쪽만 두면
+               교차축 auto 마진이 stretch 를 꺼서(Flexbox 명세 9.6) 결과가 같아진다. */
+            width: fit-content;
+            margin-inline: auto;
+            min-width: var(--board-min);
+            max-width: 100%;
+            border-radius: clamp(22px, 2vw, 34px);
             box-shadow: var(--board-shadow), inset 0 2px 0 rgba(255,255,255,0.9);
-            min-height: 280px;
+            min-height: clamp(260px, 34vh, 420px);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 24px;
+            gap: clamp(18px, 1.8vw, 34px);
             flex-wrap: wrap;
             transition: box-shadow 0.2s ease;
             overflow: hidden;
@@ -1118,6 +1278,98 @@
             0% { box-shadow: 0 0 0 0 rgba(255, 118, 117, 0.7), var(--board-shadow); }
             50% { box-shadow: 0 0 28px 8px rgba(255, 118, 117, 0.55), var(--board-shadow); }
             100% { box-shadow: var(--board-shadow); }
+        }
+
+        /* ---------- 글자판 자리의 시작 영역 ----------
+           시작 전에는 글자판이 비어 있어 화면이 허전하고 무엇을 눌러야 할지도 모른다.
+           그 자리에 시작 버튼을 놓아 다음 할 일이 바로 보이게 한다. */
+        .board-start {
+            /* 글자판과 같은 flex 줄에 있어 빈 판 옆에 나란히 붙어 버렸다.
+               한 줄을 통째로 차지하게 해서 '글자판 자리'에 놓이도록 한다. */
+            flex: 1 1 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: clamp(10px, 1vh, 18px);
+            text-align: center;
+            padding: clamp(12px, 2vh, 32px) 8px;
+        }
+        .board-start-title {
+            font-size: var(--fs-key);
+            font-weight: 700;
+            color: var(--pink-dark);
+        }
+        .board-start-sub {
+            font-size: var(--fs-body);
+            font-weight: 500;
+            color: var(--muted);
+            line-height: 1.6;
+            max-width: 34em;
+        }
+        .board-start-actions {
+            display: flex;
+            gap: clamp(10px, 1vw, 18px);
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: clamp(4px, 0.6vh, 10px);
+        }
+        .board-start-go {
+            --btn: var(--pink); --btn-dark: var(--pink-dark);
+            font-size: var(--fs-key);
+            padding: clamp(14px, 1.2vw, 22px) clamp(28px, 2.6vw, 52px);
+            border-radius: 20px;
+        }
+        .board-start-go .btn-icon {
+            width: 1.1em; height: 1.1em; vertical-align: -0.2em; margin-right: 10px;
+        }
+        .board-start-help {
+            background: var(--surface-2);
+            color: var(--ink);
+            border: 1px solid var(--line);
+            box-shadow: var(--chip-shadow);
+            font-size: var(--fs-body);
+            font-weight: 600;
+            padding: clamp(12px, 1vw, 18px) clamp(20px, 1.8vw, 34px);
+            border-radius: 20px;
+        }
+        .board-start-help:hover { background: var(--surface); filter: none; }
+        .board-start-help:active { transform: translateY(1px); box-shadow: none; }
+
+        /* ---------- 게임 방법 모달 ---------- */
+        .how-to-card { max-width: min(92vw, 640px); }
+        .how-to-body {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(12px, 1.4vh, 22px);
+            text-align: left;
+            margin: clamp(12px, 1.6vh, 24px) 0;
+        }
+        .how-to-step {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: clamp(12px, 1.2vw, 20px);
+        }
+        .how-to-num {
+            flex-shrink: 0;
+            width: 1.9em; height: 1.9em;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            background: var(--pink);
+            color: #fff;
+            font-size: var(--fs-label);
+            font-weight: 700;
+        }
+        .how-to-step b { font-size: var(--fs-body); color: var(--ink); }
+        .how-to-step p {
+            margin: 6px 0 0;
+            font-size: var(--fs-label);
+            font-weight: 500;
+            line-height: 1.65;
+            color: var(--muted);
         }
 
         /* ---------- 보드 위 원형 버튼: 음소거(왼쪽) / 단어 변경(오른쪽) ----------
@@ -1162,9 +1414,28 @@
 
         .mute-fab { left: 16px; --fab: var(--sky); --fab-dark: var(--sky-dark); }
         .mute-fab.muted { --fab: #c9c2be; --fab-dark: #a89f9a; }
-        .shuffle-fab { right: 16px; --fab: var(--yellow); --fab-dark: var(--yellow-dark); }
-        .shuffle-fab .fab-icon { width: 30px; height: 30px; }
-        .shuffle-fab.spin .fab-icon { transform: rotate(180deg) scale(0.9); }
+        /* 단어변경 — 아이콘 대신 글자를 쓰므로 동그라미가 아니라 알약 모양이다.
+           .board-fab 의 위치·그림자·비활성 스타일은 그대로 물려받는다. */
+        .shuffle-btn {
+            right: 16px;
+            --fab: var(--yellow); --fab-dark: var(--yellow-dark);
+            width: auto;
+            height: auto;
+            min-height: 44px;
+            border-radius: 999px;
+            padding: clamp(9px, 0.7vw, 14px) clamp(16px, 1.3vw, 26px);
+            font-size: var(--fs-label);
+            font-weight: 700;
+            color: #6b4c05;
+            white-space: nowrap;
+            letter-spacing: 0.2px;
+        }
+        /* 눌렀을 때의 반응. 예전에는 아이콘을 돌렸지만 이제 글자라 살짝 눌리게만 한다. */
+        .shuffle-btn.spin { animation: shufflePress 0.4s ease; }
+        @keyframes shufflePress {
+            0%, 100% { transform: scale(1); }
+            35% { transform: scale(0.94); }
+        }
 
         /* 버튼 옆 말풍선. 어느 쪽에 붙는지만 버튼별로 정한다. */
         .fab-tooltip {
@@ -1193,36 +1464,36 @@
         .board-fab:hover .fab-tooltip { opacity: 1; transform: translateY(-50%) scale(1); }
         .mute-fab .fab-tooltip { left: calc(100% + 10px); }
         .mute-fab .fab-tooltip::after { right: 100%; border-right-color: var(--ink); }
-        .shuffle-fab .fab-tooltip { right: calc(100% + 10px); }
-        .shuffle-fab .fab-tooltip::after { left: 100%; border-left-color: var(--ink); }
+        /* 단어변경 버튼은 글자가 보이므로 말풍선을 쓰지 않는다 (음소거 버튼만 남는다). */
 
         #board {
             display: flex;
             flex-wrap: wrap;
             flex: 0 1 auto;
-            gap: 18px;
+            gap: var(--tile-gap);
             justify-content: center;
             position: relative;
             z-index: 2;
         }
 
         .block {
-            width: 72px;
-            height: 72px;
+            /* 크기는 :root 의 --tile 하나로만 정한다 (JS 도 같은 값을 쓴다) */
+            width: var(--tile);
+            height: var(--tile);
             /* 클릭으로 고르는 방식이라 글자가 끌려 선택되면 방해가 된다 */
             user-select: none;
             -webkit-user-select: none;
             background: linear-gradient(160deg, #ffffff, #ffeef2);
             border: none;
-            border-radius: 20px;
+            border-radius: var(--tile-radius);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
+            font-size: var(--tile-font);
             font-weight: 700;
             color: var(--ink);
             cursor: pointer;
-            box-shadow: 0 6px 0 #f4c9d2, 0 9px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 7px 0 #f4c9d2, 0 10px 14px rgba(0,0,0,0.08);
             transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease;
         }
         .block:hover {
@@ -1359,9 +1630,12 @@
         }
 
         /* ---------- Toast notifications ---------- */
+        /* 예전에는 top:24px 이라 상단 버튼 줄 위에 겹쳐 떴다.
+           버튼 줄 아래에서 뜨게 내리고, 혹시 겹치더라도 클릭을 막지 않도록
+           컨테이너는 마우스를 통과시킨다. */
         #toast-container {
             position: fixed;
-            top: 24px;
+            top: var(--toast-top);
             left: 50%;
             transform: translateX(-50%);
             z-index: 400;
@@ -1369,14 +1643,17 @@
             flex-direction: column;
             gap: 8px;
             align-items: center;
+            pointer-events: none;
+            max-width: min(92vw, 520px);
         }
         .toast {
             background: var(--ink);
             color: #fff;
-            padding: 12px 20px;
-            border-radius: 14px;
-            font-size: 0.95em;
+            padding: clamp(12px, 1vw, 18px) clamp(20px, 1.6vw, 30px);
+            border-radius: 16px;
+            font-size: var(--fs-body);
             font-weight: 600;
+            text-align: center;
             box-shadow: 0 6px 0 rgba(0,0,0,0.15), 0 8px 14px rgba(0,0,0,0.15);
             animation: toastIn 0.3s cubic-bezier(.34,1.56,.64,1) forwards, toastOut 0.25s ease forwards 2.5s;
         }
@@ -1636,6 +1913,26 @@
         .settings-row select:focus {
             border-color: var(--orange);
         }
+        /* 모드 2 카테고리 고르기 — 카테고리 이름이 길 수 있어 설정 모달보다 넓게 잡는다.
+           모양(테두리·색·모서리)은 위 .settings-row select 를 그대로 물려받는다. */
+        #quizCategorySelect {
+            width: 200px;
+            max-width: 100%;
+            text-align: left;
+            font-size: 0.95em;
+            cursor: pointer;
+        }
+
+        /* 카테고리를 고르기 전의 [문제 받기] — 눌러도 소용없다는 것이 보이게 한다 */
+        .jelly-btn:disabled {
+            background: #e6ddd8;
+            color: #8d7f79;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        .jelly-btn:disabled:hover { filter: none; }
+        .jelly-btn:disabled:active { transform: none; box-shadow: none; }
+        .jelly-btn:disabled .btn-icon { filter: grayscale(1); opacity: 0.5; }
         .btn-close-settings { --btn: var(--sky); --btn-dark: var(--sky-dark); }
 
         /* =========================================================
@@ -1684,8 +1981,10 @@
             background: linear-gradient(160deg, #ffffff, #fff0f4);
             box-shadow: 0 6px 0 #efbcc8, 0 10px 16px rgba(50, 30, 40, 0.28);
         }
-        body.has-bg .status-card {
+        body.has-bg .status-grid {
+            background: rgba(255, 250, 243, 0.9);
             border-color: rgba(255,255,255,0.9);
+            box-shadow: 0 4px 12px rgba(50, 30, 40, 0.22);
         }
         body.has-bg .top-nav .jelly-btn {
             filter: drop-shadow(0 6px 10px rgba(50, 30, 40, 0.32));
@@ -1705,9 +2004,12 @@
             filter: drop-shadow(0 2px 2px rgba(0,0,0,0.18));
             pointer-events: none;
         }
+        /* 위(970행)에도 .jelly-btn.icon-btn 이 있어 두 벌이었다.
+           여기 있던 font-size:1em 이 .top-nav .jelly-btn 과 같은 우선순위이면서
+           뒤에 와서, 상단 설정 버튼만 22px 이 아니라 16px 로 남았다.
+           크기는 .top-nav 쪽에서 정하므로 여기서는 아이콘 배치만 남긴다. */
         .jelly-btn.icon-btn {
             padding: 9px 12px;
-            font-size: 1em;
             line-height: 0;
         }
         .jelly-btn.icon-btn .btn-icon {
@@ -1756,24 +2058,23 @@
             .home-fab { padding: 10px 12px; font-size: 0; }
             .home-fab .home-icon { margin-right: 0; font-size: 18px; }
         }
-
         /* ---------- 챔피언 배너 (기록 1위에게 챔피언 뱃지.png) ---------- */
         .champion-banner {
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 10px 20px 10px 12px;
-            border-radius: 22px;
-            background: linear-gradient(160deg, #fff6d8, #ffe9a8);
-            border: 3px solid rgba(255,255,255,0.75);
-            box-shadow: 0 6px 0 var(--yellow-dark), 0 12px 20px rgba(0,0,0,0.08);
+            gap: 10px;
+            padding: 5px 14px 5px 10px;
+            border-radius: 14px;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            box-shadow: var(--chip-shadow);
         }
         .champion-banner .champion-badge-img {
-            width: 62px;
-            height: 62px;
+            width: 32px;
+            height: 32px;
             object-fit: contain;
             flex-shrink: 0;
-            filter: drop-shadow(0 3px 5px rgba(0,0,0,0.22));
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.18));
             animation: badgeFloat 2.8s ease-in-out infinite;
         }
         @keyframes badgeFloat {
@@ -1782,25 +2083,25 @@
         }
         .champion-banner .champion-text { flex: 1; min-width: 0; text-align: left; }
         .champion-banner .champion-label {
-            font-size: 0.75em;
-            font-weight: 700;
-            color: #a4801d;
-            letter-spacing: 0.4px;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--muted);
+            letter-spacing: 0.3px;
         }
         .champion-banner .champion-name {
             font-size: 1.25em;
             font-weight: 700;
-            color: #7a5a00;
-            text-shadow: 0 1px 0 #fff;
+            color: var(--ink);
+            text-shadow: none;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
         .champion-banner .champion-score {
-            font-size: 1.35em;
+            font-size: 1.25em;
             font-weight: 700;
-            color: var(--orange-dark);
-            text-shadow: 0 2px 0 #fff;
+            color: var(--pink-dark);
+            text-shadow: none;
             flex-shrink: 0;
         }
 
@@ -2086,59 +2387,64 @@
         ========================================================= */
         .mode-switch {
             display: flex;
-            gap: 8px;
+            gap: 5px;
             justify-content: center;
             flex-wrap: wrap;
-            background: rgba(255, 255, 255, 0.78);
-            border-radius: 24px;
-            padding: 8px;
-            box-shadow: 0 6px 0 rgba(255, 214, 226, 0.9), 0 10px 18px rgba(255, 140, 170, 0.16);
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 3px;
+            box-shadow: var(--chip-shadow);
         }
         .mode-btn {
             font-family: inherit;
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--ink);
+            font-size: var(--fs-body);
+            font-weight: 600;
+            color: var(--muted);
             background: transparent;
             border: none;
-            border-radius: 18px;
-            padding: 11px 20px;
+            border-radius: 14px;
+            padding: clamp(8px, 0.6vw, 13px) clamp(16px, 1.4vw, 28px);
             cursor: pointer;
-            transition: transform 0.12s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+            transition: background 0.15s ease, color 0.15s ease;
         }
-        .mode-btn:hover { transform: translateY(-2px); background: rgba(255, 214, 226, 0.55); }
+        .mode-btn:hover { background: rgba(255, 214, 226, 0.4); color: var(--ink); }
+        /* 고른 모드만 기본색으로 채운다. 모드 2도 같은 코랄을 쓴다 (보라 제거). */
         .mode-btn.active {
-            background: linear-gradient(160deg, #ff9db3, var(--pink));
+            background: var(--pink);
             color: #fff;
-            box-shadow: 0 4px 0 var(--pink-dark), 0 8px 14px rgba(255, 107, 139, 0.35);
+            font-weight: 700;
         }
-        .mode-btn.active[data-mode="quiz"] {
-            background: linear-gradient(160deg, #bda6ff, var(--purple));
-            box-shadow: 0 4px 0 var(--purple-dark), 0 8px 14px rgba(167, 139, 250, 0.35);
-        }
-        body.has-bg .mode-switch {
-            box-shadow: 0 6px 0 rgba(255, 214, 226, 0.9), 0 12px 22px rgba(50, 30, 40, 0.3);
-        }
+        .mode-btn.active:hover { background: var(--pink); color: #fff; }
+        body.has-bg .mode-switch { box-shadow: 0 4px 12px rgba(50, 30, 40, 0.22); }
 
         /* ---------- 모드 2 전용: 보드 옆 AI 힌트 패널 ---------- */
         #hintPanel {
             display: none;
-            flex: 0 1 300px;
-            min-width: 240px;
+            /* 넓은 화면에서는 글자판 옆에 나란히, 좁아지면 아래로 내려간다 */
+            flex: 1 1 clamp(320px, 24vw, 520px);
+            min-width: 300px;
+            align-self: stretch;
             background: linear-gradient(160deg, #ffffff, #f5efff);
-            border-radius: 22px;
-            padding: 16px;
+            border-radius: clamp(18px, 1.6vw, 26px);
+            padding: clamp(16px, 1.3vw, 26px);
             text-align: left;
             position: relative;
             z-index: 3;
             box-shadow: inset 0 0 0 2px rgba(167, 139, 250, 0.28), 0 6px 14px rgba(120, 90, 200, 0.14);
         }
         #board-container.quiz-mode #hintPanel { display: block; }
+        /* 모드 2는 글자판 옆에 힌트 패널이 붙는다.
+           카드를 fit-content 로 두면 패널의 flex-grow 와 맞물려 폭 계산이 한 줄에
+           못 들어가는 값으로 잡히고, 패널이 글자판 아래로 떨어진다.
+           그래서 이 모드에서만 카드 폭을 명시한다. */
+        #board-container.quiz-mode { width: min(100%, 1240px); }
         /* 모드 2에서는 힌트 패널이 보드 옆에 붙으므로 화면 폭을 넓게 쓴다 */
-        body.quiz-layout .app-container { max-width: 1020px; }
-        @media (max-width: 1060px) {
-            /* 좁은 화면에서는 힌트 패널이 보드 아래로 자연스럽게 내려간다 */
-            #hintPanel { flex-basis: 100%; max-width: 420px; }
+        /* 힌트 패널이 옆에 붙으므로 이 모드만 더 넓게 쓴다 */
+        body.quiz-layout .app-container { max-width: min(96vw, 1760px); }
+        @media (max-width: 1100px) {
+            /* 좁은 화면에서는 힌트 패널이 글자판 아래로 내려간다 (위아래 배치) */
+            #hintPanel { flex: 1 1 100%; max-width: 100%; }
         }
         .hint-head {
             display: flex;
@@ -2147,9 +2453,9 @@
             gap: 8px;
             margin-bottom: 10px;
         }
-        .hint-title { font-size: 16px; font-weight: 700; color: var(--purple-dark); }
+        .hint-title { font-size: var(--fs-body); font-weight: 700; color: var(--purple-dark); }
         .hint-next {
-            font-size: 12px;
+            font-size: var(--fs-label);
             font-weight: 700;
             color: #fff;
             background: var(--purple);
@@ -2160,21 +2466,22 @@
         .hint-list {
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            max-height: 320px;
+            gap: 10px;
+            /* 힌트가 쌓여도 글자를 줄이지 않는다. 넘치면 이 안에서만 스크롤한다. */
+            max-height: clamp(260px, 42vh, 560px);
             overflow-y: auto;
             overflow-x: hidden;
-            padding-right: 4px;
+            padding-right: 6px;
         }
         .hint-item {
             display: flex;
             gap: 8px;
             align-items: flex-start;
             background: #fff;
-            border-radius: 14px;
-            padding: 9px 11px;
-            font-size: 14px;
-            line-height: 1.45;
+            border-radius: 16px;
+            padding: clamp(10px, 0.8vw, 16px) clamp(12px, 1vw, 18px);
+            font-size: var(--fs-body);
+            line-height: 1.6;
             color: var(--ink);
             box-shadow: 0 3px 0 rgba(167, 139, 250, 0.28);
         }
@@ -2311,24 +2618,28 @@
 
         .start-card {
             width: 100%;
-            max-width: 720px;
+            max-width: var(--start-max);
             text-align: center;
             margin: auto;
         }
         .start-card h1 {
-            font-size: 2.1em;
+            font-size: var(--fs-title);
             font-weight: 700;
             color: var(--pink-dark);
             text-shadow: 0 2px 0 #fff, 0 4px 0 rgba(255,107,139,0.25);
-            margin: 0 0 6px;
+            margin: 0 0 clamp(10px, 1vh, 18px);
         }
-        .start-sub { color: #8a7a72; font-size: 1.05em; margin: 0 0 24px; }
+        .start-sub {
+            color: #6b5c54;
+            font-size: var(--fs-body);
+            margin: 0 0 clamp(22px, 2.4vh, 40px);
+        }
 
         /* 두 갈래 선택 카드. 좁은 화면에서는 자동으로 한 줄씩 쌓인다. */
         .start-choices {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 18px;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+            gap: clamp(18px, 1.8vw, 36px);
         }
         .start-choice {
             --btn: var(--pink);
@@ -2336,13 +2647,13 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: clamp(10px, 1vw, 18px);
             border: none;
             cursor: pointer;
             font-family: inherit;
             color: #fff;
-            padding: 28px 22px;
-            border-radius: 28px;
+            padding: clamp(30px, 3.4vw, 60px) clamp(24px, 2.4vw, 44px);
+            border-radius: clamp(26px, 2.4vw, 40px);
             background: var(--btn);
             box-shadow: 0 8px 0 var(--btn-dark), 0 14px 22px rgba(0,0,0,0.12);
             transition: transform 0.08s ease, box-shadow 0.08s ease;
@@ -2353,21 +2664,21 @@
             box-shadow: 0 3px 0 var(--btn-dark), 0 6px 10px rgba(0,0,0,0.1);
         }
         .start-choice.choice-multi { --btn: var(--sky); --btn-dark: var(--sky-dark); }
-        .choice-emoji { font-size: 2.6em; line-height: 1; }
-        .choice-title { font-size: 1.35em; font-weight: 700; }
+        .choice-emoji { font-size: clamp(44px, 4.4vw, 78px); line-height: 1; }
+        .choice-title { font-size: clamp(24px, 2vw, 34px); font-weight: 700; }
         .choice-desc {
-            font-size: 0.88em;
+            font-size: var(--fs-body);
             font-weight: 500;
-            line-height: 1.5;
-            opacity: 0.95;
+            line-height: 1.65;
+            opacity: 1;
         }
         .choice-go {
-            margin-top: 4px;
-            font-size: 0.85em;
+            margin-top: clamp(6px, 0.8vh, 14px);
+            font-size: var(--fs-body);
             font-weight: 700;
-            background: rgba(255,255,255,0.25);
+            background: rgba(255,255,255,0.28);
             border-radius: 999px;
-            padding: 5px 14px;
+            padding: clamp(9px, 0.8vw, 15px) clamp(20px, 1.8vw, 34px);
         }
 
         /* 멀티플레이를 고르면 펼쳐지는 접속 설정 칸 */
@@ -2437,6 +2748,77 @@
             font-size: 12px;
             color: #6b5c8a;
         }
+
+        /* =========================================================
+           작은 글자 정리 — 모달 · 설정 · 보조 UI
+           본문은 토큰으로 키웠지만 모달과 설정 안에는 0.9em 대의 값이
+           여기저기 남아 10~15px 로 계산되고 있었다. 클래스를 하나씩 쫓는 대신
+           읽는 글은 --fs-body, 라벨·부연은 --fs-label 로 기준선을 한 번에 올린다.
+        ========================================================= */
+        .modal-card h2 { font-size: var(--fs-key); }
+        /* 원래 규칙들이 두 클래스 선택자라 우선순위를 맞춰 준다 */
+        .modal-card .modal-sub,
+        .settings-row label,
+        .settings-row input,
+        .settings-row select,
+        #quizCategorySelect,
+        .hint-empty,
+        .answer-group-title { font-size: var(--fs-body); }
+
+        .settings-note,
+        .home-fab,
+        .fab-tooltip,
+        .champion-banner .champion-label,
+        .hint-foot,
+        #hintFoot,
+        .llm-status,
+        #llmSettingsStatus,
+        .custom-cat-row .cc-name,
+        .custom-cat-row .cc-count,
+        .custom-cat-row .cc-del,
+        .rank-tab,
+        .modal-card .gameover-highscore,
+        .jelly-btn.btn-file,
+        .jelly-btn.btn-file-ghost,
+        #formatGuideBtn,
+        #llmCloseBtn,
+        .start-server-status,
+        .start-server-guide,
+        .start-server-guide .guide-steps { font-size: var(--fs-label); }
+
+        /* 배경 미리보기 아래 설명은 칸이 좁아 따로 잡는다 (읽을 수 있는 최소선) */
+        .bg-option .bg-caption { font-size: clamp(13px, 0.75vw, 16px); }
+
+        /* 모달 안 일반 버튼도 본문과 같은 크기로 */
+        .modal-actions .jelly-btn { font-size: var(--fs-body); }
+
+        /* =========================================================
+           반응형 — 반드시 스타일 맨 끝에 둔다.
+           미디어 쿼리는 우선순위를 올려 주지 않는다. 같은 선택자라면
+           '뒤에 오는 규칙'이 이기므로, 앞쪽에 두면 뒤에 정의된
+           .mode-btn / .start-* 같은 규칙에 밀려 적용되지 않는다.
+        ========================================================= */
+        /* 노트북처럼 세로가 낮은 화면: 글자는 그대로 두고 타일만 줄여
+           글자판이 화면 안에 들어오게 한다. (폭이 아니라 높이 기준이다) */
+        /* 크기는 위쪽 clamp() 토큰이 화면 폭을 따라 알아서 정한다.
+           여기서는 '배치가 달라지는 것' 과 '토스트 위치' 만 다룬다.
+           예전에는 여기서 타일·글자 크기를 px 로 다시 덮어써 서로 충돌했다. */
+        @media (max-width: 760px) {
+            :root { --toast-top: 150px; }
+        }
+        @media (max-width: 560px) {
+            :root { --toast-top: 158px; --board-min: 100%; }
+            /* 상태 줄을 두 줄로 접는다 (가로 넘침 방지) */
+            .status-card { flex: 1 1 50%; }
+            .status-card.card-category { flex: 1 1 100%; border-bottom: 1px solid var(--line); }
+            .status-card.card-category + .status-card { border-left: none; }
+            /* 선택 카드는 한 줄씩 쌓는다 */
+            .start-choices { grid-template-columns: 1fr; }
+            /* 모드 2 카테고리 고르기: 라벨 아래로 내려 폭을 다 쓴다 */
+            #quizCategoryOverlay .settings-row { flex-wrap: wrap; gap: 8px; }
+            #quizCategorySelect { width: 100%; }
+        }
+
     </style>
 </head>
 <body>
@@ -2505,7 +2887,8 @@
             <button class="jelly-btn icon-btn btn-settings" onclick="openSettings()" title="설정">
                 <img class="btn-icon" src="assets/icon-settings.png" alt="설정">
             </button>
-            <button class="jelly-btn btn-start" id="startNavBtn" onclick="startGame()">
+            <button class="jelly-btn btn-start" id="startNavBtn" onclick="startGame()"
+                    title="새 판을 시작합니다">
                 <img class="btn-icon" src="assets/icon-start.png" alt=""><span class="nav-label">게임 시작</span>
             </button>
             <button class="jelly-btn btn-versus" id="versusNavBtn" onclick="openVersusSetup()">
@@ -2552,38 +2935,53 @@
             </div>
         </div>
 
-        <!-- 게임 상태 표시 카드 (아케이드 스코어보드) -->
+        <!-- 게임 정보 줄: 제시어 · 남은 시간 · 점수/최고 기록을 한 줄에 담는다 -->
         <div class="status-grid">
-            <!-- 제시어 카드: 한 판을 마친 뒤에만 눌러서 정답 목록을 볼 수 있다 -->
+            <!-- 제시어 칸: 한 판을 마친 뒤에만 눌러서 정답 목록을 볼 수 있다 -->
             <button type="button" class="status-card card-category" id="categoryCard"
                     onclick="openAnswerList()" title="한 판을 마치면 정답 목록을 볼 수 있어요">
-                <div class="status-label"><img class="label-icon" src="assets/icon-hint.png" alt="">제시어</div>
-                <div class="status-val" id="categoryName">🎲 랜덤</div>
-                <div class="status-sub category-hint" id="categoryHint">🔒 게임이 끝나면 볼 수 있어요</div>
+                <span class="status-label">제시어</span>
+                <span class="status-val" id="categoryName">🎲 랜덤</span>
+                <span class="status-sub category-hint" id="categoryHint">게임 후 공개</span>
             </button>
             <div class="status-card card-timer" id="timerCard">
-                <div class="status-label">⏱ 남은 시간</div>
-                <div class="status-val" id="timer">대기중</div>
+                <span class="status-label">남은 시간</span>
+                <span class="status-val" id="timer">대기중</span>
             </div>
             <div class="status-card card-score" id="scoreCard">
-                <div class="status-label">🏆 점수</div>
-                <div class="status-val" id="score">0</div>
-                <div class="status-sub" id="highScoreSub">최고 0점</div>
+                <span class="status-label">점수</span>
+                <span class="status-val" id="score">0</span>
+                <span class="status-sub" id="highScoreSub">최고 기록 0점</span>
             </div>
         </div>
 
-        <!-- 규칙 안내: '글자 수 제한 없음'을 게임 진행 화면에 상시 노출한다 -->
+        <!-- 안내: 핵심 한 문장만 두고 나머지는 [도움말] 안으로 접는다 -->
         <div class="rule-banner" id="ruleBanner">
-            <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
-            <span class="rule-chip">🔤 글자 수 제한 없음</span>
-            <span class="rule-text">2글자든 5글자든, <b id="ruleCategoryName">카테고리</b>의 단어면 모두 정답!</span>
+            <span class="rule-text">글자를 연결해 <b id="ruleCategoryName">카테고리</b>와 관련된 단어를 만드세요</span>
+            <details class="rule-help">
+                <summary>도움말</summary>
+                <ul>
+                    <li>블록을 왼쪽 클릭으로 하나씩 고릅니다</li>
+                    <li>고른 블록을 다시 누르면 그 뒤가 되돌아갑니다</li>
+                    <li>정답이 완성되면 저절로 제출됩니다</li>
+                    <li>글자 수 제한은 없습니다 — 2글자든 5글자든 제시어의 단어면 정답입니다</li>
+                </ul>
+            </details>
         </div>
 
-        <!-- 모드 2 안내 배너 -->
+        <!-- 모드 2 안내 -->
         <div class="rule-banner" id="quizRuleBanner" style="display:none;">
             <span class="rule-chip" id="quizRoundChip">🤖 AI 스무고개</span>
-            <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
-            <span class="rule-text">AI가 <b id="quizRuleCategoryName">카테고리</b>에서 고른 낱말을 10초마다 열리는 힌트 6개로 맞혀보세요!</span>
+            <span class="rule-text">힌트를 보고 <b id="quizRuleCategoryName">카테고리</b>의 낱말을 맞혀보세요</span>
+            <details class="rule-help">
+                <summary>도움말</summary>
+                <ul>
+                    <li>블록을 왼쪽 클릭으로 골라 낱말을 만듭니다</li>
+                    <li>정답이 완성되면 저절로 제출됩니다</li>
+                    <li>힌트는 10초마다 하나씩, 모두 6개까지 열립니다</li>
+                    <li>힌트를 적게 보고 맞힐수록 점수가 높습니다</li>
+                </ul>
+            </details>
         </div>
 
         <!-- 단어 블록 보드 -->
@@ -2593,12 +2991,27 @@
                 <img class="fab-icon" id="muteIcon" src="assets/icon-sound-on.png" alt="소리 켜짐">
                 <span class="fab-tooltip">소리 끄기</span>
             </button>
-            <button class="board-fab shuffle-fab disabled" id="shuffleFab" onclick="resetBoard()" aria-label="단어 셔플">
-                <img class="fab-icon" src="assets/icon-shuffle.png" alt="">
-                <span class="fab-tooltip">단어 변경</span>
+            <!-- 예전에는 아이콘만 있어 무슨 기능인지 알기 어려웠다.
+                 글자와 남은 횟수를 함께 보여 준다. 남은 횟수는 updateShuffleFabState() 가 채운다. -->
+            <button class="board-fab shuffle-btn disabled" id="shuffleFab" onclick="resetBoard()" disabled
+                    title="글자판의 글자를 새로 깝니다 (한 게임에 5번)">
+                <span id="shuffleLabel">단어변경 (5/5)</span>
             </button>
             <canvas id="lineCanvas"></canvas>
             <div id="board"></div>
+
+            <!-- 시작 전에는 글자판 자리에 이 영역이 보이고, 시작하면 감춰진다.
+                 버튼은 기존 startGame() 을 그대로 부른다 (새 시작 경로를 만들지 않는다). -->
+            <div class="board-start" id="boardStartPanel">
+                <div class="board-start-title" id="boardStartTitle">준비되면 시작하세요</div>
+                <div class="board-start-sub" id="boardStartSub">글자를 이어 제시어와 관련된 단어를 만드는 게임이에요.</div>
+                <div class="board-start-actions">
+                    <button type="button" class="jelly-btn board-start-go" onclick="startGame()">
+                        <img class="btn-icon" src="assets/icon-start.png" alt="">게임 시작
+                    </button>
+                    <button type="button" class="jelly-btn board-start-help" onclick="openHowTo()">게임 방법</button>
+                </div>
+            </div>
             <!-- 모드 2 전용: 10초마다 한 개씩 열리는 AI 힌트 패널 -->
             <aside id="hintPanel">
                 <div class="hint-head">
@@ -2871,16 +3284,55 @@
             <div class="modal-sub" id="quizCategorySub">맞힐 카테고리를 정해주세요</div>
             <div class="settings-body">
                 <div class="settings-row">
-                    <label for="quizCategoryInput">카테고리</label>
-                    <input type="text" id="quizCategoryInput" maxlength="20" placeholder="예: 과일">
+                    <label for="quizCategorySelect">카테고리</label>
+                    <!-- 직접 입력하면 오타나 사전에 없는 값이 들어올 수 있어 목록에서만 고르게 한다.
+                         항목은 openQuizRound() 가 사전에서 만들어 채운다. -->
+                    <select id="quizCategorySelect" aria-describedby="quizCategoryAvailable">
+                        <option value="" disabled selected>카테고리를 선택하세요</option>
+                    </select>
                 </div>
-                <div class="settings-note" id="quizCategoryAvailable"></div>
+                <div class="settings-note" id="quizCategoryAvailable">목록에서 카테고리를 선택하세요.</div>
             </div>
             <div class="modal-actions">
-                <button class="jelly-btn btn-quiz" onclick="startQuizRound()">
+                <button class="jelly-btn btn-quiz" id="quizRoundStartBtn" onclick="startQuizRound()" disabled>
                     <img class="btn-icon" src="assets/icon-start.png" alt="">문제 받기
                 </button>
                 <button class="jelly-btn btn-close-gameover" onclick="cancelQuizSession()">그만하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 게임 방법 — 시작 전에 조작법을 확인한다 -->
+    <div class="modal-overlay" id="howToOverlay">
+        <div class="modal-card how-to-card">
+            <h2>🕹 게임 방법</h2>
+            <div class="modal-sub" id="howToSub">글자를 이어 단어를 만드는 게임이에요.</div>
+            <div class="how-to-body">
+                <div class="how-to-step">
+                    <span class="how-to-num">1</span>
+                    <div>
+                        <b>글자를 왼쪽 클릭으로 고릅니다</b>
+                        <p>누른 순서대로 이어집니다. 고른 글자를 다시 누르면 그 뒤가 되돌아갑니다.</p>
+                    </div>
+                </div>
+                <div class="how-to-step">
+                    <span class="how-to-num">2</span>
+                    <div>
+                        <b>단어가 완성되면 저절로 제출됩니다</b>
+                        <p>따로 누를 것이 없습니다. 오답을 확인하고 싶을 때만 오른쪽 클릭을 쓰세요.</p>
+                    </div>
+                </div>
+                <div class="how-to-step" id="howToStep3">
+                    <span class="how-to-num">3</span>
+                    <div>
+                        <b>글자 수 제한은 없습니다</b>
+                        <p>2글자든 5글자든 제시어에 해당하는 단어면 모두 정답입니다.
+                           연속으로 맞히면 콤보 점수가 붙습니다.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="jelly-btn btn-quiz" onclick="closeHowTo()">알겠어요</button>
             </div>
         </div>
     </div>
@@ -3126,6 +3578,7 @@
            Design Ref: §9.4 — 기존에 산재된 전역 변수를 하나의 상태 객체로 통합
         ========================================================= */
         const GAME_DURATION = 60; // 모드 1 한 판 제한 시간(초)
+        const SHUFFLE_MAX = 5;    // 한 게임에 쓸 수 있는 [단어변경] 횟수
 
         // 화면 전체가 어떤 게임 모드인지. 'classic' = 모드 1(제시어 맞추기), 'quiz' = 모드 2(AI 스무고개).
         // GameState.mode 는 '지금 돌고 있는 판'의 종류이고, appMode 는 '사용자가 고른 모드'다.
@@ -3148,12 +3601,32 @@
             comboCount: 0,
             selectedCategoryOption: "random",
             selectedBlocks: [],
+            // 정답을 맞힌 뒤 연출이 끝나고 다음 판이 깔릴 때까지 잠깐 서는 자리.
+            // 이 동안에는 블록을 고를 수도, 다시 제출할 수도 없다.
+            // 자동 제출이 생기면서 연출 도중에 한 번 더 제출되는 길이 열렸기 때문이다.
+            isResolving: false,
+            // [단어변경] 남은 횟수. 게임을 새로 시작할 때만 5로 돌아간다.
+            shuffleLeft: SHUFFLE_MAX,
+            // 빠르게 두 번 눌러 한 번의 의도로 두 번 깎이는 것을 막는 잠금.
+            isShuffling: false,
             resetForNewGame() {
                 this.score = 0;
                 this.timeLeft = this.duration;
                 this.isGameActive = true;
                 this.solvedWords = [];
                 this.comboCount = 0;
+                this.isResolving = false;
+                this.isShuffling = false;
+            },
+            /**
+             * [단어변경] 횟수를 채운다. **게임을 새로 시작할 때만** 부른다.
+             * resetForNewGame 에 넣지 않은 이유 — 모드 2 는 라운드마다 그것을 부르므로
+             * 거기 넣으면 다음 문제로 넘어갈 때마다 횟수가 되살아난다.
+             * 모드 1 은 한 판이, 모드 2 는 세션 전체가 '한 게임'이다.
+             */
+            resetShuffles() {
+                this.shuffleLeft = SHUFFLE_MAX;
+                this.isShuffling = false;
             },
             resetForGameEnd() {
                 this.isGameActive = false;
@@ -3161,6 +3634,7 @@
                 this.solvedWords = [];
                 this.comboCount = 0;
                 this.selectedBlocks = [];
+                this.isResolving = false;
             }
         };
 
@@ -3847,7 +4321,49 @@
             }
 
             function updateShuffleFabState() {
-                shuffleFab.classList.toggle('disabled', !GameState.isGameActive);
+                // 게임 중이면서 남은 횟수가 있을 때만 쓸 수 있다.
+                const usable = GameState.isGameActive && GameState.shuffleLeft > 0;
+                shuffleFab.classList.toggle('disabled', !usable);
+                shuffleFab.disabled = !usable;
+
+                const label = dom('shuffleLabel');
+                if (label) label.textContent = `단어변경 (${GameState.shuffleLeft}/${SHUFFLE_MAX})`;
+            }
+
+            /**
+             * 글자판 자리의 시작 영역을 켜고 끈다.
+             * 판이 돌고 있거나(스무고개는 세션 중이면) 감추고, 그 밖에는 보여 준다.
+             * 시작 처리는 기존 startGame() 을 그대로 쓰므로 여기서는 보이기만 다룬다.
+             */
+            function updateBoardStart() {
+                const panel = dom('boardStartPanel');
+                if (!panel) return;
+                const quizRunning = (typeof QuizSession !== 'undefined') && QuizSession.active;
+                panel.hidden = GameState.isGameActive || quizRunning;
+
+                const isQuiz = appMode === 'quiz';
+                dom('boardStartTitle').textContent = isQuiz
+                    ? 'AI 스무고개를 시작할까요?'
+                    : '준비되면 시작하세요';
+                dom('boardStartSub').textContent = isQuiz
+                    ? 'AI가 낸 낱말을 힌트를 보고 맞히는 게임이에요. 힌트를 적게 볼수록 점수가 높아요.'
+                    : '글자를 이어 제시어와 관련된 단어를 만드는 게임이에요.';
+                panel.querySelector('.board-start-go').lastChild.textContent =
+                    isQuiz ? '스무고개 시작' : '게임 시작';
+            }
+
+            /* 게임 중에는 [게임 시작]이 할 일이 없다. 버튼 줄이 흔들리지 않게
+               자리는 그대로 두고 색과 클릭만 거둔다. 판을 다시 깔고 싶으면
+               보드 위 [단어 변경] 이나 [게임 종료] 를 쓰면 된다. */
+            function updateNavState() {
+                const startBtn = dom('startNavBtn');
+                if (!startBtn) return;
+                const busy = GameState.isGameActive;
+                startBtn.classList.toggle('is-idle', busy);
+                startBtn.disabled = busy;
+                startBtn.title = busy
+                    ? '게임이 진행 중입니다'
+                    : '새 판을 시작합니다';
             }
 
             // 설정에서 고른 카테고리 이름 ('랜덤'이면 주사위 표시)
@@ -3860,17 +4376,17 @@
             function updateCategoryDisplay() {
                 // 모드 2에서는 사용자가 입력한 카테고리를 보여준다. (정답 목록은 열 수 없다)
                 if (appMode === 'quiz') {
-                    const quizLabel = QuizManager.category || StorageManager.getQuizCategory() || '카테고리 입력';
+                    const quizLabel = QuizManager.category || StorageManager.getQuizCategory() || '카테고리 선택';
                     dom('categoryName').textContent = `🤖 ${quizLabel}`;
                     dom('quizRuleCategoryName').textContent = quizLabel;
                     const quizHint = dom('categoryHint');
                     quizHint.textContent = GameState.isGameActive
-                        ? '🔒 힌트를 보고 맞혀보세요'
-                        : '🖊 눌러서 카테고리 입력';
+                        ? '힌트로 맞히기'
+                        : '눌러서 카테고리 선택';
                     categoryCard.classList.toggle('locked', GameState.isGameActive);
                     categoryCard.title = GameState.isGameActive
                         ? 'AI가 고른 정답을 맞혀보세요'
-                        : '카테고리를 입력해 새 문제를 받습니다';
+                        : '카테고리를 골라 새 문제를 받습니다';
                     return;
                 }
 
@@ -3887,13 +4403,13 @@
                 const hint = dom('categoryHint');
                 const canOpen = !GameState.isGameActive && GameState.answerListUnlocked;
                 if (GameState.isGameActive) {
-                    hint.textContent = '🔒 게임 중에는 볼 수 없어요';
+                    hint.textContent = '게임 중 비공개';
                     categoryCard.title = '게임 중에는 정답을 볼 수 없어요';
                 } else if (!GameState.answerListUnlocked) {
-                    hint.textContent = '🔒 게임이 끝나면 볼 수 있어요';
+                    hint.textContent = '게임 후 공개';
                     categoryCard.title = '한 판을 마치면 정답 목록을 볼 수 있어요';
                 } else {
-                    hint.textContent = '👀 눌러서 정답 보기';
+                    hint.textContent = '눌러서 정답 보기';
                     categoryCard.title = '정답 목록 보기';
                 }
                 categoryCard.classList.toggle('locked', !canOpen);
@@ -3914,7 +4430,7 @@
             }
 
             function updateHighScoreDisplay() {
-                dom('highScoreSub').textContent = `최고 ${GameState.highScore}점`;
+                dom('highScoreSub').textContent = `최고 기록 ${GameState.highScore}점`;
             }
 
             // 기록 1위(챔피언)를 상단 배너에 챔피언 뱃지.png 와 함께 노출한다.
@@ -3927,7 +4443,7 @@
                 }
                 championBanner.style.display = 'flex';
                 dom('championLabel').textContent = appMode === 'quiz'
-                    ? '👑 스무고개 챔피언' : '👑 제시어 맞추기 챔피언';
+                    ? '👑 스무고개 1위' : '👑 제시어 맞추기 1위';
                 dom('championName').textContent = champion.name;
                 dom('championScore').textContent = `${champion.score}점`;
             }
@@ -4013,7 +4529,9 @@
                 clearBoard();
 
                 const cols = Math.ceil(Math.sqrt(totalBlocks));
-                board.style.width = `${cols * 90}px`;
+                // 타일 크기는 CSS(:root --tile / --tile-gap)가 정한다.
+                // 여기서 픽셀을 다시 적으면 두 곳이 어긋나므로 calc 로 넘긴다.
+                board.style.width = `calc(${cols} * (var(--tile) + var(--tile-gap)))`;
 
                 // 목표 단어의 글자를 먼저 넣고, 남는 칸은 흔한 글자로 채운 뒤 섞는다.
                 const chars = targetWords.join('').split('');
@@ -4048,6 +4566,8 @@
             // 상단 HUD 전체를 현재 상태에 맞춰 한 번에 다시 그린다.
             function syncHud() {
                 updateShuffleFabState();
+                updateNavState();
+                updateBoardStart();
                 updateCategoryDisplay();
                 updateScoreDisplay();
                 updateHighScoreDisplay();
@@ -4058,7 +4578,7 @@
             // 밖에서 실제로 쓰는 것만 내보낸다. (개별 HUD 갱신은 syncHud 가 대신한다)
             return {
                 showToast, spawnFloatText, spawnConfetti, pulseScore, flashBoard,
-                shakeAndGlowBlocks, popSuccessBlocks, syncHud,
+                shakeAndGlowBlocks, popSuccessBlocks, syncHud, updateNavState, updateBoardStart,
                 updateCategoryDisplay, updateScoreDisplay, updateTimerDisplay, updateHighScoreDisplay,
                 updateChampionBanner, updateVersusBar,
                 resizeCanvas, clearCanvas, drawLines, cacheBlockCenters,
@@ -4860,6 +5380,8 @@
                 this.totalRounds = rounds;
                 this.round = 1;
                 this.category = '';
+                // 스무고개는 세션 전체가 한 게임이다. 라운드가 넘어가도 횟수는 이어진다.
+                GameState.resetShuffles();
                 this.clearPrefetch();
                 this.totalScore = 0;
                 this.history = [];
@@ -5101,6 +5623,7 @@
 
             GameState.duration = GAME_DURATION;
             GameState.resetForNewGame();
+            GameState.resetShuffles();   // 모드 1 은 한 판이 한 게임이다
             GameState.highScore = StorageManager.getHighScore();
 
             UIManager.syncHud();
@@ -5519,19 +6042,79 @@
          * (예전에는 라운드마다 물었지만, 지금은 한 번 고른 카테고리로 끝까지 진행한다.)
          * 문제를 만들지 못했을 때 다시 고를 수 있도록 이 화면을 여는 경로는 남겨 둔다.
          */
+        /**
+         * 카테고리 드롭다운을 사전에서 채운다.
+         *
+         * 문제로 낼 낱말이 하나도 없는 카테고리(pickAnswer 가 null)는 아예 빼 둔다.
+         * 예전에는 그런 값을 입력하면 [문제 받기] 를 누른 뒤에야 퇴짜를 맞았는데,
+         * 목록에 올리지 않으면 고를 수조차 없다.
+         * 파일로 추가한 카테고리도 사전에 들어가므로 함께 나온다.
+         *
+         * @param {string} preferred 되살릴 선택값 (없거나 목록에 없으면 안내 문구가 남는다)
+         */
+        function populateQuizCategorySelect(preferred) {
+            const select = dom('quizCategorySelect');
+            const custom = CategoryManager.getCustom();
+            select.innerHTML = '';
+
+            const placeholder = makeEl('option', null, '카테고리를 선택하세요');
+            placeholder.value = '';
+            placeholder.disabled = true;
+            select.appendChild(placeholder);
+
+            const usable = Dictionary.getCategories()
+                .filter(cat => QuizContent.pickAnswer(cat));
+            usable.forEach(cat => {
+                const option = makeEl('option', null, (cat in custom) ? `📂 ${cat}` : cat);
+                option.value = cat;
+                select.appendChild(option);
+            });
+
+            select.value = (preferred && usable.indexOf(preferred) !== -1) ? preferred : '';
+            if (!select.value) placeholder.selected = true;
+            syncQuizStartButton();
+        }
+
+        /** 카테고리를 고르기 전에는 [문제 받기] 를 누를 수 없다. */
+        function syncQuizStartButton() {
+            const select = dom('quizCategorySelect');
+            const button = dom('quizRoundStartBtn');
+            if (!select || !button) return;
+            button.disabled = !select.value;
+        }
+
         function openQuizRound() {
             if (!QuizSession.active) return;
-            const input = dom('quizCategoryInput');
-            input.value = QuizSession.category || '';
+            // 세션 안에서 이 화면을 다시 열 때(문제를 못 만든 경우)는 고른 값을 되살린다.
+            // 세션을 새로 시작하면 QuizSession.category 가 비어 있어 안내 문구가 남는다.
+            populateQuizCategorySelect(QuizSession.category);
             dom('quizCategoryTitle').textContent = '🗂 카테고리 정하기';
             dom('quizCategorySub').textContent =
                 `여기서 고른 카테고리로 ${QuizSession.totalRounds}번 모두 진행해요.`;
-            // 정답을 사전에서 고르므로, 고를 수 있는 카테고리를 그대로 보여 준다.
-            // 파일로 추가한 카테고리도 사전에 들어가므로 여기에 함께 나온다.
-            dom('quizCategoryAvailable').textContent =
-                `고를 수 있는 카테고리: ${Dictionary.getCategories().join(', ')}`;
+            dom('quizCategoryAvailable').textContent = '목록에서 카테고리를 선택하세요.';
             Overlay.open('quizCategoryOverlay');
-            setTimeout(() => { input.focus(); input.select(); }, 60);
+            setTimeout(() => dom('quizCategorySelect').focus(), 60);
+        }
+
+        /* 게임 방법 — 시작 전에 조작법을 확인한다.
+           모드에 따라 세 번째 칸만 바꾼다. 여는 것은 기존 Overlay 를 그대로 쓴다. */
+        function openHowTo() {
+            const isQuiz = appMode === 'quiz';
+            dom('howToSub').textContent = isQuiz
+                ? 'AI가 고른 낱말을 힌트를 보고 맞히는 게임이에요.'
+                : '글자를 이어 제시어와 관련된 단어를 만드는 게임이에요.';
+            const step3 = dom('howToStep3');
+            step3.querySelector('b').textContent = isQuiz
+                ? '힌트는 10초마다 하나씩 열립니다'
+                : '글자 수 제한은 없습니다';
+            step3.querySelector('p').textContent = isQuiz
+                ? '최대 6개까지 열리고, 적게 보고 맞힐수록 점수가 높습니다.'
+                : '2글자든 5글자든 제시어에 해당하는 단어면 모두 정답입니다. 연속으로 맞히면 콤보 점수가 붙습니다.';
+            Overlay.open('howToOverlay');
+        }
+
+        function closeHowTo() {
+            Overlay.close('howToOverlay');
         }
 
         function closeQuizCategory() {
@@ -5549,19 +6132,21 @@
         async function startQuizRound() {
             if (!QuizSession.active) return;
 
-            const category = (dom('quizCategoryInput').value || '').trim();
+            const category = dom('quizCategorySelect').value;
             if (!category) {
-                UIManager.showToast('맞힐 카테고리를 입력해주세요. (예: 과일)', 'warn');
+                UIManager.showToast('목록에서 카테고리를 선택해주세요.', 'warn');
                 return;
             }
 
-            // 정답은 반드시 사전에서 고른다. 사전에 없는 카테고리는 정답이 제시어에 속하는지
-            // 확인할 방법이 없으므로, 아무 카테고리로 슬쩍 바꿔 내지 않고 여기서 되돌린다.
+            // 목록을 사전에서 만들었으므로 여기서 걸릴 일은 없다.
+            // 그래도 남겨 둔다 — 파일로 카테고리를 지우거나 바꾼 뒤 이 화면이
+            // 열려 있었다면 목록이 낡았을 수 있고, 그때 라운드를 소모하면 안 된다.
             const matched = QuizContent.matchBuiltinCategory(category);
             if (!matched || !QuizContent.pickAnswer(matched)) {
                 UIManager.showToast(
-                    `'${category}' 는 사전에 없어요. 고를 수 있는 카테고리: ${Dictionary.getCategories().join(', ')}`, 'warn');
-                return; // 카테고리 입력창을 그대로 두어 라운드를 소모하지 않는다
+                    `'${category}' 로는 낼 문제가 없어요. 다른 카테고리를 골라주세요.`, 'warn');
+                populateQuizCategorySelect(null);   // 낡은 목록을 다시 만든다
+                return;
             }
 
             QuizSession.category = category;
@@ -6086,15 +6671,35 @@
             UIManager.showToast("예시 파일을 내려받았습니다. 내용을 고쳐서 다시 올려보세요!", "info");
         }
 
+        /**
+         * [단어변경] — 점수·시간 차감 없이 판만 새로 깐다.
+         * 한 게임에 SHUFFLE_MAX(5)번까지만 쓸 수 있다.
+         */
         function resetBoard() {
-            if (!GameState.isGameActive || shuffleFab.classList.contains('disabled')) {
+            // 게임 중이 아니거나 정답 연출 중이면 아무것도 하지 않는다.
+            if (!GameState.isGameActive || GameState.isResolving) return;
+            // 빠르게 두 번 눌러도 한 번만 나간다 (누름 연출이 끝날 때까지 잠근다).
+            if (GameState.isShuffling) return;
+
+            if (GameState.shuffleLeft <= 0) {
+                UIManager.showToast('단어변경을 모두 썼어요. 새 게임에서 다시 5번 쓸 수 있어요.', 'warn');
                 return;
             }
+
+            GameState.isShuffling = true;
             replayAnimation(shuffleFab, 'spin');
-            setTimeout(() => shuffleFab.classList.remove('spin'), 400);
+            setTimeout(() => {
+                shuffleFab.classList.remove('spin');
+                GameState.isShuffling = false;
+                UIManager.syncHud();
+            }, 400);
 
             ComboManager.reset();
-            generateNewRound(); // 점수/시간 차감 없이 즉시 새 보드로 교체
+            // 실제로 판이 바뀐 경우에만 횟수를 깎는다.
+            if (generateNewRound()) {
+                GameState.shuffleLeft -= 1;
+            }
+            UIManager.syncHud();
         }
 
         function stopGame() {
@@ -6126,15 +6731,21 @@
         }
 
         // 라운드 내부 생성 로직 (제시어는 유지됨)
+        /**
+         * 판을 새로 깐다.
+         * @returns {boolean} 실제로 판이 바뀌었으면 true.
+         *   [단어변경]은 이 값이 true 일 때만 횟수를 깎는다 —
+         *   낼 단어가 없어 못 바꾼 경우까지 횟수를 먹으면 억울하기 때문이다.
+         */
         function generateNewRound() {
             // 모드 2: 정답은 AI가 이미 정해 뒀으므로 보드 글자만 다시 깐다 (셔플도 이 경로를 쓴다).
             if (GameState.mode === 'quiz') {
-                if (!QuizManager.active) return;
+                if (!QuizManager.active) return false;
                 UIManager.renderBoard(GameState.currentBlockCount, [QuizManager.answer]);
-                return;
+                return true;
             }
 
-            if (!GameState.currentCategory) return;
+            if (!GameState.currentCategory) return false;
 
             // 이미 맞힌 단어는 제외하고 새 단어를 낸다.
             // 더 낼 단어가 없으면 = 정답을 다 맞힌 것이므로 게임을 끝낸다.
@@ -6146,11 +6757,12 @@
                 } else {
                     UIManager.showToast("현재 블록 개수로 만들 수 있는 단어 조합이 없습니다. 설정을 변경해주세요.", "warn");
                 }
-                return;
+                return false;
             }
             GameState.currentTargetWords = round;
 
             UIManager.renderBoard(GameState.currentBlockCount, GameState.currentTargetWords);
+            return true;
         }
 
         /**
@@ -6254,17 +6866,43 @@
          * 잘못 누르고도 되돌릴 방법이 없으면 오답을 낼 수밖에 없어서 넣었다.
          */
         function pickBlock(block) {
-            if (!GameState.isGameActive) return;
+            if (!GameState.isGameActive || GameState.isResolving) return;
 
             const already = GameState.selectedBlocks.indexOf(block);
             if (already !== -1) {
                 GameState.selectedBlocks.splice(already)
                     .forEach(b => b.classList.remove('selected'));
-            } else {
-                GameState.selectedBlocks.push(block);
-                block.classList.add('selected');
+                UIManager.drawLines();
+                return;
             }
+
+            GameState.selectedBlocks.push(block);
+            block.classList.add('selected');
             UIManager.drawLines();
+
+            // 정답이 완성되는 순간 오른쪽 클릭을 기다리지 않고 곧바로 판정한다.
+            // 되돌리기(위 splice)로 우연히 정답 모양이 되는 경우는 일부러 뺐다.
+            // 지우는 중에 갑자기 제출돼 버리면 손쓸 방법이 없다.
+            if (isAutoSubmittableWord()) submitSelectedWord();
+        }
+
+        /**
+         * 지금 고른 블록으로 만들어진 낱말이 '점수가 되는 정답' 인지 본다.
+         * 자동 제출은 이 조건에서만 걸린다.
+         *
+         * 이미 맞힌 낱말을 일부러 뺀 이유 — 더 긴 낱말을 만들려고 짧은 낱말을 지나가는 중에
+         * 자동으로 제출되면 콤보가 깨진다. 그때는 예전처럼 오른쪽 클릭으로만 확인한다.
+         * 오답도 같은 이유로 자동 제출하지 않는다.
+         */
+        function isAutoSubmittableWord() {
+            if (GameState.selectedBlocks.length < 2) return false;
+
+            const formedWord = GameState.selectedBlocks.map(b => b.textContent).join('');
+            if (GameState.mode === 'quiz') return QuizManager.isAnswer(formedWord);
+            if (GameState.solvedWords.includes(formedWord)) return false;
+
+            return GameState.currentTargetWords.includes(formedWord)
+                || Dictionary.hasWord(GameState.currentCategory, formedWord);
         }
 
         /**
@@ -6272,7 +6910,7 @@
          * 두 글자가 안 되면 실수로 보고 콤보 손해 없이 선택만 푼다.
          */
         function finishSelection() {
-            if (!GameState.isGameActive) return;
+            if (!GameState.isGameActive || GameState.isResolving) return;
             if (GameState.selectedBlocks.length === 0) return;
             if (GameState.selectedBlocks.length < 2) {
                 UIManager.resetSelection();
@@ -6286,6 +6924,9 @@
          * 예전에는 드래그를 놓는 순간(mouseup)에 불렀고, 지금은 finishSelection() 이 부른다.
          */
         function submitSelectedWord() {
+            // 자동 제출과 오른쪽 클릭이 같은 선택을 두 번 내지 않게 막는 마지막 빗장.
+            if (GameState.isResolving) return;
+
             const formedWord = GameState.selectedBlocks.map(b => b.textContent).join('');
             const isQuiz = GameState.mode === 'quiz';
 
@@ -6301,6 +6942,7 @@
                 if (isQuiz) {
                     clearInterval(timerInterval);   // 연출 도중 시간 초과로 두 번 끝나지 않게 먼저 멈춘다
                     GameState.isGameActive = false;
+                    GameState.isResolving = true;
 
                     const quizGained = QuizManager.points();
                     GameState.score += quizGained;
@@ -6327,6 +6969,8 @@
                     return;
                 }
 
+                GameState.isResolving = true;   // 연출이 끝날 때까지 다음 제출을 막는다
+
                 const combo = ComboManager.registerCorrect();
                 const gained = 1 + combo.bonus;
 
@@ -6351,6 +6995,7 @@
                 setTimeout(() => {
                     // 맞히면 곧바로 새 단어 조합의 판으로 교체한다.
                     // 더 이상 낼 단어가 없으면 generateNewRound가 게임을 끝낸다.
+                    GameState.isResolving = false;
                     generateNewRound();
                 }, 480);
             } else {
@@ -6427,8 +7072,12 @@
             UIManager.drawLines();
         });
 
-        // 모드 2: 카테고리 입력칸에서 Enter 를 누르면 바로 문제를 받는다
-        dom('quizCategoryInput').addEventListener('keydown', (e) => {
+        /* 모드 2 카테고리 고르기.
+           키보드만으로도 쓸 수 있게 두 가지를 단다 —
+           화살표/글자키로 고르면 change 가 나면서 [문제 받기] 가 열리고,
+           Enter 로 바로 문제를 받는다. (select 는 폼이 없으면 Enter 가 아무 일도 안 한다) */
+        dom('quizCategorySelect').addEventListener('change', syncQuizStartButton);
+        dom('quizCategorySelect').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 startQuizRound();
