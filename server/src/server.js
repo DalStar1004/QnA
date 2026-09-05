@@ -82,6 +82,8 @@ app.use(express.static(PUBLIC_DIR, { index: false }));
  * 루트의 assets 폴더 하나만 열어 주므로 문서·설정 같은 다른 파일은 나가지 않는다. */
 if (LOCAL_RUN) {
     app.use('/assets', express.static(path.join(ROOT_DIR, 'assets'), { index: false }));
+    // 모드 3(산업재산권 문제)이 읽는 문제 파일도 루트에 있다.
+    app.use('/quiz-data', express.static(path.join(ROOT_DIR, 'quiz-data'), { index: false }));
 }
 
 // 컨테이너 헬스체크용 엔드포인트
