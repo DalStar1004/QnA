@@ -42,86 +42,52 @@
            Design Ref: §9 Clean Architecture — Data 계층 (다른 모듈에 의존하지 않음)
            Plan SC: 모든 글자수(2~5)에서 최소 1개 카테고리로 게임 시작 가능해야 함
         ========================================================= */
-        const dictionary = {
-            "과일": ["사과", "포도", "수박", "참외", "딸기", "자두", "석류", "레몬", "망고", "메론",
-                     "복숭아", "무화과", "한라봉", "청포도",
-                     "파인애플", "블루베리", "애플망고",
-                     "천도복숭아", "옐로우자몽"],
-            "동물": ["여우", "사자", "토끼", "기린", "사슴", "늑대", "하마", "낙타",
-                     "호랑이", "고양이", "강아지", "코끼리", "두더지", "오소리", "원숭이", "다람쥐",
-                     "고슴도치", "바다표범",
-                     "하늘다람쥐", "바다코끼리"],
-            "나라이름": ["한국", "미국", "영국", "중국", "일본", "독일", "인도", "태국",
-                     "스위스", "러시아", "프랑스", "캐나다", "멕시코", "베트남", "그리스", "스페인", "이집트",
-                     "노르웨이", "이탈리아", "뉴질랜드", "포르투갈",
-                     "오스트리아", "아르헨티나", "인도네시아"],
-            "도시이름": ["서울", "부산", "대전", "대구", "광주", "인천", "제주", "울산",
-                     "워싱턴", "시드니", "마카오", "두바이", "오사카", "나고야",
-                     "싱가포르", "스톡홀름", "코펜하겐",
-                     "산타모니카", "애들레이드"],
-            "음식": ["김밥", "라면", "국밥", "냉면", "잡채", "만두", "초밥", "우동",
-                     "떡볶이", "비빔밥", "삼겹살", "짜장면", "갈비탕", "순댓국",
-                     "김치찌개", "된장찌개", "부대찌개",
-                     "순두부찌개", "콩나물국밥"],
-            "채소": ["당근", "감자", "양파", "오이", "배추", "상추", "고추",
-                     "애호박", "시금치", "양배추", "콩나물", "고구마", "토마토",
-                     "브로콜리", "파프리카", "청양고추",
-                     "방울토마토", "얼갈이배추"],
-            "직업": ["의사", "경찰", "화가", "가수", "배우", "작가", "기자", "농부",
-                     "간호사", "변호사", "요리사", "소방관", "미용사", "회계사", "통역사", "상담사",
-                     "디자이너", "사진작가", "아나운서",
-                     "사회복지사", "프로그래머"],
-            "스포츠": ["축구", "야구", "농구", "배구", "탁구", "수영", "골프", "권투",
-                     "테니스", "태권도", "마라톤", "핸드볼", "스쿼시",
-                     "배드민턴", "스노보드", "사이클링", "리듬체조",
-                     "산악자전거", "비치발리볼"],
-            "특허용어": ["발명", "출원", "등록", "심사", "상표", "침해", "거절",
-                     "특허권", "변리사", "명세서", "청구항", "우선권", "특허청", "발명자",
-                     "실용신안", "선행기술", "무효심판", "존속기간", "직무발명",
-                     "산업재산권", "전용실시권"],
-            "색깔": ["빨강", "파랑", "노랑", "초록", "보라", "주황", "검정", "하양",
-                     "분홍", "회색", "남색", "갈색", "은색", "금색",
-                     "하늘색", "연두색", "자주색", "청록색", "살구색", "진분홍"],
-            "악기": ["기타", "첼로", "하프", "장구", "드럼", "해금", "대금", "단소", "소고",
-                     "피아노", "가야금", "트럼펫", "플루트", "색소폰", "거문고", "마림바", "실로폰", "탬버린",
-                     "바이올린", "클라리넷", "아코디언", "하모니카", "오카리나"],
-            "교통수단": ["버스", "택시", "기차", "트럭", "마차", "요트",
-                     "지하철", "자전거", "비행기", "여객선", "유람선", "소방차", "구급차", "잠수함",
-                     "화물차", "킥보드", "전동차",
-                     "오토바이", "헬리콥터", "케이블카", "고속버스"],
-            "곤충": ["나비", "개미", "매미", "파리", "모기", "여치",
-                     "잠자리", "사마귀", "물방개", "하늘소", "풍뎅이", "메뚜기", "진딧물",
-                     "무당벌레", "사슴벌레", "귀뚜라미", "방아깨비", "바퀴벌레", "딱정벌레", "반딧불이", "하루살이",
-                     "장수풍뎅이"],
-            "바다생물": ["고래", "상어", "문어", "새우", "꽃게", "멸치", "참치", "연어",
-                     "갈치", "조개", "소라", "전복", "미역", "성게",
-                     "오징어", "해파리", "돌고래", "가오리", "다시마", "산호초",
-                     "불가사리", "바다거북", "흰동가리"],
-            "꽃": ["장미", "튤립", "국화", "백합", "매화", "난초", "수국", "목련", "벚꽃", "동백",
-                     "진달래", "개나리", "무궁화", "나팔꽃", "라벤더", "안개꽃", "민들레", "수선화",
-                     "해바라기", "코스모스", "카네이션", "히아신스"],
-            "가전제품": ["오븐", "히터",
-                     "냉장고", "세탁기", "청소기", "선풍기", "에어컨", "건조기", "정수기", "다리미",
-                     "토스터", "믹서기", "가습기", "제습기", "컴퓨터",
-                     "텔레비전", "전기밥솥",
-                     "전자레인지", "공기청정기", "식기세척기"],
-            "학용품": ["연필", "공책", "가위", "필통", "볼펜", "샤프", "물감", "딱풀",
-                     "지우개", "색연필", "형광펜", "컴퍼스", "각도기", "삼각자", "사인펜", "도화지", "색종이",
-                     "크레파스", "스케치북"],
-            "신체부위": ["머리", "얼굴", "눈썹", "어깨", "무릎", "손목", "발목", "허리",
-                     "이마", "배꼽", "손톱", "발톱",
-                     "손가락", "발가락", "팔꿈치", "종아리", "허벅지", "손바닥", "발바닥", "뒤꿈치"],
-            "날씨": ["안개", "태풍", "장마", "우박", "서리", "천둥", "번개", "폭염",
-                     "한파", "황사", "맑음", "흐림",
-                     "소나기", "무지개", "함박눈", "소낙비", "이슬비", "열대야",
-                     "미세먼지"],
-            "가구": ["침대", "책상", "의자", "소파", "옷장", "식탁", "책장", "협탁",
-                     "서랍장", "화장대", "신발장", "스탠드", "옷걸이",
-                     "붙박이장", "흔들의자", "원목책상", "화장거울"]
-        };
+        // 카테고리·단어는 quiz-data/word-categories.json 에서 불러와 채운다 (loadWordCategories 참고).
+        // 그 전까지는 빈 사전이며, initGame() 이 로딩을 끝낸 뒤에야 아래 코드가 이어서 실행된다.
+        const dictionary = {};
 
         // 파일로 추가한 카테고리를 지웠을 때 원래 사전으로 되돌리기 위한 원본 사본.
+        // dictionary 와 마찬가지로 처음엔 비어 있다가 loadWordCategories() 가 채운다.
         const BUILTIN_DICTIONARY = JSON.parse(JSON.stringify(dictionary));
+
+        // 기본 카테고리·단어를 담아 둔 JSON. 문서 위치 기준 상대경로라 로컬 서버·Render 어디서든 통한다.
+        const WORD_CATEGORIES_URL = 'quiz-data/word-categories.json';
+        // 로딩이 끝나기 전에 [게임 시작]을 눌러 빈 사전으로 시작하는 일을 막는 데 쓴다.
+        let dictionaryReady = false;
+
+        /**
+         * 기본 카테고리·단어 JSON을 받아와 BUILTIN_DICTIONARY 를 채우고, 사용자 카테고리와
+         * 합쳐 dictionary 를 완성한다. initGame() 이 다른 초기화보다 먼저 이 함수를 기다린다.
+         * 실패하면 dictionaryReady 를 계속 false 로 두어(빈 사전으로 넘어가지 않는다),
+         * 원인을 콘솔에 남기고 화면에도 실패한 경로를 담아 안내한다.
+         */
+        async function loadWordCategories() {
+            try {
+                const res = await fetch(WORD_CATEGORIES_URL);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const parsed = await res.json();
+
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                    throw new Error('최상위 형식이 { 카테고리: [단어...] } 객체가 아닙니다.');
+                }
+                Object.keys(parsed).forEach(name => {
+                    const words = parsed[name];
+                    if (!Array.isArray(words) || !words.every(w => typeof w === 'string')) {
+                        throw new Error(`'${name}' 항목이 문자열 배열이 아닙니다.`);
+                    }
+                });
+
+                Object.keys(parsed).forEach(name => { BUILTIN_DICTIONARY[name] = parsed[name].slice(); });
+                CategoryManager.rebuild(); // 여기서 사용자 카테고리와 합쳐 dictionary 를 완성한다.
+                dictionaryReady = true;
+            } catch (err) {
+                console.error(`[word-categories] ${WORD_CATEGORIES_URL} 을(를) 불러오지 못했습니다:`, err);
+                UIManager.showToast(
+                    `단어 데이터를 불러오지 못했습니다 (${WORD_CATEGORIES_URL}). 새로고침해서 다시 시도해주세요.`,
+                    'warn'
+                );
+            }
+        }
 
         const Dictionary = {
             getCategories() {
@@ -2716,6 +2682,11 @@
          */
         function beginPlay(options) {
             options = options || {};
+            // 단어 데이터 로딩이 아직 끝나지 않았으면(또는 실패했으면) 빈 사전으로 시작하지 않는다.
+            if (!dictionaryReady) {
+                UIManager.showToast("단어 데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요.", "warn");
+                return false;
+            }
             clearInterval(timerInterval);
             ModalManager.closeSettings();
             ModalManager.hideGameOver();
@@ -4633,97 +4604,107 @@
         /* =========================================================
            초기화 (페이지 로드 시 1회 실행)
         ========================================================= */
-        // 파일로 추가해 둔 카테고리를 먼저 사전에 합친 뒤 목록을 만든다.
-        CategoryManager.rebuild();
-        // 모드 1 설정을 저장값으로 되돌린다. 지난번에 정한 블록 개수와 카테고리로 바로 시작할 수 있다.
-        // (저장해 둔 카테고리가 지워졌으면 populateCategorySelect 가 '랜덤'으로 되돌린다)
-        dom('blockCount').value = StorageManager.getBlockCount();
-        ModalManager.populateCategorySelect(StorageManager.getCategoryOption());
-        ModalManager.renderCustomCategories();
-        GameState.highScore = StorageManager.getHighScore();
-        UIManager.updateHighScoreDisplay();
-        UIManager.updateCategoryDisplay();
-        dom('howToDeselectNote').textContent =
-            `글자 선택 후 ${AUTO_DESELECT_MS / 1000}초 동안 추가 선택이 없으면 선택이 자동으로 해제됩니다.`;
+        /**
+         * 진입점. 카테고리·단어 JSON을 먼저 기다린 뒤(로딩 중이거나 실패했으면 [게임 시작]이
+         * 안내만 하고 시작하지 않는다 — beginPlay() 의 dictionaryReady 확인 참고) 나머지
+         * 화면과 이벤트를 그대로 초기화한다. loadWordCategories() 는 실패해도 던지지 않으므로
+         * 사전과 무관한 모드 2·3, 설정, 배경 같은 화면은 실패 여부와 상관없이 정상적으로 뜬다.
+         */
+        async function initGame() {
+            await loadWordCategories();
 
-        // 저장된 닉네임 / 배경 복원
-        dom('nickname').value = StorageManager.getNickname();
-        BackgroundManager.apply(StorageManager.getBackground(), false);
-        ModalManager.syncBackgroundPicker();
-
-        // 배경 선택 버튼 이벤트 (배경1~4 + 기본)
-        dom('bgPicker').addEventListener('click', (e) => {
-            const option = e.target.closest('.bg-option');
-            if (!option) return;
-            selectBackground(option.dataset.bg);
-        });
-
-        // 카테고리를 바꾸면 시작 전 제시어 표시도 즉시 따라간다.
-        dom('categorySelect').addEventListener('change', () => {
-            UIManager.updateCategoryDisplay();
-        });
-
-        // 파일로 추가한 카테고리 삭제 버튼
-        dom('customCatList').addEventListener('click', (e) => {
-            const button = e.target.closest('.cc-del');
-            if (!button) return;
-            const name = button.dataset.category;
-            if (!confirm(`'${name}' 카테고리를 목록에서 지울까요?`)) return;
-            CategoryManager.remove(name);
-            ModalManager.populateCategorySelect('random');
+            // 모드 1 설정을 저장값으로 되돌린다. 지난번에 정한 블록 개수와 카테고리로 바로 시작할 수 있다.
+            // (저장해 둔 카테고리가 지워졌으면 populateCategorySelect 가 '랜덤'으로 되돌린다)
+            dom('blockCount').value = StorageManager.getBlockCount();
+            ModalManager.populateCategorySelect(StorageManager.getCategoryOption());
             ModalManager.renderCustomCategories();
+            GameState.highScore = StorageManager.getHighScore();
+            UIManager.updateHighScoreDisplay();
             UIManager.updateCategoryDisplay();
-            UIManager.showToast(`'${name}' 카테고리를 삭제했습니다.`, "info");
-        });
+            dom('howToDeselectNote').textContent =
+                `글자 선택 후 ${AUTO_DESELECT_MS / 1000}초 동안 추가 선택이 없으면 선택이 자동으로 해제됩니다.`;
 
-        // 모드 3에서 파일로 더 넣은 문제의 [삭제]. 위와 같은 이유로 목록 한 곳에서 위임받는다.
-        dom('examExtraList').addEventListener('click', (e) => {
-            const button = e.target.closest('.cc-del');
-            if (!button) return;
-            const index = parseInt(button.dataset.examIndex, 10);
-            if (!Number.isFinite(index)) return;
-            if (!confirm('추가한 이 문제를 목록에서 지울까요?')) return;
-            removeExamExtra(index);
-        });
+            // 저장된 닉네임 / 배경 복원
+            dom('nickname').value = StorageManager.getNickname();
+            BackgroundManager.apply(StorageManager.getBackground(), false);
+            ModalManager.syncBackgroundPicker();
 
-        /* 블록은 판마다 새로 만들어지므로 리스너를 블록마다 달지 않고 보드 한 곳에서 위임받는다.
-           왼쪽 클릭으로 고르고, 오른쪽 클릭으로 고르기를 끝낸다. */
-        board.addEventListener('click', (e) => {
-            const block = e.target.closest('.block');
-            if (block) pickBlock(block);
-        });
+            // 배경 선택 버튼 이벤트 (배경1~4 + 기본)
+            dom('bgPicker').addEventListener('click', (e) => {
+                const option = e.target.closest('.bg-option');
+                if (!option) return;
+                selectBackground(option.dataset.bg);
+            });
 
-        /* 오른쪽 클릭은 브라우저 메뉴 대신 '고르기 끝'으로 쓴다.
-           블록 사이 빈틈에서 눌러도 되도록 보드가 아니라 보드 영역 전체에서 받는다.
-           다만 힌트 패널 글은 그대로 복사할 수 있게 브라우저 메뉴를 남겨 둔다. */
-        boardContainer.addEventListener('contextmenu', (e) => {
-            if (e.target.closest('#hintPanel')) return;
-            e.preventDefault();
-            finishSelection();
-        });
+            // 카테고리를 바꾸면 시작 전 제시어 표시도 즉시 따라간다.
+            dom('categorySelect').addEventListener('change', () => {
+                UIManager.updateCategoryDisplay();
+            });
 
-        // 창 크기가 바뀌면 캔버스 크기와 블록 좌표를 다시 재서 선이 어긋나지 않게 한다.
-        window.addEventListener('resize', () => {
-            UIManager.resizeCanvas();
-            UIManager.cacheBlockCenters();
-            UIManager.drawLines();
-        });
+            // 파일로 추가한 카테고리 삭제 버튼
+            dom('customCatList').addEventListener('click', (e) => {
+                const button = e.target.closest('.cc-del');
+                if (!button) return;
+                const name = button.dataset.category;
+                if (!confirm(`'${name}' 카테고리를 목록에서 지울까요?`)) return;
+                CategoryManager.remove(name);
+                ModalManager.populateCategorySelect('random');
+                ModalManager.renderCustomCategories();
+                UIManager.updateCategoryDisplay();
+                UIManager.showToast(`'${name}' 카테고리를 삭제했습니다.`, "info");
+            });
 
-        /* 모드 2 카테고리 고르기.
-           키보드만으로도 쓸 수 있게 두 가지를 단다 —
-           화살표/글자키로 고르면 change 가 나면서 [문제 받기] 가 열리고,
-           Enter 로 바로 문제를 받는다. (select 는 폼이 없으면 Enter 가 아무 일도 안 한다) */
-        dom('quizCategorySelect').addEventListener('change', syncQuizStartButton);
-        dom('quizCategorySelect').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+            // 모드 3에서 파일로 더 넣은 문제의 [삭제]. 위와 같은 이유로 목록 한 곳에서 위임받는다.
+            dom('examExtraList').addEventListener('click', (e) => {
+                const button = e.target.closest('.cc-del');
+                if (!button) return;
+                const index = parseInt(button.dataset.examIndex, 10);
+                if (!Number.isFinite(index)) return;
+                if (!confirm('추가한 이 문제를 목록에서 지울까요?')) return;
+                removeExamExtra(index);
+            });
+
+            /* 블록은 판마다 새로 만들어지므로 리스너를 블록마다 달지 않고 보드 한 곳에서 위임받는다.
+               왼쪽 클릭으로 고르고, 오른쪽 클릭으로 고르기를 끝낸다. */
+            board.addEventListener('click', (e) => {
+                const block = e.target.closest('.block');
+                if (block) pickBlock(block);
+            });
+
+            /* 오른쪽 클릭은 브라우저 메뉴 대신 '고르기 끝'으로 쓴다.
+               블록 사이 빈틈에서 눌러도 되도록 보드가 아니라 보드 영역 전체에서 받는다.
+               다만 힌트 패널 글은 그대로 복사할 수 있게 브라우저 메뉴를 남겨 둔다. */
+            boardContainer.addEventListener('contextmenu', (e) => {
+                if (e.target.closest('#hintPanel')) return;
                 e.preventDefault();
-                startQuizRound();
-            }
-        });
+                finishSelection();
+            });
 
-        // 모드 스위치 초기 상태 (기본은 모드 1)
-        applyModeUI();
+            // 창 크기가 바뀌면 캔버스 크기와 블록 좌표를 다시 재서 선이 어긋나지 않게 한다.
+            window.addEventListener('resize', () => {
+                UIManager.resizeCanvas();
+                UIManager.cacheBlockCenters();
+                UIManager.drawLines();
+            });
 
-        // 기록 1위 챔피언 뱃지 배너
-        UIManager.updateChampionBanner();
-        UIManager.updateVersusBar();
+            /* 모드 2 카테고리 고르기.
+               키보드만으로도 쓸 수 있게 두 가지를 단다 —
+               화살표/글자키로 고르면 change 가 나면서 [문제 받기] 가 열리고,
+               Enter 로 바로 문제를 받는다. (select 는 폼이 없으면 Enter 가 아무 일도 안 한다) */
+            dom('quizCategorySelect').addEventListener('change', syncQuizStartButton);
+            dom('quizCategorySelect').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    startQuizRound();
+                }
+            });
+
+            // 모드 스위치 초기 상태 (기본은 모드 1)
+            applyModeUI();
+
+            // 기록 1위 챔피언 뱃지 배너
+            UIManager.updateChampionBanner();
+            UIManager.updateVersusBar();
+        }
+
+        initGame();
