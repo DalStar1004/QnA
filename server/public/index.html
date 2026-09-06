@@ -927,6 +927,10 @@
             border: 2px solid #ffe3c2;
             margin-bottom: 14px;
         }
+        /* display:flex 가 브라우저 기본 [hidden] 규칙을 덮어쓴다.
+           이게 없으면 모드 3에서 categoryRow.hidden = true 로 감춰도 카테고리 칸이 그대로 보인다.
+           (rule-banner 에서 겪은 것과 같은 문제다) */
+        .field-row[hidden] { display: none; }
         .field-row label { font-weight: 600; font-size: 0.95em; white-space: nowrap; }
         .field-row input, .field-row select {
             padding: 9px 12px;
@@ -1725,6 +1729,26 @@
                     <!-- AI 스무고개 설정 -->
                     <div id="quizSettings" hidden>
                         <div class="panel-sub">🤖 힌트는 <b>Groq · qwen/qwen3.8-27b</b> 가 만들고 10초마다 하나씩 열려요. 보드에서 블록을 이어 정답을 만드세요 — 힌트를 적게 보고 맞힐수록 높은 점수!</div>
+                        <!-- 힌트를 만드는 AI는 서버가 Groq API 로 부른다. API 키도 서버에만 있다.
+                             한 번 이으면 [연결 끊기] 를 누를 때까지 유지된다.
+                             블록 개수·문제 수보다 위에 둔 이유 — 여기서 연결해야 문장 힌트가 나오므로
+                             방장이 가장 먼저 볼 자리이기 때문이다. -->
+                        <div class="ai-status" id="aiStatus">Groq(qwen/qwen3.8-27b) 연결 상태를 확인하는 중…</div>
+                        <div class="ai-conn" id="aiConnBadge"><span class="dot"></span><span id="aiConnText">확인 중…</span></div>
+                        <div class="field-row ai-actions-key">
+                            <label for="aiKeyInput">🔑 Groq API 키</label>
+                            <input type="password" id="aiKeyInput" placeholder="gsk_…"
+                                   autocomplete="off" spellcheck="false">
+                        </div>
+                        <div class="ai-actions">
+                            <button type="button" class="jelly-btn btn-file-ghost" id="aiConnectBtn">연결하기</button>
+                            <button type="button" class="jelly-btn btn-file-ghost" id="aiDisconnectBtn">연결 끊기</button>
+                        </div>
+                        <div class="panel-sub" style="margin-top:8px; margin-bottom:14px;">
+                            🔑 키는 넣을 때만 서버로 가고, 서버는 메모리에만 들고 있어요
+                            (파일로 저장하지 않습니다). 참가자 화면으로는 힌트 문장만 가요.
+                            연결하지 못해도 글자 수·초성 힌트로 게임은 진행돼요.
+                        </div>
                         <div class="field-row">
                             <label for="quizBlockCountInput">🧩 블록 개수</label>
                             <input type="number" id="quizBlockCountInput" value="16" min="4" max="36">
@@ -1737,24 +1761,6 @@
                                 <option value="7">7문제</option>
                                 <option value="10">10문제</option>
                             </select>
-                        </div>
-                        <div class="ai-status" id="aiStatus">Groq(qwen/qwen3.8-27b) 연결 상태를 확인하는 중…</div>
-                        <!-- 힌트를 만드는 AI는 서버가 Groq API 로 부른다. API 키도 서버에만 있다.
-                             한 번 이으면 [연결 끊기] 를 누를 때까지 유지된다. -->
-                        <div class="ai-conn" id="aiConnBadge"><span class="dot"></span><span id="aiConnText">확인 중…</span></div>
-                        <div class="field-row ai-actions-key">
-                            <label for="aiKeyInput">🔑 Groq API 키</label>
-                            <input type="password" id="aiKeyInput" placeholder="gsk_…"
-                                   autocomplete="off" spellcheck="false">
-                        </div>
-                        <div class="ai-actions">
-                            <button type="button" class="jelly-btn btn-file-ghost" id="aiConnectBtn">연결하기</button>
-                            <button type="button" class="jelly-btn btn-file-ghost" id="aiDisconnectBtn">연결 끊기</button>
-                        </div>
-                        <div class="panel-sub" style="margin-top:8px;">
-                            🔑 키는 넣을 때만 서버로 가고, 서버는 메모리에만 들고 있어요
-                            (파일로 저장하지 않습니다). 참가자 화면으로는 힌트 문장만 가요.
-                            연결하지 못해도 글자 수·초성 힌트로 게임은 진행돼요.
                         </div>
                     </div>
 
@@ -1799,20 +1805,23 @@
         <div class="screen" id="screen-game">
             <!-- 모드별 규칙 안내 (혼자 하기의 rule-banner 와 같은 모양) -->
             <div class="rule-banner" id="wordRuleBanner">
-                <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
+                <span class="rule-chip">🖱 왼쪽 클릭으로 고르면 정답은 저절로 제출</span>
+                <span class="rule-chip">⏱ 2초 동안 안 고르면 선택 해제</span>
                 <span class="rule-chip">🔤 글자 수 제한 없음</span>
                 <span class="rule-text">2글자든 5글자든, <b id="ruleCategoryName">카테고리</b>의 단어면 모두 정답!</span>
             </div>
             <div class="rule-banner quiz" id="quizRuleBanner" hidden>
                 <span class="rule-chip" id="quizRoundChip">🤖 AI 스무고개</span>
-                <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
+                <span class="rule-chip">🖱 왼쪽 클릭으로 고르면 정답은 저절로 제출</span>
+                <span class="rule-chip">⏱ 2초 동안 안 고르면 선택 해제</span>
                 <span class="rule-text">AI가 <b id="quizRuleCategoryName">카테고리</b>에서 고른 낱말을 10초마다 열리는 힌트로 맞혀보세요!</span>
             </div>
 
             <!-- 산업재산권 문제 안내 (스무고개와 같은 화면 틀을 쓴다) -->
             <div class="rule-banner quiz" id="examRuleBanner" hidden>
                 <span class="rule-chip" id="examRoundChip">📜 산업재산권 문제</span>
-                <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
+                <span class="rule-chip">🖱 왼쪽 클릭으로 고르면 정답은 저절로 제출</span>
+                <span class="rule-chip">⏱ 2초 동안 안 고르면 선택 해제</span>
                 <span class="rule-text">문제를 읽고 <b id="examSecondsLabel">10</b>초 안에 정답을 만들어보세요. 시간이 지나면 정답을 알려줘요!</span>
             </div>
 
@@ -2007,6 +2016,13 @@
             category: '',
             timeLeft: 60,
             boardLocked: true,
+            /* 정답이 완성됐는지 서버에 조용히 물어보는 중인지. 겹쳐 보내지 않으려고 둔다.
+               lastProbedWord 는 같은 낱말을 두 번 물어보지 않으려고 기억해 둔다
+               (되돌리기로 같은 모양이 다시 만들어질 수 있다). */
+            probing: false,
+            lastProbedWord: '',
+            // 마지막 글자 선택 후 AUTO_DESELECT_MS 동안 추가 선택이 없으면 선택만 푸는 타이머.
+            deselectTimer: null,
             inGame: false,
             selectedBlocks: [],
             get isHost() { return this.myId && this.myId === this.hostId; },
@@ -2015,6 +2031,11 @@
                 return me ? me.score : 0;
             }
         };
+
+        /* 글자를 고르고 이 시간(ms) 동안 추가 선택이 없으면 선택만 자동으로 푼다.
+           잘못 고른 글자가 색과 연결선을 그대로 달고 남아 있으면 새 낱말을 만드는 데 방해가 된다.
+           혼자 하기와 같은 값을 쓴다 — 두 화면의 감각이 달라지지 않게 하기 위해서다. */
+        const AUTO_DESELECT_MS = 2000;
 
         /* ---------- Presentation: 화면 렌더링 전담 ---------- */
         const UIManager = (function () {
@@ -2106,8 +2127,11 @@
 
             /** Design §2.2 — 보드는 서버가 준 배열을 그대로 렌더링만 한다 */
             function renderBoard(board) {
+                GameController.disarmDeselectTimer();
                 boardEl.innerHTML = '';
                 ClientState.selectedBlocks = [];
+                // 새 판에서는 지난 판에 물어본 낱말을 기억할 이유가 없다.
+                ClientState.lastProbedWord = '';
                 clearCanvas();
 
                 const cols = Math.ceil(Math.sqrt(board.length));
@@ -2168,8 +2192,10 @@
             }
 
             function resetSelection() {
+                GameController.disarmDeselectTimer();
                 ClientState.selectedBlocks.forEach((b) => b.classList.remove('selected', 'shake-error'));
                 ClientState.selectedBlocks = [];
+                ClientState.lastProbedWord = '';
                 clearCanvas();
             }
 
@@ -2634,6 +2660,26 @@
            왼쪽 클릭으로 블록을 하나씩 고르고, 오른쪽 클릭으로 고르기를 끝낸다. */
         const GameController = {
             /**
+             * 글자를 고르거나 되돌릴 때마다 다시 부른다.
+             * 정답 제출·판 교체·게임 종료 때는 disarmDeselectTimer 로 취소한다 —
+             * 그래야 지난 판의 타이머가 새 판의 선택을 지우는 일이 없다.
+             */
+            armDeselectTimer() {
+                this.disarmDeselectTimer();
+                ClientState.deselectTimer = setTimeout(() => {
+                    ClientState.deselectTimer = null;
+                    // 그 사이 제출·판 교체로 선택이 이미 비었으면 할 일이 없다.
+                    if (ClientState.boardLocked || ClientState.selectedBlocks.length === 0) return;
+                    UIManager.resetSelection();
+                }, AUTO_DESELECT_MS);
+            },
+
+            disarmDeselectTimer() {
+                clearTimeout(ClientState.deselectTimer);
+                ClientState.deselectTimer = null;
+            },
+
+            /**
              * 왼쪽 클릭 — 누른 순서대로 블록을 고른다.
              * 이미 고른 블록을 다시 누르면 그 블록부터 뒤를 모두 되돌린다.
              * 잘못 누르고도 되돌릴 방법이 없으면 오답을 낼 수밖에 없어서 넣었다.
@@ -2650,11 +2696,64 @@
                     block.classList.add('selected');
                 }
                 UIManager.drawLines();
+
+                // 고르든 되돌리든, 남은 선택이 있으면 그 시점부터 다시 센다.
+                if (ClientState.selectedBlocks.length > 0) this.armDeselectTimer();
+                else this.disarmDeselectTimer();
+
+                // 정답이 완성되는 순간 오른쪽 클릭을 기다리지 않고 곧바로 넘어간다.
+                // 되돌리기(위 splice)로 우연히 정답 모양이 된 경우는 일부러 뺐다 —
+                // 지우는 중에 갑자기 제출돼 버리면 손쓸 방법이 없다 (혼자 하기와 같은 규칙).
+                if (already === -1) this.autoSubmit();
+            },
+
+            /**
+             * 정답이 완성됐는지 **서버에 조용히 물어본다.**
+             *
+             * 혼자 하기는 정답을 화면이 알고 있어서 그 자리에서 판정하지만,
+             * 멀티플레이는 정답이 서버에만 있다(Design §1.2). 그래서 글자를 고를 때마다 보내 보고,
+             * 맞으면 그대로 제출로 이어지고 **아니면 아무 말도 하지 않는다.**
+             * 오답 안내를 띄우면 긴 낱말을 만들려고 짧은 낱말을 지나가는 동안 계속 흔들려 방해가 된다.
+             *
+             * 틀린 제출은 서버 상태를 바꾸지 않으므로(정답일 때만 solved 를 세운다) 이렇게 물어봐도
+             * 게임에 영향이 없다. 중복 낱말도 서버가 걸러 주므로 여기서는 조용히 넘어간다.
+             */
+            async autoSubmit() {
+                if (ClientState.boardLocked || ClientState.probing) return;
+
+                const blocks = ClientState.selectedBlocks.slice();
+                if (blocks.length < 2) return;
+
+                const word = blocks.map((b) => b.textContent).join('');
+                if (word === ClientState.lastProbedWord) return;   // 방금 물어본 낱말이면 다시 묻지 않는다
+                ClientState.lastProbedWord = word;
+
+                ClientState.probing = true;
+                let result;
+                try {
+                    result = await NetworkManager.emit('answer:submit', { word });
+                } finally {
+                    ClientState.probing = false;
+                }
+
+                if (!result || !result.ok || !result.correct) return;   // 아니면 조용히 둔다
+
+                // 서버가 최초 정답자로 인정했다. 이제부터는 제출 처리가 선택을 책임진다.
+                this.disarmDeselectTimer();
+                // 오른쪽 클릭으로 낸 것과 같은 축하 연출을 준다.
+                UIManager.popBlocks(blocks);
+                if (ClientState.mode !== 'quiz') {
+                    UIManager.spawnConfetti();
+                    UIManager.flashBoard('success');
+                    UIManager.pulseScore();
+                }
             },
 
             /** 오른쪽 클릭 — 고르기를 끝내고 만들어진 낱말을 서버에 보낸다. */
             async finishSelection() {
                 if (ClientState.selectedBlocks.length === 0) return;
+                // 정답이든 오답이든 지금부터는 이 아래 처리가 선택을 책임진다.
+                this.disarmDeselectTimer();
 
                 const blocks = ClientState.selectedBlocks.slice();
 
