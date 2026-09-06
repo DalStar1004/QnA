@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>단어 연결 게임 — 멀티플레이 🍬</title>
+    <title>단어 블록 톡톡 — 멀티플레이 🍬</title>
     <!-- 파일 하나로 끝내는 구조라 아이콘도 인라인으로 둔다 (favicon.ico 404 방지) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🍭</text></svg>">
     <style>
@@ -1601,7 +1601,7 @@
         </div>
     </div>
 
-    <h1 class="title">🍭 단어 연결 게임 — 멀티플레이 🍬</h1>
+    <h1 class="title">🍭 단어 블록 톡톡 — 멀티플레이 🍬</h1>
 
     <div class="app-container">
         <!-- 시작 화면에서 넘어왔을 때만 노출한다 (주소창으로 바로 들어온 경우엔 돌아갈 곳이 없다) -->
@@ -1666,7 +1666,7 @@
                         </button>
                         <button type="button" class="mode-choice" id="modeQuizBtn" data-mode="quiz">
                             <span class="mode-emoji">🤖</span>
-                            <span class="mode-title">AI 스무고개</span>
+                            <span class="mode-title">AI 힌트 맞히기</span>
                             <span class="mode-desc">힌트를 보고 낱말 맞히기</span>
                         </button>
                         <button type="button" class="mode-choice" id="modeExamBtn" data-mode="exam">
@@ -1765,7 +1765,7 @@
                 <span class="rule-text">2글자든 5글자든, <b id="ruleCategoryName">카테고리</b>의 단어면 모두 정답!</span>
             </div>
             <div class="rule-banner quiz" id="quizRuleBanner" hidden>
-                <span class="rule-chip" id="quizRoundChip">🤖 AI 스무고개</span>
+                <span class="rule-chip" id="quizRoundChip">🤖 AI 힌트 맞히기</span>
                 <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
                 <span class="rule-text">AI가 <b id="quizRuleCategoryName">카테고리</b>에서 고른 낱말을 10초마다 열리는 힌트로 맞혀보세요!</span>
             </div>
@@ -1800,7 +1800,7 @@
                 <!-- 스무고개 전용: 10초마다 한 개씩 열리는 AI 힌트 패널 (혼자 하기와 같은 구성) -->
                 <aside id="hintPanel">
                     <div class="hint-head">
-                        <span class="hint-title" id="hintTitle">🤖 AI 스무고개</span>
+                        <span class="hint-title" id="hintTitle">🤖 AI 힌트 맞히기</span>
                         <span class="hint-next" id="hintNext">준비 중</span>
                     </div>
                     <div class="hint-list" id="hintList"></div>
@@ -2264,7 +2264,7 @@
 
             /** 새 문제가 시작될 때 패널을 비운다 */
             function resetHintPanel(round, total) {
-                hintTitleEl.textContent = round > 0 ? `🤖 스무고개 ${round}/${total}` : '🤖 AI 스무고개';
+                hintTitleEl.textContent = round > 0 ? `🤖 힌트 맞히기 ${round}/${total}` : '🤖 AI 힌트 맞히기';
                 hintMessage('첫 힌트를 준비하고 있어요…');
                 hintNextEl.textContent = '준비 중';
                 hintFootEl.textContent = '힌트를 적게 볼수록 점수가 높아요';

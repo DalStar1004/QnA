@@ -1054,7 +1054,7 @@
 
                 const isQuiz = appMode === 'quiz';
                 dom('boardStartTitle').textContent = isQuiz
-                    ? 'AI 스무고개를 시작할까요?'
+                    ? 'AI 힌트 맞히기를 시작할까요?'
                     : '준비되면 시작하세요';
                 dom('boardStartSub').textContent = isQuiz
                     ? 'AI가 낸 낱말을 힌트를 보고 맞히는 게임이에요. 힌트를 적게 볼수록 점수가 높아요.'
@@ -1425,7 +1425,7 @@
                 });
                 const MODE_LABEL = {
                     classic: '🍬 모드 1 · 제시어 맞추기',
-                    quiz: '🤖 모드 2 · AI 스무고개',
+                    quiz: '🤖 모드 2 · AI 힌트 맞히기',
                     exam: '📜 모드 3 · 산업재산권 문제'
                 };
                 dom('settingsModeSub').textContent =
@@ -2182,7 +2182,7 @@
 
             // 몇 번째 라운드인지 패널 제목에 표시한다. round가 0이면 라운드 표시를 지운다.
             function setRound(round, total) {
-                titleEl.textContent = round > 0 ? `🤖 스무고개 ${round}/${total}` : '🤖 AI 스무고개';
+                titleEl.textContent = round > 0 ? `🤖 힌트 맞히기 ${round}/${total}` : '🤖 AI 힌트 맞히기';
             }
 
             // 지금까지 열린 힌트만 그린다. 마지막 항목에 등장 애니메이션을 준다.
@@ -2982,7 +2982,7 @@
             UIManager.updateChampionBanner();
 
             const MODE_TOAST = {
-                quiz: "🤖 모드 2 — AI 스무고개! '스무고개 시작'을 눌러 카테고리를 정해주세요.",
+                quiz: "🤖 모드 2 — AI 힌트 맞히기! '스무고개 시작'을 눌러 카테고리를 정해주세요.",
                 exam: `📜 모드 3 — 산업재산권 문제! '문제 시작'을 누르면 한 문제에 ${examTimeLimit()}초씩 진행돼요.`,
                 classic: "🍬 모드 1 — 제시어 맞추기로 돌아왔어요."
             };
@@ -3526,7 +3526,7 @@
                 chip.textContent = `🤖 ${QuizSession.round} / ${QuizSession.totalRounds} 라운드`;
                 QuizPanelUI.setRound(QuizSession.round, QuizSession.totalRounds);
             } else {
-                chip.textContent = '🤖 AI 스무고개';
+                chip.textContent = '🤖 AI 힌트 맞히기';
                 QuizPanelUI.setRound(0, 0);
             }
         }
@@ -4057,7 +4057,7 @@
             }
             if (appMode === 'quiz') {
                 if (GameState.isGameActive) {
-                    UIManager.showToast("AI 스무고개에서는 정답을 미리 볼 수 없어요!", "warn");
+                    UIManager.showToast("AI 힌트 맞히기에서는 정답을 미리 볼 수 없어요!", "warn");
                     return;
                 }
                 openQuizSetup();
@@ -4085,7 +4085,7 @@
         // 지금 보고 있는 탭의 기록만 지운다. 다른 모드 기록은 건드리지 않는다.
         function clearRanking() {
             const board = ModalManager.currentRankingBoard();
-            const label = board === 'quiz' ? 'AI 스무고개' : '제시어 맞추기';
+            const label = board === 'quiz' ? 'AI 힌트 맞히기' : '제시어 맞추기';
             if (!confirm(`${label} 랭킹 기록을 모두 지울까요? 되돌릴 수 없습니다.`)) return;
             LeaderboardManager.clear(board);
             ModalManager.renderRanking();
