@@ -11,9 +11,12 @@
 // OllamaHintGenerator 와 같은 자리를 대신하며, 바깥에서 보는 모습(ensureReady / generateHints /
 // markStale / ping)은 똑같이 맞췄다. 달라진 점은 세 가지다.
 //   - 모델을 램에 올리고 내리는 일이 없다. 그래서 예열(warmUp)과 대체 모델 고르기가 사라졌다.
-//   - 대신 API 키가 필요하다. 키가 없으면 연결 자체를 시도하지 않는다.
-//   - **한 번 연결하면 [연결 끊기] 전까지 유지한다.** 방장이 대기실에서 직접 끊기 전에는
+//   - 대신 API 키가 필요하다. 키는 **[연결하기] 를 누른 사람이 화면에서 넣어 준다.**
+//     서버는 그 키를 메모리에만 들고 있고, 파일이나 환경변수에서 읽지 않는다.
+//     (공개 저장소에 키 파일을 둘 수 없고, 어디서 실행하든 같은 방식으로 쓰기 위해서다)
+//   - **한 번 연결하면 [연결 끊기] 전까지 유지한다.** 직접 끊기 전에는
 //     스스로 연결을 놓지 않고, 1분마다 살아 있는지만 확인한다.
+//   - **처음에는 잠겨 있다.** 키를 받아 연결하기 전까지는 확정 힌트만 나간다.
 //
 // Groq 에 연결하지 못해도 게임은 굴러가야 하므로, 이 어댑터는 실패를 예외로 올리기만 하고
 // 대체 힌트를 만드는 판단은 Application(QuizService)이 한다.
@@ -40,6 +43,15 @@ const REQUEST_TIMEOUT = 30000;
 const MAX_ATTEMPTS = 3;
 // 무료 티어에서 429(요청 과다)를 만났을 때 쉬었다 다시 물어보는 시간.
 const RATE_LIMIT_BACKOFF_MS = 1500;
+
+/* 하루에 Groq 를 부를 수 있는 횟수.
+   이 저장소는 공개라 서버 주소를 아는 사람은 누구나 게임 화면을 열 수 있고,
+   그 화면은 힌트를 받으려고 서버를 부른다. 키 자체는 서버 밖으로 나가지 않지만,
+   **남이 우리 사용량을 대신 태우는 것**은 막아야 한다.
+   여기서 세는 것은 혼자 하기와 멀티플레이를 합친 전체 횟수다.
+   AI_HINTS_PER_DAY 환경변수로 바꿀 수 있다. */
+const DEFAULT_DAILY_CAP = 500;
+const DAY_MS = 24 * 60 * 60 * 1000;
 // 연결을 유지하는 동안 살아 있는지 확인하는 간격. 너무 잦으면 쓸데없는 요청이 된다.
 const KEEPALIVE_INTERVAL = 60000;
 
@@ -89,26 +101,29 @@ const HINT_TEMPERATURE = 0.3;
 class GroqHintGenerator {
     /**
      * @param {Object} deps
-     * @param {string} [deps.apiKey] 서버를 켤 때 읽어 둔 키
-     * @param {() => string} [deps.keyLoader] 키를 다시 읽는 함수.
-     *   키 파일을 나중에 만들어 놓고 [연결하기] 를 누르는 일이 흔해서,
-     *   그때 서버를 다시 켜지 않아도 되도록 이 자리에서 파일을 다시 읽는다.
+     * @param {string} [deps.model] 쓸 모델 이름
      */
-    constructor({ apiKey, model, apiBase, keyLoader } = {}) {
+    constructor({ model, apiBase } = {}) {
         this.apiBase = String(apiBase || DEFAULT_API_BASE).replace(/\/+$/, '');
         this.model = String(model || DEFAULT_MODEL);
         // 설정에서 받은 원래 이름. 대체 모델을 골랐는지 판단하는 데 쓴다.
         this.requestedModel = this.model;
-        this.apiKey = String(apiKey || '');
-        this.keyLoader = typeof keyLoader === 'function' ? keyLoader : null;
+        // 키는 화면에서 [연결하기] 를 누를 때 받는다. 서버가 스스로 찾아 오지 않는다.
+        this.apiKey = '';
 
         this.connected = false;
         this.lastError = null;
         this.connecting = null;
         this.keepAliveTimer = null;
-        /* 방장이 [연결 끊기] 를 눌렀는지. 이 표시가 있으면 자동 연결이 다시 붙지 않는다.
-           이걸 두지 않으면 스무고개를 고를 때마다 도는 자동 연결이 방금 끊은 연결을 되살린다. */
-        this.manuallyDisconnected = false;
+        // 하루치 사용량. 넘으면 그날은 확정 힌트로만 진행한다.
+        this.dailyCap = Number(process.env.AI_HINTS_PER_DAY) || DEFAULT_DAILY_CAP;
+        this.dailyUsed = 0;
+        this.dailyResetAt = Date.now() + DAY_MS;
+        /* 관리자가 아직 열지 않았거나 [연결 끊기] 를 눌렀는지.
+           이 표시가 있으면 자동 연결이 붙지 않는다 — 스무고개를 고를 때마다 도는 자동 연결이
+           잠금을 지나쳐 버리거나 방금 끊은 연결을 되살리는 일을 막는다.
+           서버를 켜면 잠긴 상태로 시작한다. */
+        this.locked = true;
 
         /* Groq 는 JSON 강제 출력(response_format)을 지원하지만 모델에 따라 400 을 돌려줄 수 있다.
            한 번 거절당하면 그 뒤로는 빼고 보낸다. 프롬프트가 이미 JSON 만 쓰라고 못박고 있고
@@ -121,25 +136,45 @@ class GroqHintGenerator {
         return !!this.apiKey;
     }
 
-    /**
-     * 키를 다시 읽어 온다. 없던 키가 생겼으면 그것으로 갈아탄다.
-     * @returns {boolean} 읽고 난 뒤 키가 있는지
-     */
-    refreshKey() {
-        if (!this.keyLoader) return !!this.apiKey;
-        try {
-            const fresh = String(this.keyLoader() || '').trim();
-            if (fresh && fresh !== this.apiKey) {
-                this.apiKey = fresh;
-                this.connected = false;   // 키가 바뀌었으니 다시 확인해야 한다
-                this.model = this.requestedModel;   // 계정이 바뀌면 모델도 다시 골라야 한다
-            } else if (!fresh) {
-                this.apiKey = '';
-            }
-        } catch (error) {
-            // 파일을 읽지 못하면 들고 있던 키를 그대로 쓴다
+    /** 오늘 얼마나 썼는지 (화면과 서버 로그에 보여 준다) */
+    get usage() {
+        this._rolloverDay();
+        return { used: this.dailyUsed, cap: this.dailyCap };
+    }
+
+    /** 하루가 지났으면 사용량을 0으로 되돌린다. */
+    _rolloverDay() {
+        if (Date.now() >= this.dailyResetAt) {
+            this.dailyUsed = 0;
+            this.dailyResetAt = Date.now() + DAY_MS;
         }
-        return !!this.apiKey;
+    }
+
+    /**
+     * 한 번 부를 자리를 얻는다. 하루치를 다 썼으면 false.
+     * 실제로 Groq 를 부르기 직전에만 세므로, 실패한 재시도까지 사용량으로 잡힌다
+     * (재시도도 Groq 쪽에서는 진짜 요청이라 그렇게 세는 편이 맞다).
+     */
+    _takeDailyQuota() {
+        this._rolloverDay();
+        if (this.dailyUsed >= this.dailyCap) return false;
+        this.dailyUsed += 1;
+        return true;
+    }
+
+    /**
+     * 화면에서 받은 API 키를 들고 있는다. **메모리에만 둔다** — 파일로 쓰지 않고 로그에도 찍지 않는다.
+     * 서버가 다시 뜨면 사라지므로, 그때는 [연결하기] 를 한 번 더 눌러 키를 넣어야 한다.
+     */
+    setApiKey(key) {
+        const value = String(key || '').trim();
+        if (!value) return false;
+        if (value !== this.apiKey) {
+            this.apiKey = value;
+            this.connected = false;             // 새 키는 다시 확인해야 한다
+            this.model = this.requestedModel;   // 계정이 바뀌면 모델도 다시 골라야 한다
+        }
+        return true;
     }
 
     /**
@@ -158,14 +193,18 @@ class GroqHintGenerator {
                 requested: this.requestedModel
             });
         }
-        if (this.manuallyDisconnected) {
-            return Promise.resolve({ ok: false, reason: '방장이 AI 연결을 꺼 두었어요' });
-        }
-        // 키가 없으면 파일을 한 번 더 본다. 서버를 켠 뒤에 키 파일을 만든 경우가 흔하다.
-        if (!this.apiKey && !this.refreshKey()) {
+        if (this.locked) {
             return Promise.resolve({
                 ok: false,
-                reason: 'Groq API 키가 없어요 (GROQ_API_KEY 환경변수 또는 server/groq-key.txt)'
+                locked: true,
+                reason: '아직 AI에 연결하지 않았어요'
+            });
+        }
+        if (!this.apiKey) {
+            return Promise.resolve({
+                ok: false,
+                needsKey: true,
+                reason: 'Groq API 키가 없어요 ([연결하기] 에서 키를 넣어주세요)'
             });
         }
         if (this.connecting) {
@@ -180,23 +219,20 @@ class GroqHintGenerator {
         return this.connecting;
     }
 
-    /**
-     * [연결하기] 를 눌렀을 때. 꺼 두었던 표시를 지우고 다시 잇는다.
-     * 누를 때마다 키 파일을 다시 읽으므로, 키를 새로 넣거나 바꿔도 서버를 다시 켜지 않아도 된다.
-     */
+    /** [연결하기] 를 눌렀을 때. 잠금을 풀고 연결한다. 키는 미리 setApiKey 로 받아 둔다. */
     connect() {
-        this.manuallyDisconnected = false;
-        this.refreshKey();
+        this.locked = false;
         return this.ensureReady();
     }
 
     /**
-     * 방장이 [연결 끊기] 를 눌렀을 때.
+     * [연결 끊기] 를 눌렀을 때. 다시 잠그고 **들고 있던 키도 지운다.**
      * 다음 판부터는 확정 힌트(글자 수·초성·첫 글자)만으로 진행된다.
      */
     disconnect() {
         this.connected = false;
-        this.manuallyDisconnected = true;
+        this.locked = true;
+        this.apiKey = '';
         this.lastError = null;
         this._stopKeepAlive();
         return { ok: true };
@@ -282,8 +318,8 @@ class GroqHintGenerator {
                 lastError = new Error('쓸 만한 힌트를 받지 못했습니다');
             } catch (error) {
                 lastError = error;
-                // 방장이 꺼 둔 것이라면 다시 물어봐야 소용이 없다.
-                if (this.manuallyDisconnected) break;
+                // 관리자가 잠갔거나 하루치를 다 썼으면 다시 물어봐야 소용이 없다.
+                if (this.locked || error.quotaExhausted) break;
 
                 /* 무료 티어는 분당 요청 수가 정해져 있어서, 판이 몰리면 429 가 난다.
                    그때는 곧바로 다시 물어봐야 또 429 다. 잠깐 쉬었다가 한 번 더 해 본다.
@@ -303,6 +339,11 @@ class GroqHintGenerator {
     }
 
     async _requestOnce(answer, category) {
+        if (!this._takeDailyQuota()) {
+            const err = new Error(`오늘 쓸 수 있는 AI 힌트 ${this.dailyCap}회를 다 썼어요`);
+            err.quotaExhausted = true;
+            throw err;
+        }
         const body = {
             model: this.model,
             stream: false,

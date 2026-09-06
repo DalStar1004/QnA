@@ -29,47 +29,13 @@ const { getExamQuestions } = require('./domain/examContent');
 
 const PORT = Number(process.env.PORT) || 3000;
 /* AI 스무고개 힌트를 만들 LLM. 예전에는 이 PC의 Ollama 를 불렀고, 지금은 Groq API 를 부른다.
-   키는 환경변수 GROQ_API_KEY 가 먼저이고, 없으면 아래 두 자리의 groq-key.txt 파일을 본다.
-   파일 쪽을 둔 이유: 서버를 [서버 켜기.bat] 더블클릭으로 켜는 사람이 환경변수를 만들지 않아도
-   메모장으로 키만 붙여넣으면 되게 하기 위해서다. 두 파일 다 .gitignore 로 저장소에서 뺀다.
 
-   **QnA 폴더(저장소 루트)를 먼저 본다.** 게임 폴더를 열면 바로 보이는 자리라 찾기 쉽고,
-   server/ 안쪽은 한 단계 더 들어가야 해서 파일을 어디 뒀는지 잊기 쉽다. */
+   **키는 서버가 찾아 오지 않는다.** 게임 화면의 [연결하기] 를 누른 사람이 그 자리에서 넣어 준다.
+   서버는 그 키를 메모리에만 들고 있고, 파일이나 환경변수에서 읽지 않는다.
+   예전에는 groq-key.txt 를 읽었는데, 그 파일은 .gitignore 에 있어서 GitHub 에서 받아 실행하는
+   서버(render.com 등)에는 아예 없었다. 어디서 실행하든 같은 방식으로 쓰려고 화면 입력으로 옮겼다. */
 const GROQ_MODEL = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
-const GROQ_KEY_FILES = [
-    path.join(__dirname, '..', '..', 'groq-key.txt'),   // QnA 폴더 (저장소 루트)
-    path.join(__dirname, '..', 'groq-key.txt')          // server 폴더
-];
-const GROQ_API_KEY = readGroqKey();
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-
-/** 키 파일 하나를 읽는다. 없거나 못 읽으면 빈 문자열. */
-function readKeyFile(file) {
-    try {
-        return fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '').trim();
-    } catch (error) {
-        return '';
-    }
-}
-
-/**
- * 환경변수 -> QnA 폴더 -> server 폴더 순으로 키를 찾는다.
- * 아무 데도 없으면 빈 문자열 (그때는 확정 힌트만으로 진행된다).
- */
-function readGroqKey() {
-    const fromEnv = String(process.env.GROQ_API_KEY || '').trim();
-    if (fromEnv) return fromEnv;
-    for (const file of GROQ_KEY_FILES) {
-        const key = readKeyFile(file);
-        if (key) return key;
-    }
-    return '';
-}
-
-/** 지금 키를 어느 파일에서 읽었는지 (없으면 넣어야 할 자리를 알려 준다). */
-function groqKeyFileInUse() {
-    return GROQ_KEY_FILES.find((file) => readKeyFile(file)) || GROQ_KEY_FILES[0];
-}
 
 /* ---------- 혼자 하기 게임 파일을 어디서 찾을 것인가 ----------
  * 이 파일(word_connection_game.html)과 그 화면이 쓰는 그림은 **저장소 루트**에 있다.
@@ -95,12 +61,7 @@ const io = new Server(httpServer);
 const roomRepository = new InMemoryRoomRepository();
 const broadcaster = new SocketIOBroadcaster(io);
 
-const hintGenerator = new GroqHintGenerator({
-    apiKey: GROQ_API_KEY,
-    model: GROQ_MODEL,
-    // 서버를 켠 뒤에 키 파일을 만드는 경우가 흔하다. [연결하기] 를 누르면 여기서 다시 읽는다.
-    keyLoader: readGroqKey
-});
+const hintGenerator = new GroqHintGenerator({ model: GROQ_MODEL });
 
 const roomService = new RoomService({ roomRepository, broadcaster, codeGenerator: roomCodeGenerator });
 const roundService = new RoundService({ roomRepository, broadcaster });
@@ -141,9 +102,9 @@ app.get('/healthz', (req, res) => {
 });
 
 /* ---------- 혼자 하기 화면이 쓰는 AI 다리 ----------
- * 혼자 하기(모드 2)와 멀티플레이가 **같은 키 하나**(server/groq-key.txt)를 쓴다.
- * 그러면서도 키를 브라우저로 내려보내지 않으려고, 힌트 요청을 서버가 대신 보낸다.
- * 브라우저가 받는 것은 다 만들어진 힌트 문장뿐이다.
+ * 혼자 하기(모드 2)와 멀티플레이가 **같은 연결 하나**를 함께 쓴다.
+ * 키는 [연결하기] 를 누른 사람이 넣어 주고, 그 뒤로는 힌트 요청을 서버가 대신 보낸다.
+ * 브라우저가 받는 것은 다 만들어진 힌트 문장뿐이다 — 키가 다른 사람 화면으로 내려가지 않는다.
  *
  * 게임 파일을 두 번 눌러 연 경우(file://)에는 이 주소에 닿을 수 없다.
  * 그때 혼자 하기는 예전처럼 내장 사전으로 문제를 만든다 — 게임은 그대로 진행된다.
@@ -158,26 +119,79 @@ const AI_CORS = (req, res, next) => {
 };
 app.use('/api/ai', AI_CORS, express.json({ limit: '8kb' }));
 
-/** 지금 AI를 쓸 수 있는지. 키가 있으면 연결까지 맞춰 둔다(멀티플레이의 ai:status 와 같은 동작). */
+/* ---------- 남이 우리 Groq 사용량을 대신 태우지 못하게 ----------
+ * 이 저장소는 공개다. 서버 주소를 아는 사람은 누구나 게임 화면을 열 수 있고,
+ * 그 화면은 힌트를 받으려고 아래 주소를 부른다. **API 키 자체는 서버 밖으로 나가지 않지만**,
+ * 주소만 알면 스크립트로 계속 두드려 사용량을 태울 수는 있다. 그것을 두 겹으로 막는다.
+ *
+ *   ① 한 사람(IP)이 짧은 시간에 부를 수 있는 횟수를 제한한다 (아래).
+ *   ② 하루 전체 횟수를 제한한다 (GroqHintGenerator 안. 멀티플레이까지 함께 센다).
+ *
+ * 둘 다 넘으면 그 요청만 거절하고, 게임은 확정 힌트(글자 수·초성)로 그대로 진행된다.
+ */
+const HINT_WINDOW_MS = 10 * 60 * 1000;                              // 세는 구간 10분
+const HINT_PER_IP = Number(process.env.AI_HINTS_PER_IP) || 30;      // 그 안에 한 사람이 부를 수 있는 횟수
+const hintHits = new Map();                                         // ip -> { count, resetAt }
+
+/** 한 사람 몫이 남았는지 본다. 남아 있으면 하나 쓰고 true. */
+function takeIpQuota(ip) {
+    const now = Date.now();
+    // 오래된 기록은 버린다. 두지 않으면 IP가 쌓이는 만큼 메모리가 는다.
+    if (hintHits.size > 5000) {
+        hintHits.forEach((hit, key) => { if (hit.resetAt <= now) hintHits.delete(key); });
+    }
+    const hit = hintHits.get(ip);
+    if (!hit || hit.resetAt <= now) {
+        hintHits.set(ip, { count: 1, resetAt: now + HINT_WINDOW_MS });
+        return true;
+    }
+    if (hit.count >= HINT_PER_IP) return false;
+    hit.count += 1;
+    return true;
+}
+
+/**
+ * 다른 웹사이트가 우리 주소를 몰래 부르는 것을 막는다.
+ * 같은 서버에서 연 화면(Origin 이 우리 주소)과, 게임 파일을 두 번 눌러 연 경우(Origin 없음/null)만 받는다.
+ * 브라우저 밖에서 부르는 것까지 막지는 못하지만, 그쪽은 위의 횟수 제한이 맡는다.
+ */
+function isAllowedOrigin(req) {
+    const origin = req.get('origin');
+    if (!origin || origin === 'null') return true;   // file:// 로 연 화면
+    try {
+        return new URL(origin).host === req.get('host');
+    } catch (error) {
+        return false;
+    }
+}
+
+/** 지금 AI를 쓸 수 있는지. 잠겨 있으면 그 사실만 알려 주고 연결하지 않는다. */
 app.get('/api/ai/status', async (req, res) => {
     const status = await quizService.checkAi();
     res.json({
         ok: !!status.ok,
         hasKey: hintGenerator.hasApiKey,
         connected: !!hintGenerator.connected,
-        offByHost: !!status.offByHost,
+        locked: !!hintGenerator.locked,
         model: status.model || GROQ_MODEL,
+        // 오늘 얼마나 썼는지. 키 자체는 절대 내보내지 않는다.
+        usage: hintGenerator.usage,
         reason: status.reason || null
     });
 });
 
-/** 혼자 하기의 [연결하기]. 꺼 두었던 표시를 지우고 다시 잇는다. */
+/**
+ * AI 연결을 연다. 키는 이 요청에 담겨 온다 — 서버는 키를 따로 갖고 있지 않다.
+ * 받은 키는 서버 메모리에만 남고, 파일로 쓰거나 로그에 찍지 않는다.
+ */
 app.post('/api/ai/connect', async (req, res) => {
-    const status = await quizService.connectAi();
-    res.json({
+    const body = req.body || {};
+    const status = await quizService.connectAi({ apiKey: body.apiKey });
+    return res.json({
         ok: !!status.ok,
         hasKey: hintGenerator.hasApiKey,
         connected: !!hintGenerator.connected,
+        needsKey: !!status.needsKey,
         model: status.model || GROQ_MODEL,
         // 설정한 모델이 계정에 없어 다른 것으로 갈아탔으면 화면에도 알린다.
         switched: !!status.switched,
@@ -186,12 +200,25 @@ app.post('/api/ai/connect', async (req, res) => {
     });
 });
 
-/* 혼자 하기의 [연결 끊기] 는 이 자리를 부르지 않는다.
-   그 버튼은 '이 화면에서 AI를 안 쓴다' 는 뜻이고, 서버 연결을 끄면 같은 서버로 놀고 있는
-   멀티플레이 방까지 확정 힌트로 떨어지기 때문이다. 서버 전체를 끄는 것은 대기실의 방장 버튼이다. */
+/** AI 연결을 닫는다(다시 잠그고 들고 있던 키도 지운다). */
+app.post('/api/ai/disconnect', (req, res) => {
+    quizService.disconnectAi();
+    return res.json({ ok: true, connected: false, locked: true });
+});
 
 /** 정답을 알려 주면 힌트 문장을 만들어 돌려준다. 키는 서버 밖으로 나가지 않는다. */
 app.post('/api/ai/hints', async (req, res) => {
+    if (!isAllowedOrigin(req)) {
+        return res.status(403).json({ ok: false, reason: '이 주소에서는 쓸 수 없어요' });
+    }
+    if (!takeIpQuota(req.ip)) {
+        return res.status(429).json({
+            ok: false,
+            rateLimited: true,
+            reason: `잠깐 너무 많이 요청했어요 (${HINT_PER_IP}회/10분). 조금 뒤에 다시 해주세요`
+        });
+    }
+
     const answer = String((req.body && req.body.answer) || '').trim();
     const category = String((req.body && req.body.category) || '').trim();
     // 낱말 하나와 카테고리 이름이면 충분하다. 긴 글이 들어오면 프롬프트로 쓰지 않는다.
@@ -234,8 +261,7 @@ httpServer.listen(PORT, () => {
     console.log('');
     console.log('    그 주소로 들어가면 시작 화면이 뜹니다. [접속하기] 를 누르면 멀티플레이(/multi)로 갑니다.');
     console.log('');
-    console.log(`  · AI 스무고개 힌트  Groq API (${GROQ_MODEL})`
-        + (GROQ_API_KEY ? '' : ' — API 키 없음'));
+    console.log(`  · AI 스무고개 힌트  Groq API (${GROQ_MODEL}) — 화면에서 키를 넣어 연결`);
     console.log('    AI 가 꺼져 있어도 글자 수·초성 힌트로 게임은 진행됩니다.');
     console.log('');
 
@@ -251,24 +277,12 @@ httpServer.listen(PORT, () => {
 
     // 서버가 뜨는 김에 AI 연결까지 잡아 둔다. 한 번 이어 두면 대기실에서 [연결 끊기] 를
     // 누르기 전까지 유지된다. 실패해도 서버는 그대로 돌아간다.
-    if (!hintGenerator.hasApiKey) {
-        console.log('  🤖 AI 연결 안 함 — Groq API 키가 없습니다.');
-        console.log(`     ${GROQ_KEY_FILES[0]} 에 키를 한 줄 적어 두거나 GROQ_API_KEY 환경변수를 넣어주세요.`);
-        console.log('     키가 없어도 스무고개는 글자 수·초성 힌트로 진행됩니다.');
-        console.log('');
-    } else {
-        hintGenerator.ensureReady().then((status) => {
-            if (status.ok) {
-                console.log(`  🤖 AI 연결 완료 — Groq · ${status.model}`
-                    + (status.switched ? ` (설정한 ${GROQ_MODEL} 가 없어 자동으로 바꿨습니다)` : ''));
-                console.log(`     키를 읽은 곳: ${groqKeyFileInUse()}`);
-            } else {
-                console.log(`  🤖 AI 연결 실패 — ${status.reason}`);
-                console.log('     스무고개는 글자 수·초성 힌트로 진행되며, 대기실에서 [연결하기] 로 다시 시도할 수 있습니다.');
-            }
-            console.log('');
-        });
-    }
+    /* 서버는 API 키를 갖고 있지 않다. 게임 화면에서 [연결하기] 를 누른 사람이 넣어 준다. */
+    console.log('  🔌 AI 연결 대기 중 — 게임 화면의 [연결하기] 에서 Groq API 키를 넣어주세요.');
+    console.log('     ⚙️ 게임 설정 › AI 연동 (혼자 하기) / 대기실 설정 (멀티플레이)');
+    console.log('     연결 전까지 스무고개는 글자 수·초성 힌트로 진행됩니다.');
+    console.log(`     사용량 제한: 하루 ${hintGenerator.usage.cap}회 · 한 사람 ${HINT_PER_IP}회/10분`);
+    console.log('');
     console.log('');
 });
 

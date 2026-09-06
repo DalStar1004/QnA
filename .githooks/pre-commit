@@ -1,0 +1,36 @@
+#!/bin/sh
+# API 키가 실수로 커밋되는 것을 막는다.
+#
+# 이 저장소는 공개(public)다. Groq API 키가 한 번이라도 올라가면 기록에 영원히 남고,
+# 지워도 이미 받아 간 사람은 그대로 쓸 수 있다. 그래서 올라가기 전에 여기서 멈춘다.
+#
+# 켜는 법 (한 번만 하면 된다):
+#     git config core.hooksPath .githooks
+
+fail=0
+
+# 1) 키 파일 자체가 담겼는지
+staged_keys=$(git diff --cached --name-only | grep -E '(^|/)groq-key\.txt$')
+if [ -n "$staged_keys" ]; then
+    echo "커밋을 멈춥니다 — API 키 파일이 담겨 있습니다:"
+    echo "$staged_keys" | sed 's/^/    /'
+    echo "    이 파일은 .gitignore 에 있어야 합니다. 'git rm --cached <파일>' 로 빼주세요."
+    fail=1
+fi
+
+# 2) 키 문자열이 다른 파일에 섞였는지 (gsk_ 뒤에 20자 이상이면 진짜 키로 본다)
+#    안내 문구의 'gsk_...' 나 'gsk_ 로 시작' 같은 예시는 걸리지 않는다.
+if git diff --cached -U0 | grep -qE '^\+.*gsk_[A-Za-z0-9]{20,}'; then
+    echo "커밋을 멈춥니다 — 바뀐 내용에 Groq API 키로 보이는 문자열이 있습니다."
+    echo "    키는 파일이나 환경변수에만 두고, 소스에는 넣지 마세요."
+    fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo ""
+    echo "정말 올려야 한다면 'git commit --no-verify' 로 넘길 수 있지만,"
+    echo "공개 저장소에서는 그 전에 키를 폐기하고 새로 발급하는 편이 안전합니다."
+    exit 1
+fi
+
+exit 0

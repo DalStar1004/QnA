@@ -139,9 +139,16 @@ class QuizService {
         if (!this.hintGenerator || !this.hintGenerator.ensureReady) {
             return { ok: false, reason: 'AI 힌트를 만들 수 없는 설정이에요' };
         }
-        // 방장이 [연결 끊기] 로 꺼 두었다면 상태만 알려 주고 다시 잇지 않는다.
-        if (this.hintGenerator.manuallyDisconnected) {
-            return { ok: false, connected: false, offByHost: true, reason: '방장이 AI 연결을 꺼 두었어요' };
+        /* 아직 연결하지 않았으면 상태만 알려 준다.
+           여기서 ensureReady 를 부르면 키도 없이 연결을 시도하게 된다. */
+        if (this.hintGenerator.locked) {
+            return {
+                ok: false,
+                connected: false,
+                locked: true,
+                hasKey: !!this.hintGenerator.hasApiKey,
+                reason: '아직 AI에 연결하지 않았어요'
+            };
         }
         // 상태를 묻는 김에 **연결까지 끝내 둔다.** 방장이 대기실에서 스무고개를 고른 이 순간부터
         // 모델을 올려 두면, 게임을 시작했을 때 첫 문제를 기다리지 않는다
@@ -157,12 +164,26 @@ class QuizService {
     }
 
     /**
-     * 대기실의 [연결하기] — 꺼 두었던 표시를 지우고 다시 잇는다.
-     * 한 번 이어 두면 [연결 끊기] 를 누를 때까지 유지된다.
+     * AI 연결을 연다. 한 번 열면 [연결 끊기] 를 누를 때까지 유지된다.
+     * 키는 화면에서 받아 여기로 넘어온다 — 서버는 키를 따로 갖고 있지 않다.
+     * 받은 키는 **메모리에만** 남는다.
+     * @param {{apiKey?: string}} options
      */
-    async connectAi() {
+    async connectAi(options) {
         if (!this.hintGenerator || !this.hintGenerator.connect) {
             return { ok: false, reason: 'AI 힌트를 만들 수 없는 설정이에요' };
+        }
+        const apiKey = options && options.apiKey;
+        if (apiKey && this.hintGenerator.setApiKey) {
+            this.hintGenerator.setApiKey(apiKey);
+        }
+        if (!this.hintGenerator.hasApiKey) {
+            return {
+                ok: false,
+                needsKey: true,
+                connected: false,
+                reason: 'Groq API 키를 넣어주세요'
+            };
         }
         const status = await this.hintGenerator.connect();
         return {

@@ -1742,12 +1742,18 @@
                         <!-- 힌트를 만드는 AI는 서버가 Groq API 로 부른다. API 키도 서버에만 있다.
                              한 번 이으면 [연결 끊기] 를 누를 때까지 유지된다. -->
                         <div class="ai-conn" id="aiConnBadge"><span class="dot"></span><span id="aiConnText">확인 중…</span></div>
+                        <div class="field-row ai-actions-key">
+                            <label for="aiKeyInput">🔑 Groq API 키</label>
+                            <input type="password" id="aiKeyInput" placeholder="gsk_…"
+                                   autocomplete="off" spellcheck="false">
+                        </div>
                         <div class="ai-actions">
                             <button type="button" class="jelly-btn btn-file-ghost" id="aiConnectBtn">연결하기</button>
                             <button type="button" class="jelly-btn btn-file-ghost" id="aiDisconnectBtn">연결 끊기</button>
                         </div>
                         <div class="panel-sub" style="margin-top:8px;">
-                            🔑 API 키는 <b>서버</b>에 둡니다 — QnA 폴더의 <code>groq-key.txt</code> 또는 <code>GROQ_API_KEY</code> 환경변수.
+                            🔑 키는 넣을 때만 서버로 가고, 서버는 메모리에만 들고 있어요
+                            (파일로 저장하지 않습니다). 참가자 화면으로는 힌트 문장만 가요.
                             연결하지 못해도 글자 수·초성 힌트로 게임은 진행돼요.
                         </div>
                     </div>
@@ -2290,6 +2296,8 @@
             function renderAiButtons() {
                 const row = document.querySelector('.ai-actions');
                 if (row) row.style.display = ClientState.isHost ? 'flex' : 'none';
+                const keyRow = document.querySelector('.ai-actions-key');
+                if (keyRow) keyRow.style.display = ClientState.isHost ? '' : 'none';
             }
 
             function updateTimer(timeLeft) {
@@ -2559,9 +2567,11 @@
                     UIManager.setAiConn('on', `연결됨 · ${status.model}`);
                     return;
                 }
-                if (status && status.offByHost) {
-                    UIManager.setAiStatus('🔌 AI 연결을 꺼 두었어요. 글자 수·초성 힌트로 진행됩니다.', 'warn');
-                    UIManager.setAiConn('off', '연결 끊김');
+                if (status && status.locked) {
+                    UIManager.setAiStatus(
+                        '🔑 아직 AI에 연결하지 않았어요 — Groq API 키를 넣고 [연결하기] 를 눌러주세요. '
+                        + '연결 전까지는 글자 수·초성 힌트로 진행됩니다.', 'warn');
+                    UIManager.setAiConn('off', '연결 안 됨');
                     return;
                 }
                 UIManager.setAiStatus(
@@ -2570,21 +2580,33 @@
                 UIManager.setAiConn('off', '연결 안 됨');
             },
 
-            /** 대기실의 [연결하기] — 방장만 누를 수 있다. */
+            /** 대기실의 [연결하기] — 방장이 넣은 Groq API 키로 연결한다. */
             async connectAi() {
+                const input = document.getElementById('aiKeyInput');
+                const apiKey = (input && input.value || '').trim();
+                if (!apiKey) {
+                    UIManager.setAiStatus('🔑 Groq API 키를 넣고 [연결하기] 를 눌러주세요.', 'warn');
+                    if (input) input.focus();
+                    return;
+                }
                 UIManager.setAiStatus('🔌 Groq(qwen/qwen3.8-27b)에 연결하는 중…', '');
                 UIManager.setAiConn('busy', '연결하는 중…');
-                this.applyAiStatus(await NetworkManager.emit('ai:connect', {}));
+
+                const result = await NetworkManager.emit('ai:connect', { apiKey });
+                // 연결됐으면 화면에 키를 남겨 두지 않는다. 서버가 들고 있으므로 다시 넣을 일이 없다.
+                if (result && result.ok && input) input.value = '';
+                this.applyAiStatus(result);
             },
 
-            /** 대기실의 [연결 끊기] — 다음 판부터는 글자 수·초성 힌트만 나온다. */
+            /** 대기실의 [연결 끊기] — 서버가 들고 있던 키도 함께 지운다. */
             async disconnectAi() {
                 const result = await NetworkManager.emit('ai:disconnect', {});
                 if (result && result.ok) {
-                    UIManager.setAiStatus('🔌 AI 연결을 끊었어요. 다음 판부터는 글자 수·초성 힌트로 진행됩니다.', 'warn');
+                    UIManager.setAiStatus(
+                        '🔌 AI 연결을 끊었어요 (넣어 둔 키도 지웠어요). 다음 판부터는 글자 수·초성 힌트로 진행됩니다.', 'warn');
                     UIManager.setAiConn('off', '연결 끊김');
                 } else {
-                    UIManager.setAiStatus('⚠ 연결을 끊지 못했어요.', 'bad');
+                    UIManager.setAiStatus(`⚠ ${(result && result.reason) || '연결을 끊지 못했어요'}`, 'bad');
                 }
             },
 
@@ -2968,6 +2990,9 @@
         // AI 연결하기 / 연결 끊기 (방장에게만 보인다)
         document.getElementById('aiConnectBtn').addEventListener('click', () => LobbyController.connectAi());
         document.getElementById('aiDisconnectBtn').addEventListener('click', () => LobbyController.disconnectAi());
+        document.getElementById('aiKeyInput').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') LobbyController.connectAi();
+        });
 
         document.getElementById('restartBtn').addEventListener('click', async () => {
             const result = await NetworkManager.emit('game:restart', {});

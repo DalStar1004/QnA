@@ -3211,6 +3211,8 @@
                 <div class="settings-row settings-row-col">
                     <label>🤝 AI 연동 — Groq · qwen/qwen3.8-27b</label>
                     <div class="llm-fields">
+                        <input type="password" id="groqKeyInput" placeholder="Groq API 키 (gsk_…)"
+                               aria-label="Groq API 키" autocomplete="off" spellcheck="false">
                         <button type="button" class="jelly-btn btn-file-ghost" id="llmConnectBtn"
                                 onclick="connectLlm()">연결하기</button>
                         <button type="button" class="jelly-btn btn-file-ghost" id="llmCloseBtn"
@@ -3219,7 +3221,7 @@
                     <!-- 어느 서버의 키를 빌려 쓰는지 보여 준다. 사람이 고칠 것은 없다. -->
                     <div class="settings-note" id="llmServerInfo">서버 주소를 확인하는 중…</div>
                     <div class="llm-conn off" id="llmConnBadge"><span class="dot"></span><span id="llmConnText">연결 안 됨</span></div>
-                    <div class="llm-status" id="llmSettingsStatus">[연결하기]를 눌러 Groq(qwen/qwen3.8-27b)에 연결하세요.</div>
+                    <div class="llm-status" id="llmSettingsStatus">Groq API 키를 넣고 [연결하기]를 눌러주세요.</div>
                     <!-- 준비 방법: 예전에는 [스무고개 시작] 을 누르면 뜨던 모달 안에 있었다.
                          그 모달이 카테고리 고르기 앞을 가로막기만 해서 없애고, 안내는 이 자리로 옮겼다. -->
                     <div class="file-actions">
@@ -3232,10 +3234,9 @@
                             <b>Groq API 준비 방법</b>
                             <pre>1) console.groq.com 에 가입 (무료)
 2) API Keys 에서 키를 하나 만든다 (gsk_ 로 시작)
-3) QnA 폴더의 groq-key.txt 에 그 키를 한 줄로 적는다
-4) [서버 켜기.bat] 으로 서버를 켜고, 그 주소로 게임을 연다
+3) [서버 켜기.bat] 으로 서버를 켜고, 그 주소로 게임을 연다
    (파일을 두 번 눌러 열면 서버에 닿지 못해 AI를 쓸 수 없어요)
-5) 이 화면에서 [연결하기]</pre>
+4) 위 칸에 키를 붙여넣고 [연결하기]</pre>
                         </div>
                         <div class="guide-item">
                             <b>쓰는 모델</b> — 서버에서 정합니다
@@ -3247,8 +3248,12 @@
                     </div>
                     <div class="settings-note">
                         <div class="guide-rule">
-                            🔑 API 키는 <b>서버에</b> 둡니다 — QnA 폴더의 <code>groq-key.txt</code> 한 줄이면 돼요.
-                            멀티플레이와 같은 키를 쓰고, 키가 이 화면으로 내려오지 않습니다.
+                            🔑 키는 <b>여기 넣을 때만</b> 서버로 갑니다. 서버는 그 키를 메모리에만 들고 있고
+                            파일로 저장하지 않아요. [연결 끊기] 를 누르거나 서버가 다시 켜지면 사라집니다.
+                        </div>
+                        <div class="guide-rule">
+                            🤝 한 번 연결하면 <b>멀티플레이도 같은 연결</b>을 씁니다.
+                            다른 사람 화면으로 키가 내려가지는 않아요 — 힌트 문장만 갑니다.
                         </div>
                         <div class="guide-rule">
                             🔌 [연결하기] 를 누르면 <b>[연결 끊기] 를 누를 때까지</b> 연결을 유지합니다.
@@ -5125,6 +5130,8 @@
                     // 모드 2 설정(블록 개수 · 횟수 · Groq API 키 · 모델)도 저장값으로 채워 둔다.
                     dom('quizBlockCount').value = StorageManager.getQuizBlocks();
                     dom('quizRoundsInput').value = StorageManager.getQuizRounds();
+                    // 키 칸은 늘 비워 둔다. 서버가 들고 있으므로 화면에 남길 이유가 없다.
+                    dom('groqKeyInput').value = '';
                     updateLlmServerInfo();
                     updateLlmConnBadge();
                     writeLlmStatus(dom('llmSettingsStatus'), describeLlmConnection(), '');
@@ -5501,7 +5508,9 @@
                     throw err;
                 }
                 const res = await fetchWithTimeout(base + path, options, timeoutMs);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
+                /* 비밀번호가 틀리면 403 이 오는데, 그 몸통에 이유가 들어 있다.
+                   상태 코드만 보고 예외를 던지면 "HTTP 403" 이라고만 알려 주게 된다. */
+                if (!res.ok && res.status !== 403) throw new Error('HTTP ' + res.status);
                 return res.json();
             }
 
@@ -5552,16 +5561,16 @@
              * 연결을 연다. 서버 쪽 연결까지 열어 두고, 성공하면 [연결 끊기] 전까지 유지한다.
              * 확인에 실패하면 예외를 올린다 (부르는 쪽이 사람 말로 풀어 알려 준다).
              */
-            async function connect() {
+            async function connect(apiKey) {
                 const status = await call('/api/ai/connect', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: '{}'
+                    body: JSON.stringify({ apiKey: apiKey || '' })
                 }, PING_TIMEOUT);
                 if (status.model) model = status.model;
                 if (!status.ok) {
                     const err = new Error(status.reason || 'AI에 연결하지 못했어요');
-                    err.noKey = !status.hasKey;
+                    err.needsKey = !!status.needsKey;
                     throw err;
                 }
                 connected = true;
@@ -5571,6 +5580,22 @@
                 startKeepAlive();
                 if (typeof onStatusChange === 'function') onStatusChange();
                 return status;
+            }
+
+            /**
+             * 서버가 이미 열어 둔 연결을 그대로 이어받는다 (비밀번호를 다시 묻지 않는다).
+             * 연결은 서버가 들고 있으므로, 관리자가 한 번 열어 두면 다른 사람이 화면을 새로 열어도
+             * AI 힌트를 받을 수 있다. 잠겨 있으면 아무 일도 하지 않는다.
+             */
+            async function adopt() {
+                const status = await ping();
+                if (!status.connected) return false;
+                connected = true;
+                lastCheckedAt = Date.now();
+                lastError = null;
+                startKeepAlive();
+                if (typeof onStatusChange === 'function') onStatusChange();
+                return true;
             }
 
             /**
@@ -5629,6 +5654,7 @@
 
             return {
                 ping,
+                adopt,
                 connect,
                 disconnect,
                 createQuiz,
@@ -6530,9 +6556,7 @@
         function describeLlmError(error) {
             if (error && error.name === 'AbortError') return '응답이 너무 늦어 중단했어요';
             if (error && error.noServer) return '서버 주소를 찾지 못했어요';
-            if (error && error.noKey) {
-                return '서버에 Groq API 키가 없어요 (QnA 폴더의 groq-key.txt 에 키를 한 줄 적어주세요)';
-            }
+            if (error && error.needsKey) return 'Groq API 키를 넣어주세요';
             const message = String((error && error.message) || error || '');
             if (message.indexOf('Failed to fetch') !== -1 || message.indexOf('NetworkError') !== -1) {
                 return '게임 서버에 닿지 못했어요 ([서버 켜기.bat] 으로 서버를 켜고 그 주소로 열어주세요)';
@@ -6565,7 +6589,7 @@
                     : `✅ ${AiClient.model || 'AI'} 에 연결돼 있어요. [연결 끊기] 를 누를 때까지 유지됩니다.`;
             }
             return AiClient.serverBase
-                ? '[연결하기] 를 누르면 서버의 AI(Groq · qwen/qwen3.8-27b)에 연결합니다.'
+                ? '🔑 Groq API 키를 넣고 [연결하기] 를 누르면 AI(Groq · qwen/qwen3.8-27b)에 연결합니다.'
                 : '게임 서버를 통해 열어야 AI를 쓸 수 있어요. 지금은 내장 사전으로 문제를 냅니다.';
         }
 
@@ -6575,7 +6599,7 @@
             if (!el) return;
             const base = AiClient.serverBase;
             el.textContent = base
-                ? `🖥 ${base} 의 키(QnA 폴더의 groq-key.txt)를 씁니다`
+                ? `🖥 ${base} 서버를 거쳐 AI를 부릅니다`
                 : '🖥 게임 서버를 찾지 못했어요 — [서버 켜기.bat] 으로 서버를 켜고 그 주소로 게임을 열어주세요';
         }
 
@@ -6616,7 +6640,13 @@
          */
         let llmConnecting = false; // 연결하는 동안 버튼을 두 번 누르는 것을 막는다
 
-        async function ensureLlmReady() {
+        /**
+         * 화면에서 받은 키로 AI 연결을 연다.
+         * 연결에 실패해도 예외를 던지지 않는다. 게임은 내장 사전으로 계속 진행되므로,
+         * 무엇이 안 됐는지 알려 주고 `false` 를 돌려주는 것으로 충분하다.
+         * @returns {Promise<boolean>} AI로 문제를 낼 수 있으면 true
+         */
+        async function ensureLlmReady(apiKey) {
             if (AiClient.connected) {
                 setLlmStatus(describeLlmConnection(), 'ok');
                 updateLlmConnBadge();
@@ -6629,7 +6659,7 @@
             setLlmStatus('🔌 서버의 AI에 연결하는 중…', '');
 
             try {
-                const status = await AiClient.connect();
+                const status = await AiClient.connect(apiKey);
                 lastLlmFailure = null;
                 // 설정한 모델이 계정에 없어 다른 것으로 바뀐 경우, 그 사실을 숨기지 않는다.
                 const swapped = status.switched
@@ -6649,9 +6679,18 @@
             }
         }
 
-        /** ⚙️ 게임 설정의 [연결하기] */
+        /** ⚙️ 게임 설정의 [연결하기] — 옆 칸에 넣은 키로 연결한다. */
         async function connectLlm() {
-            await ensureLlmReady();
+            const input = dom('groqKeyInput');
+            const apiKey = (input && input.value || '').trim();
+            if (!AiClient.connected && !apiKey) {
+                setLlmStatus('🔑 Groq API 키를 넣고 [연결하기] 를 눌러주세요.', 'warn');
+                if (input) input.focus();
+                return;
+            }
+            const ok = await ensureLlmReady(apiKey);
+            // 연결됐으면 화면에 키를 남겨 두지 않는다. 서버가 들고 있으므로 다시 넣을 일이 없다.
+            if (ok && input) input.value = '';
         }
 
         /**
@@ -6679,8 +6718,10 @@
         function restoreLlmConnection() {
             AiClient.onStatusChange = updateLlmConnBadge;
             updateLlmConnBadge();
-            if (!StorageManager.getGroqConnected() || !AiClient.serverBase) return;
-            ensureLlmReady().catch(() => {});
+            if (!AiClient.serverBase) return;
+            /* 연결은 **서버가** 들고 있다. 관리자가 이미 열어 두었다면 이 화면도 그대로 쓸 수 있다.
+               그래서 비밀번호를 다시 묻지 않고, 서버에 지금 상태만 물어본다. */
+            AiClient.adopt().catch(() => {});
         }
 
         /* ----- 1단계: 몇 번 진행할지 정한다 ----- */
@@ -6703,15 +6744,12 @@
             // 시작을 누르면 연결을 자동으로 맞춘다.
             // 연결에 실패해도 게임은 내장 사전으로 진행하므로 멈추지 않고, 무엇이 안 됐는지만 알린다.
             // 예전에는 그 안내를 시작 모달의 상태 줄에 적었는데, 그 모달을 없앴으므로 토스트로 알린다.
-            quizStarting = true;
-            let ready = false;
-            try {
-                ready = await ensureLlmReady();
-            } finally {
-                quizStarting = false;
-            }
-            if (!ready) {
-                UIManager.showToast(`AI 연결 안 됨 — ${llmFailureHint()} 이번에는 내장 사전으로 문제를 냅니다.`, 'warn');
+            /* 예전에는 여기서 연결을 시도했다. 지금은 관리자만 열 수 있으므로,
+               열려 있으면 그대로 쓰고 아니면 안내만 한다. 게임은 내장 사전으로 그대로 진행된다. */
+            if (!AiClient.connected) {
+                UIManager.showToast(
+                    '🔑 AI에 연결되어 있지 않아요 — ⚙️ 게임 설정 › AI 연동에서 Groq API 키를 넣어 연결하세요. '
+                    + '이번에는 내장 사전으로 문제를 냅니다.', 'warn');
             }
 
             // 진행 중이던 판을 정리하고 새 세션을 시작한다.

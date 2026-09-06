@@ -138,7 +138,7 @@ function registerSocketHandlers(io, { roomService, roundService, quizService, ex
             if (!isHost(socket.id)) {
                 return respond(socket, ack, { ok: false, error: { code: 'NOT_HOST', message: '방장만 연결할 수 있어요' } });
             }
-            quizService.connectAi()
+            quizService.connectAi({ apiKey: payload && payload.apiKey })
                 .then((status) => { if (typeof ack === 'function') ack(status); })
                 .catch(() => { if (typeof ack === 'function') ack({ ok: false }); });
             return undefined;
