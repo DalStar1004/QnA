@@ -3465,6 +3465,13 @@
                            연속으로 맞히면 콤보 점수가 붙습니다.</p>
                     </div>
                 </div>
+                <div class="how-to-step">
+                    <span class="how-to-num">4</span>
+                    <div>
+                        <b>가만히 있으면 선택이 풀립니다</b>
+                        <p id="howToDeselectNote">글자 선택 후 2초 동안 추가 선택이 없으면 선택이 자동으로 해제됩니다.</p>
+                    </div>
+                </div>
             </div>
             <div class="modal-actions">
                 <button class="jelly-btn btn-quiz" onclick="closeHowTo()">알겠어요</button>
@@ -3615,16 +3622,6 @@
             return el;
         }
 
-        /**
-         * 랭킹은 모드 1(classic) · 모드 2(quiz) · 모드 3(exam) 세 갈래다.
-         * UIManager(챔피언 배너) 와 ModalManager(랭킹 모달) 가 함께 쓰므로 공통 자리에 둔다.
-         * 예전에는 ModalManager 안에만 있어서, UIManager.updateChampionBanner() 가 부르는 순간
-         * ReferenceError 가 나고 그 뒤 줄(결과 모달 열기)이 통째로 실행되지 않았다.
-         */
-        function normalizeBoard(board) {
-            return (board === 'quiz' || board === 'exam') ? board : 'classic';
-        }
-
         // 같은 애니메이션을 다시 재생하려면 클래스를 뗐다가 리플로우를 강제한 뒤 다시 붙여야 한다.
         function replayAnimation(el, className) {
             el.classList.remove(className);
@@ -3767,6 +3764,9 @@
         ========================================================= */
         const GAME_DURATION = 60; // 모드 1 한 판 제한 시간(초)
         const SHUFFLE_MAX = 5;    // 한 게임에 쓸 수 있는 [단어변경] 횟수
+        // 글자를 고르고 이 시간(ms) 동안 추가 선택이 없으면 선택만 자동으로 푼다.
+        // 나중에 3000 등으로 바꾸고 싶으면 이 값 하나만 고치면 된다. (게임 방법 안내문도 이 값을 그대로 읽는다)
+        const AUTO_DESELECT_MS = 2000;
 
         // 화면 전체가 어떤 게임 모드인지. 'classic' = 모드 1(제시어 맞추기), 'quiz' = 모드 2(AI 스무고개).
         // GameState.mode 는 '지금 돌고 있는 판'의 종류이고, appMode 는 '사용자가 고른 모드'다.
@@ -3797,6 +3797,8 @@
             shuffleLeft: SHUFFLE_MAX,
             // 빠르게 두 번 눌러 한 번의 의도로 두 번 깎이는 것을 막는 잠금.
             isShuffling: false,
+            // 마지막 글자 선택 후 AUTO_DESELECT_MS 동안 추가 선택이 없으면 선택만 푸는 타이머.
+            deselectTimer: null,
             resetForNewGame() {
                 this.score = 0;
                 this.timeLeft = this.duration;
@@ -3805,6 +3807,25 @@
                 this.comboCount = 0;
                 this.isResolving = false;
                 this.isShuffling = false;
+                this.disarmDeselectTimer();
+            },
+            /**
+             * 글자를 고르거나(선택 추가) 되돌릴(선택 취소) 때마다 다시 부른다.
+             * 정답 자동 제출, 판 교체, 게임 종료 때는 disarmDeselectTimer 로 취소한다 —
+             * 그래야 이전 문제의 타이머가 새 문제의 선택을 지우는 일이 없다.
+             */
+            armDeselectTimer() {
+                this.disarmDeselectTimer();
+                this.deselectTimer = setTimeout(() => {
+                    this.deselectTimer = null;
+                    // 그 사이 정답 제출·판 교체·게임 종료로 선택이 이미 비었으면 할 일이 없다.
+                    if (!this.isGameActive || this.selectedBlocks.length === 0) return;
+                    UIManager.resetSelection();
+                }, AUTO_DESELECT_MS);
+            },
+            disarmDeselectTimer() {
+                clearTimeout(this.deselectTimer);
+                this.deselectTimer = null;
             },
             /**
              * [단어변경] 횟수를 채운다. **게임을 새로 시작할 때만** 부른다.
@@ -3823,6 +3844,7 @@
                 this.comboCount = 0;
                 this.selectedBlocks = [];
                 this.isResolving = false;
+                this.disarmDeselectTimer();
             }
         };
 
@@ -4544,6 +4566,16 @@
         // 블록 -> 캔버스 기준 중심 좌표. 판이 새로 그려질 때만 다시 잰다.
         const blockCenters = new Map();
 
+        /* 랭킹은 모드 1(classic) · 모드 2(quiz) · 모드 3(exam) 세 갈래다.
+           UIManager(챔피언 배너)와 ModalManager(랭킹 모달) 양쪽에서 써서 최상위 스코프에 둔다.
+
+           예전에는 ModalManager 안에만 있었다. 그래서 UIManager.updateChampionBanner() 가
+           부르는 순간 ReferenceError 가 났고, 그 뒤 줄이 통째로 실행되지 않아
+           모드 3의 최종 점수 화면이 열리지 않았다 (작업기록 071 · 073 — 두 사람이 각자 찾아 고쳤다). */
+        function normalizeBoard(board) {
+            return (board === 'quiz' || board === 'exam') ? board : 'classic';
+        }
+
         const UIManager = (function () {
             function showToast(message, type) {
                 const toast = makeEl('div', `toast ${type || 'info'}`, message);
@@ -4808,6 +4840,7 @@
             }
 
             function resetSelection() {
+                GameState.disarmDeselectTimer();
                 GameState.selectedBlocks.forEach(b => {
                     b.classList.remove('selected');
                     b.classList.remove('shake-error');
@@ -4848,6 +4881,7 @@
 
             // 보드를 비우고 선택/선 그리기 상태도 함께 초기화한다.
             function clearBoard() {
+                GameState.disarmDeselectTimer();
                 board.innerHTML = "";
                 blockCenters.clear();
                 GameState.selectedBlocks = [];
@@ -5024,6 +5058,8 @@
 
             // 랭킹 모달에서 지금 보고 있는 탭. 모달을 열 때 현재 모드에 맞춰 정해진다.
             let rankingBoard = 'classic';
+
+            // normalizeBoard 는 최상위 스코프로 옮겼다 (UIManager.updateChampionBanner 도 같이 쓴다).
 
             function renderRanking() {
                 document.querySelectorAll('#rankTabs .rank-tab').forEach(btn => {
@@ -7950,12 +7986,18 @@
                 GameState.selectedBlocks.splice(already)
                     .forEach(b => b.classList.remove('selected'));
                 UIManager.drawLines();
+                // 되돌리고도 남은 선택이 있으면 그 시점부터 다시 2초를 센다.
+                // 하나도 안 남았으면 셀 것이 없으니 꺼 둔다.
+                if (GameState.selectedBlocks.length > 0) GameState.armDeselectTimer();
+                else GameState.disarmDeselectTimer();
                 return;
             }
 
             GameState.selectedBlocks.push(block);
             block.classList.add('selected');
             UIManager.drawLines();
+            // 클릭·드래그·터치 어느 경로로 골랐든 pickBlock을 거치므로 여기 한 곳이면 된다.
+            GameState.armDeselectTimer();
 
             // 정답이 완성되는 순간 오른쪽 클릭을 기다리지 않고 곧바로 판정한다.
             // 되돌리기(위 splice)로 우연히 정답 모양이 되는 경우는 일부러 뺐다.
@@ -8003,6 +8045,8 @@
         function submitSelectedWord() {
             // 자동 제출과 오른쪽 클릭이 같은 선택을 두 번 내지 않게 막는 마지막 빗장.
             if (GameState.isResolving) return;
+            // 정답이든 오답이든 지금부터는 기존 제출 처리가 선택을 책임진다.
+            GameState.disarmDeselectTimer();
 
             const formedWord = GameState.selectedBlocks.map(b => b.textContent).join('');
             const isQuiz = GameState.mode === 'quiz';
@@ -8123,6 +8167,8 @@
         GameState.highScore = StorageManager.getHighScore();
         UIManager.updateHighScoreDisplay();
         UIManager.updateCategoryDisplay();
+        dom('howToDeselectNote').textContent =
+            `글자 선택 후 ${AUTO_DESELECT_MS / 1000}초 동안 추가 선택이 없으면 선택이 자동으로 해제됩니다.`;
 
         // 저장된 닉네임 / 배경 복원
         dom('nickname').value = StorageManager.getNickname();
