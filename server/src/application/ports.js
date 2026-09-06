@@ -22,7 +22,7 @@
  */
 
 /**
- * 스무고개 힌트를 만들어 주는 Port. 지금 구현체는 Ollama(로컬 LLM)다.
+ * 스무고개 힌트를 만들어 주는 Port. 지금 구현체는 Groq API(GroqHintGenerator)다.
  * 이 Port 가 실패해도 게임은 확정 힌트만으로 계속돼야 한다 (QuizService 가 그렇게 처리한다).
  *
  * @typedef {Object} HintGeneratorPort

@@ -13,5 +13,10 @@ desktop.ini
 *.swp
 *~
 
+# Groq API 키 — 사람마다 다르고 비밀이므로 저장소에 담지 않는다.
+# 이 저장소는 공개(public)라서, 두 자리 모두 반드시 빼 둔다.
+groq-key.txt
+server/groq-key.txt
+
 # 사내 공유 문서 — 공개 저장소에 올리지 않는다 (파일은 폴더에 그대로 둔다)
 docs/03-배포/render_deployment_guide.html

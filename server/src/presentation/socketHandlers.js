@@ -15,6 +15,12 @@ const { GameMode } = require('../domain/Room');
 function registerSocketHandlers(io, { roomService, roundService, quizService, examService }) {
     // 방이 어떤 모드인지에 따라 진행을 맡을 유스케이스가 갈린다.
     // 소켓 이벤트 이름은 하나로 두고, 여기서 방의 모드를 보고 갈라 준다.
+    // AI 연결을 켜고 끄는 것은 방장만 할 수 있다.
+    const isHost = (playerId) => {
+        const room = roomService.findRoomByPlayer(playerId);
+        return !!room && room.isHost(playerId);
+    };
+
     const serviceFor = (playerId) => {
         const room = roomService.findRoomByPlayer(playerId);
         if (!room) return roundService;
@@ -116,12 +122,34 @@ function registerSocketHandlers(io, { roomService, roundService, quizService, ex
             return respond(socket, ack, result);
         });
 
-        // ---- AI(로컬 LLM) 연결 상태 확인 — 대기실에서 스무고개를 고른 방장에게 보여 준다 ----
+        // ---- AI(Groq) 연결 상태 확인 — 대기실에서 스무고개를 고른 방장에게 보여 준다 ----
         handle(socket, 'ai:status', (payload, ack) => {
             if (typeof ack !== 'function') return undefined;
             quizService.checkAi()
                 .then((status) => ack(status))
                 .catch(() => ack({ ok: false }));
+            return undefined;
+        });
+
+        /* ---- AI 연결하기 / 연결 끊기 (방장 전용) ----
+           AI 연결은 방 하나가 아니라 **서버 전체**가 함께 쓰는 자원이라,
+           아무나 끊을 수 있으면 다른 방의 게임까지 확정 힌트로 떨어진다. 그래서 방장만 누를 수 있다. */
+        handle(socket, 'ai:connect', (payload, ack) => {
+            if (!isHost(socket.id)) {
+                return respond(socket, ack, { ok: false, error: { code: 'NOT_HOST', message: '방장만 연결할 수 있어요' } });
+            }
+            quizService.connectAi()
+                .then((status) => { if (typeof ack === 'function') ack(status); })
+                .catch(() => { if (typeof ack === 'function') ack({ ok: false }); });
+            return undefined;
+        });
+
+        handle(socket, 'ai:disconnect', (payload, ack) => {
+            if (!isHost(socket.id)) {
+                return respond(socket, ack, { ok: false, error: { code: 'NOT_HOST', message: '방장만 끊을 수 있어요' } });
+            }
+            const result = quizService.disconnectAi();
+            if (typeof ack === 'function') ack(result);
             return undefined;
         });
 

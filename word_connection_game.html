@@ -2536,8 +2536,16 @@
         }
         .hint-foot { margin-top: 10px; font-size: 12px; color: #9a8c86; text-align: center; line-height: 1.5; }
 
-        /* ---------- 모드 2 시작 모달 (카테고리 + qwen2.5:7b 연결) ---------- */
+        /* ---------- 모드 2 시작 모달 (카테고리 + Groq · qwen/qwen3.8-27b 연동) ---------- */
         .btn-quiz { --btn: var(--purple); --btn-dark: var(--purple-dark); }
+
+        /* 설정 묶음 제목 옆에 붙는 작은 글씨 (지금 쓰는 모델 이름 같은 것) */
+        .section-note {
+            margin-left: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #8b7fa8;
+        }
 
         .llm-fields { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         .llm-fields input {
@@ -2564,6 +2572,32 @@
         .llm-status.ok { background: #e9fbf3; color: #217a5b; }
         .llm-status.warn { background: #fff6e0; color: #8a6b1f; }
         .llm-status.bad { background: #ffeceb; color: #a8433f; }
+
+        /* 지금 AI에 연결돼 있는지를 한눈에 알리는 표시.
+           상태 줄은 마지막에 있었던 일을 적고, 이 표시는 '지금 상태'만 말한다. */
+        .llm-conn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+            background: #f1eef7;
+            color: #6b5c8a;
+        }
+        .llm-conn .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #b6acc9;
+        }
+        .llm-conn.on { background: #e9fbf3; color: #217a5b; }
+        .llm-conn.on .dot { background: #29a37a; }
+        .llm-conn.off { background: #f4f1f8; color: #7a7188; }
+        .llm-conn.busy { background: #fff6e0; color: #8a6b1f; }
+        .llm-conn.busy .dot { background: #d8a12a; }
 
         .spinner {
             width: 46px;
@@ -2927,7 +2961,7 @@
             </button>
         </div>
 
-        <!-- 게임 모드 전환: 1) 제시어 맞추기  2) qwen2.5:7b 기반 AI 스무고개 -->
+        <!-- 게임 모드 전환: 1) 제시어 맞추기  2) Groq · qwen/qwen3.8-27b 기반 AI 스무고개 -->
         <div class="mode-switch" id="modeSwitch">
             <button type="button" class="mode-btn active" data-mode="classic" onclick="selectMode('classic')">
                 🍬 모드 1 · 제시어 맞추기
@@ -3016,7 +3050,7 @@
         <div class="rule-banner" id="examRuleBanner" style="display:none;">
             <span class="rule-chip" id="examRoundChip">📜 산업재산권 문제</span>
             <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
-            <span class="rule-text">문제 파일에 있는 문제를 처음부터 끝까지 냅니다. 한 문제에 <b>10초</b>, 시간이 지나면 정답을 알려줘요!</span>
+            <span class="rule-text">문제 파일에 있는 문제를 처음부터 끝까지 냅니다. 한 문제에 <b id="examRuleTime">10초</b>, 시간이 지나면 정답을 알려줘요!</span>
         </div>
 
         <!-- 단어 블록 보드 -->
@@ -3156,7 +3190,7 @@
                 <!-- 모드 2(AI 스무고개) 설정.
                      시작 화면을 [스무고개 시작] 하나로 두려고 여기로 옮겼다. -->
                 <div class="settings-group" data-modes="quiz">
-                <div class="settings-section">🤖 모드 2 · AI 스무고개</div>
+                <div class="settings-section">🤖 모드 2 · AI 스무고개 <span class="section-note">Groq · qwen/qwen3.8-27b</span></div>
                 <div class="settings-row">
                     <label for="quizBlockCount">🧩 블록 개수</label>
                     <input type="number" id="quizBlockCount" value="16" min="4" max="36">
@@ -3171,22 +3205,58 @@
                         (힌트 하나당 10초 + 마지막 힌트 뒤 여유 20초).
                     </div>
                 </div>
+                <!-- 모드 2의 AI 연동. Groq API 로 힌트를 만든다.
+                     [연결하기] 를 누르면 [연결 끊기] 를 누를 때까지 연결을 유지하고,
+                     지금 연결돼 있는지는 아래 표시로 언제든 확인할 수 있다. -->
                 <div class="settings-row settings-row-col">
-                    <label>⚙️ qwen2.5:7b 연결 (Ollama)</label>
+                    <label>🤝 AI 연동 — Groq · qwen/qwen3.8-27b</label>
                     <div class="llm-fields">
-                        <input type="text" id="llmEndpointInput" placeholder="http://localhost:11434" aria-label="Ollama 주소">
-                        <input type="text" id="llmModelInput" placeholder="qwen2.5:7b" aria-label="모델 이름">
-                        <button type="button" class="jelly-btn btn-file-ghost" onclick="testLlmConnection()">연결 확인</button>
-                        <button type="button" class="jelly-btn btn-file-ghost" id="llmCloseBtn" onclick="closeLlmConnection()">연결 닫기</button>
+                        <button type="button" class="jelly-btn btn-file-ghost" id="llmConnectBtn"
+                                onclick="connectLlm()">연결하기</button>
+                        <button type="button" class="jelly-btn btn-file-ghost" id="llmCloseBtn"
+                                onclick="disconnectLlm()">연결 끊기</button>
                     </div>
-                    <div class="llm-status" id="llmSettingsStatus">연결 상태를 보려면 [연결 확인]을 눌러주세요.</div>
+                    <!-- 어느 서버의 키를 빌려 쓰는지 보여 준다. 사람이 고칠 것은 없다. -->
+                    <div class="settings-note" id="llmServerInfo">서버 주소를 확인하는 중…</div>
+                    <div class="llm-conn off" id="llmConnBadge"><span class="dot"></span><span id="llmConnText">연결 안 됨</span></div>
+                    <div class="llm-status" id="llmSettingsStatus">[연결하기]를 눌러 Groq(qwen/qwen3.8-27b)에 연결하세요.</div>
+                    <!-- 준비 방법: 예전에는 [스무고개 시작] 을 누르면 뜨던 모달 안에 있었다.
+                         그 모달이 카테고리 고르기 앞을 가로막기만 해서 없애고, 안내는 이 자리로 옮겼다. -->
+                    <div class="file-actions">
+                        <button type="button" class="jelly-btn btn-file-ghost" id="llmGuideBtn"
+                                onclick="toggleLlmGuide()" aria-expanded="false"
+                                aria-controls="llmGuide">준비 방법 ▾</button>
+                    </div>
+                    <div class="settings-note" id="llmGuide" style="display:none;">
+                        <div class="guide-item">
+                            <b>Groq API 준비 방법</b>
+                            <pre>1) console.groq.com 에 가입 (무료)
+2) API Keys 에서 키를 하나 만든다 (gsk_ 로 시작)
+3) QnA 폴더의 groq-key.txt 에 그 키를 한 줄로 적는다
+4) [서버 켜기.bat] 으로 서버를 켜고, 그 주소로 게임을 연다
+   (파일을 두 번 눌러 열면 서버에 닿지 못해 AI를 쓸 수 없어요)
+5) 이 화면에서 [연결하기]</pre>
+                        </div>
+                        <div class="guide-item">
+                            <b>쓰는 모델</b> — 서버에서 정합니다
+                            <pre>Groq · qwen/qwen3.8-27b (무료 티어)
+계정에 그 모델이 없으면 쓸 수 있는 것으로
+자동으로 바꿔 줍니다 (바뀌면 알려 드려요)
+직접 고르려면 GROQ_MODEL 환경변수</pre>
+                        </div>
+                    </div>
                     <div class="settings-note">
                         <div class="guide-rule">
-                            ✅ 여기를 건드리지 않아도 [스무고개 시작]이 알아서 연결합니다.
-                            준비 방법은 스무고개 시작 화면의 [준비 방법] 버튼에서 볼 수 있어요.
+                            🔑 API 키는 <b>서버에</b> 둡니다 — QnA 폴더의 <code>groq-key.txt</code> 한 줄이면 돼요.
+                            멀티플레이와 같은 키를 쓰고, 키가 이 화면으로 내려오지 않습니다.
                         </div>
                         <div class="guide-rule">
-                            🔌 [연결 닫기]는 예열해 둔 모델을 램에서 내립니다(7B 기준 약 4.4GB).
+                            🔌 [연결하기] 를 누르면 <b>[연결 끊기] 를 누를 때까지</b> 연결을 유지합니다.
+                            1분마다 살아 있는지 확인하고, 잠깐 실패해도 스스로 끊지 않아요.
+                        </div>
+                        <div class="guide-rule">
+                            ✅ 연결하지 못해도 게임은 진행됩니다. 이때는 내장 사전으로 힌트를 만들어요.
+                            게임 파일을 두 번 눌러 연 경우에는 서버에 닿을 수 없어 늘 내장 사전을 씁니다.
                         </div>
                     </div>
                 </div>
@@ -3337,52 +3407,6 @@
             <div class="answer-list" id="answerList"></div>
             <div class="modal-actions">
                 <button class="jelly-btn btn-close-settings" onclick="closeAnswerList()">닫기</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 모드 2 시작 모달: 여기서 누를 것은 [스무고개 시작] 하나다.
-         횟수와 Ollama 주소·모델·연결 확인/닫기는 ⚙️ 게임 설정으로 옮겼고,
-         준비 방법은 [준비 방법] 버튼으로 펼쳐 본다. -->
-    <div class="modal-overlay" id="quizSetupOverlay">
-        <div class="modal-card wide">
-            <h2>🤖 AI 스무고개</h2>
-            <div class="modal-sub">[스무고개 시작]을 누르면 AI 연결까지 알아서 맞춰요.<br>다음 화면에서 카테고리를 한 번 고르면 그 카테고리로 끝까지 진행하고, 10초마다 힌트가 하나씩 열려요!</div>
-            <!-- 몇 번 진행되는지는 여기서 읽기만 한다. 바꾸는 곳은 ⚙️ 게임 설정이다. -->
-            <div class="gameover-highscore" id="quizSetupRounds">🔁 스무고개 3회</div>
-            <div class="settings-body">
-                <div class="settings-row settings-row-col">
-                    <div class="file-actions">
-                        <button type="button" class="jelly-btn btn-file-ghost" id="llmGuideBtn"
-                                onclick="toggleLlmGuide()" aria-expanded="false"
-                                aria-controls="llmGuide">준비 방법 ▾</button>
-                    </div>
-                    <!-- qwen2.5:7b 준비 방법: 평소에는 접어 두고 버튼으로 펼친다 -->
-                    <div class="settings-note" id="llmGuide" style="display:none;">
-                        <div class="guide-item">
-                            <b>qwen2.5:7b 준비 방법</b>
-                            <pre>1) https://ollama.com 에서 Ollama 설치
-2) ollama pull qwen2.5:7b
-3) 브라우저에서 접속할 수 있게 CORS 허용 후 실행
-   Windows PowerShell:
-     $env:OLLAMA_ORIGINS="*"; ollama serve</pre>
-                        </div>
-                        <div class="guide-item">
-                            <b>주소·모델을 바꾸려면</b> — ⚙️ 게임 설정 › qwen2.5:7b 연결
-                            <pre>기본값: http://localhost:11434 · qwen2.5:7b</pre>
-                        </div>
-                        <div class="guide-rule">
-                            ✅ AI에 연결하지 못해도 게임은 진행됩니다. 이때는 내장 사전으로 문제를 만들어 드려요.
-                        </div>
-                    </div>
-                    <div class="llm-status" id="llmStatus">[스무고개 시작]을 누르면 AI 연결을 확인합니다.</div>
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button class="jelly-btn btn-quiz" id="quizStartBtn" onclick="startQuizSession()">
-                    <img class="btn-icon" src="assets/icon-start.png" alt="">스무고개 시작
-                </button>
-                <button class="jelly-btn btn-close-gameover" onclick="closeQuizSetup()">취소</button>
             </div>
         </div>
     </div>
@@ -3589,6 +3613,16 @@
             if (className) el.className = className;
             if (text != null) el.textContent = text;
             return el;
+        }
+
+        /**
+         * 랭킹은 모드 1(classic) · 모드 2(quiz) · 모드 3(exam) 세 갈래다.
+         * UIManager(챔피언 배너) 와 ModalManager(랭킹 모달) 가 함께 쓰므로 공통 자리에 둔다.
+         * 예전에는 ModalManager 안에만 있어서, UIManager.updateChampionBanner() 가 부르는 순간
+         * ReferenceError 가 나고 그 뒤 줄(결과 모달 열기)이 통째로 실행되지 않았다.
+         */
+        function normalizeBoard(board) {
+            return (board === 'quiz' || board === 'exam') ? board : 'classic';
         }
 
         // 같은 애니메이션을 다시 재생하려면 클래스를 뗐다가 리플로우를 강제한 뒤 다시 붙여야 한다.
@@ -3922,18 +3956,16 @@
             // 모드 1 설정. 예전에는 저장하지 않아서 화면을 새로 열 때마다 기본값으로 돌아갔다.
             const BLOCK_COUNT_KEY = 'wordConnectionGame.blockCount';
             const CATEGORY_KEY = 'wordConnectionGame.category';
-            const LLM_ENDPOINT_KEY = 'wordConnectionGame.llmEndpoint';
-            const LLM_MODEL_KEY = 'wordConnectionGame.llmModel';
+            /* 모드 2의 AI는 Groq API 를 쓰지만, **브라우저가 직접 부르지 않는다.**
+               API 키는 서버 한 곳(server/groq-key.txt)에만 두고, 힌트 요청은 서버가 대신 보낸다.
+               멀티플레이와 같은 키를 쓰게 되고, 키가 브라우저로 내려오지도 않는다.
+               그래서 여기서 기억할 것은 '연결해 두었는가' 하나뿐이다. */
+            const GROQ_CONNECTED_KEY = 'wordConnectionGame.groqConnected';
             const QUIZ_CATEGORY_KEY = 'wordConnectionGame.quizCategory';
             const QUIZ_ROUNDS_KEY = 'wordConnectionGame.quizRounds';
             // 모드 2의 블록 개수. 예전에는 모드 1의 칸을 같이 썼는데, 두 모드는 판의 성격이 달라
             // (모드 1은 여러 단어를 찾고, 모드 2는 낱말 하나를 맞힌다) 알맞은 값이 서로 다르다.
             const QUIZ_BLOCKS_KEY = 'wordConnectionGame.quizBlocks';
-            const DEFAULT_LLM_ENDPOINT = 'http://localhost:11434';
-            const DEFAULT_LLM_MODEL = 'qwen2.5:7b';
-            // 예전 기본 모델. 아래 migrateLegacyModel() 이 한 번만 새 기본값으로 옮긴다.
-            const LEGACY_LLM_MODEL = 'llama3.2';
-            const LLM_MODEL_MIGRATED_KEY = 'wordConnectionGame.llmModelMigrated';
             // 멀티플레이 서버 주소. 다른 PC가 서버일 수 있어서 사용자가 고칠 수 있게 두고 기억해 둔다.
             const MULTIPLAYER_URL_KEY = 'wordConnectionGame.multiplayerUrl';
             /*
@@ -3967,7 +3999,8 @@
             const memory = {
                 leaderboard: null, quizLeaderboard: null, examLeaderboard: null,
                 nickname: null, background: null, customCategories: null, examExtras: null,
-                llmEndpoint: null, llmModel: null, quizCategory: null, quizRounds: null,
+                groqConnected: null,
+                quizCategory: null, quizRounds: null,
                 multiplayerUrl: null
             };
 
@@ -3977,23 +4010,6 @@
             function writeRaw(key, value) {
                 try { localStorage.setItem(key, value); } catch (e) { /* degrade */ }
             }
-
-            /*
-             * 기본 모델을 llama3.2 -> qwen2.5:7b 로 바꿨다.
-             * [연결 확인] 을 누르면 화면에 채워져 있던 값이 그대로 저장되기 때문에,
-             * 예전 기본값을 고른 적도 없는 사람의 브라우저에 'llama3.2' 가 남아 있다.
-             * 저장값이 기본값을 이기므로 그대로 두면 새 기본 모델이 영영 적용되지 않는다.
-             * 그래서 딱 한 번만 새 기본값으로 옮기고 표시를 남긴다.
-             * 표시가 남은 뒤에 사용자가 직접 llama3.2 를 고르면 그 선택은 그대로 지켜진다.
-             */
-            function migrateLegacyModel() {
-                if (readRaw(LLM_MODEL_MIGRATED_KEY)) return;
-                writeRaw(LLM_MODEL_MIGRATED_KEY, '1');
-                if (readRaw(LLM_MODEL_KEY) === LEGACY_LLM_MODEL) {
-                    writeRaw(LLM_MODEL_KEY, DEFAULT_LLM_MODEL);
-                }
-            }
-            migrateLegacyModel();
 
             /* ---------- 모드별 기록 칸 고르기 ----------
                모드 1(classic) · 모드 2(quiz) · 모드 3(exam)은 점수 폭이 서로 달라서
@@ -4053,24 +4069,15 @@
                     memory.multiplayerUrl = value;
                     writeRaw(MULTIPLAYER_URL_KEY, value);
                 },
-                /* ---------- 모드 2: qwen2.5:7b 연결 설정 ---------- */
-                getLlmEndpoint() {
-                    if (memory.llmEndpoint !== null) return memory.llmEndpoint;
-                    return readRaw(LLM_ENDPOINT_KEY) || DEFAULT_LLM_ENDPOINT;
+                /* ---------- 모드 2: AI 연동 ----------
+                   [연결하기] 로 이어 둔 상태를 기억한다. 화면을 새로 열면 이 값을 보고 다시 잇는다. */
+                getGroqConnected() {
+                    if (memory.groqConnected !== null) return memory.groqConnected;
+                    return readRaw(GROQ_CONNECTED_KEY) === '1';
                 },
-                setLlmEndpoint(url) {
-                    const value = (url || '').trim() || DEFAULT_LLM_ENDPOINT;
-                    memory.llmEndpoint = value;
-                    writeRaw(LLM_ENDPOINT_KEY, value);
-                },
-                getLlmModel() {
-                    if (memory.llmModel !== null) return memory.llmModel;
-                    return readRaw(LLM_MODEL_KEY) || DEFAULT_LLM_MODEL;
-                },
-                setLlmModel(name) {
-                    const value = (name || '').trim() || DEFAULT_LLM_MODEL;
-                    memory.llmModel = value;
-                    writeRaw(LLM_MODEL_KEY, value);
+                setGroqConnected(on) {
+                    memory.groqConnected = !!on;
+                    writeRaw(GROQ_CONNECTED_KEY, on ? '1' : '0');
                 },
                 getQuizCategory() {
                     if (memory.quizCategory !== null) return memory.quizCategory;
@@ -5018,11 +5025,6 @@
             // 랭킹 모달에서 지금 보고 있는 탭. 모달을 열 때 현재 모드에 맞춰 정해진다.
             let rankingBoard = 'classic';
 
-            // 랭킹은 모드 1(classic) · 모드 2(quiz) · 모드 3(exam) 세 갈래다.
-            function normalizeBoard(board) {
-                return (board === 'quiz' || board === 'exam') ? board : 'classic';
-            }
-
             function renderRanking() {
                 document.querySelectorAll('#rankTabs .rank-tab').forEach(btn => {
                     btn.classList.toggle('active', btn.dataset.board === rankingBoard);
@@ -5085,13 +5087,12 @@
                     // 목록에 '기본 문제 몇 개'를 적어 주려면 파일을 읽어야 한다. 실패해도 그냥 넘어간다.
                     ExamBank.load().catch(() => {}).then(renderExamExtras);
                     renderExamExtras();
-                    // 모드 2 설정(블록 개수 · 횟수 · Ollama 주소 · 모델)도 저장값으로 채워 둔다.
+                    // 모드 2 설정(블록 개수 · 횟수 · Groq API 키 · 모델)도 저장값으로 채워 둔다.
                     dom('quizBlockCount').value = StorageManager.getQuizBlocks();
                     dom('quizRoundsInput').value = StorageManager.getQuizRounds();
-                    dom('llmEndpointInput').value = StorageManager.getLlmEndpoint();
-                    dom('llmModelInput').value = StorageManager.getLlmModel();
-                    writeLlmStatus(dom('llmSettingsStatus'),
-                        '연결 상태를 보려면 [연결 확인]을 눌러주세요.', '');
+                    updateLlmServerInfo();
+                    updateLlmConnBadge();
+                    writeLlmStatus(dom('llmSettingsStatus'), describeLlmConnection(), '');
                     // 설명은 항상 접힌 상태로 열어 설정 화면이 길어지지 않게 한다.
                     [['formatGuide', 'formatGuideBtn'], ['examGuide', 'examGuideBtn']].forEach(([guideId, btnId]) => {
                         const guide = dom(guideId);
@@ -5222,7 +5223,7 @@
 
 
         /* =========================================================
-           4.5 모드 2 — AI(qwen2.5:7b) 스무고개
+           4.5 모드 2 — AI(Groq · qwen/qwen3.8-27b) 스무고개
            사용자가 입력한 카테고리에서 LLM이 정답 낱말 하나를 고르고,
            10초마다 힌트를 하나씩 보드 옆 패널에 열어 준다.
            LLM에 연결하지 못하면 내장 사전으로 문제를 만들어 게임은 계속되게 한다.
@@ -5397,46 +5398,54 @@
             };
         })();
 
-        /* ---------- Ollama에서 도는 qwen2.5:7b 모델을 부르는 얇은 클라이언트 ---------- */
-        const LlamaClient = (function () {
-            const REQUEST_TIMEOUT = 60000; // 로컬 CPU 추론이 느릴 수 있어 넉넉히 잡는다
-            const PING_TIMEOUT = 8000;
-            // 모델을 처음 메모리에 올리는 데는 REQUEST_TIMEOUT 을 훌쩍 넘길 수 있다.
-            // (측정: qwen2.5:7b 콜드 로드 45초, 콜드 상태에서 문제 생성까지 115초)
-            const WARMUP_TIMEOUT = 300000;
-            // 모델을 내리는 요청은 다른 요청이 끝날 때까지 Ollama 안에서 기다릴 수 있어 넉넉히 잡는다.
-            const UNLOAD_TIMEOUT = 60000;
-            // 예열해 둔 모델이 곧바로 내려가면 의미가 없으므로 기본 5분보다 길게 잡아 둔다.
-            const KEEP_ALIVE = '30m';
+        /* ---------- 서버를 거쳐 AI 힌트를 받아 오는 얇은 클라이언트 ----------
+           예전에는 이 자리에서 브라우저가 Groq 를 직접 불렀다. 그러려면 API 키가 브라우저에
+           있어야 했는데, 그러면 멀티플레이(서버에 키가 있다)와 키를 두 벌 관리하게 된다.
+           지금은 **키를 서버 한 곳(server/groq-key.txt)에만** 두고, 힌트 요청도 서버가 대신 보낸다.
+           브라우저가 받는 것은 다 만들어진 힌트 문장뿐이다.
 
-            // 사용자 메시지에만 "한글로 쓰라"고 적으면 모델이 힌트를 통째로 영어로 쓰는 일이 잦았다.
-            // (동물 카테고리에서 "WOODLAND ANIMAL", "KING OF BEASTS" 처럼 6개 전부 영어로 나왔다)
-            // 시스템 프롬프트에 절대 규칙으로 못박으니 눈에 띄게 줄었다.
-            const SYSTEM_PROMPT =
-                '당신은 한국어 스무고개 출제자입니다. 설명 없이 요청된 JSON 한 개만 출력합니다.\n' +
-                '절대 규칙: 출력에 쓸 수 있는 문자는 한글과 숫자와 기본 문장부호뿐입니다. ' +
-                '영어 알파벳(a-z, A-Z), 한자, 가나, 이모지를 단 한 글자도 쓰지 마십시오. ' +
-                '영어 단어가 떠오르면 반드시 한글 뜻이나 한글 표기로 바꿔 쓰십시오.';
+             - `GET  /api/ai/status`  지금 AI를 쓸 수 있는지
+             - `POST /api/ai/connect` 서버 쪽 연결을 열어 둔다
+             - `POST /api/ai/hints`   정답을 주면 힌트 문장을 만들어 준다
 
-            // 힌트만 만들 때는 온도를 낮춘다. 온도가 높으면 모델이 영어로 새는 일이 많아지는데,
-            // 이 경로는 정답을 사전에서 무작위로 고르므로 다양성을 온도에 기댈 이유가 없다.
-            const HINT_TEMPERATURE = 0.3;
+           [연결하기] 를 누르면 [연결 끊기] 를 누를 때까지 연결을 유지한다.
+           HTTP 는 원래 붙어 있는 연결이 아니므로, 1분마다 가볍게 확인해서
+           '지금도 쓸 수 있는 상태'임을 화면에 계속 알려 주는 방식으로 유지한다.
 
-            function endpoint() {
-                return StorageManager.getLlmEndpoint().replace(/\/+$/, '');
-            }
-            function modelName() {
-                return StorageManager.getLlmModel();
-            }
+           게임 파일을 두 번 눌러 연 경우(file://)에는 서버에 닿을 수 없다.
+           그때는 연결에 실패하고, 게임은 예전처럼 내장 사전으로 진행된다. */
+        const AiClient = (function () {
+            const REQUEST_TIMEOUT = 40000;  // 서버가 Groq 를 부르는 시간까지 포함한다
+            const PING_TIMEOUT = 10000;
+            // 연결을 유지하는 동안 살아 있는지 확인하는 간격. 너무 잦으면 쓸데없는 요청이 된다.
+            const KEEPALIVE_INTERVAL = 60000;
 
-            // 진행 중인 요청을 모아 둔다. [연결 닫기] 는 이것부터 끊고 모델을 내린다.
-            // 끊지 않고 내리면, 뒤늦게 끝난 요청이 keep_alive 30분으로 모델을 곧바로 다시 올려 버린다.
-            // (실제로 확인: unload 직후 /api/ps 는 비어 있다가, 남아 있던 힌트 요청이 끝나면서 다시 채워졌다)
+            // 진행 중인 요청을 모아 둔다. [연결 끊기] 는 이것부터 끊는다.
             const inflight = new Set();
 
-            // [연결 닫기] 를 누른 뒤에는 새 요청을 내보내지 않는다.
-            // 이 표시가 없으면 다음 라운드의 미리 받기(startPrefetch)가 모델을 곧장 다시 올린다.
-            let closed = false;
+            // [연결하기] 를 누르기 전과 [연결 끊기] 뒤에는 요청을 내보내지 않는다.
+            let connected = false;
+            let keepAliveTimer = null;
+            let lastCheckedAt = 0;
+            let lastError = null;
+            let model = '';          // 서버가 쓰는 모델 이름 (상태를 물어보면 알려 준다)
+            let onStatusChange = null;
+
+            /**
+             * 어느 서버에 물어볼 것인가.
+             * 이 화면이 서버를 통해 열렸다면(http://…) 그 서버가 곧 AI를 가진 서버다.
+             * 파일로 연 경우에는 시작 화면에 적어 둔 멀티플레이 서버 주소를 빌려 쓴다.
+             */
+            function serverBase() {
+                if (location.protocol === 'http:' || location.protocol === 'https:') {
+                    return location.origin;
+                }
+                try {
+                    return new URL(StorageManager.getMultiplayerUrl()).origin;
+                } catch (e) {
+                    return '';
+                }
+            }
 
             function fetchWithTimeout(url, options, timeoutMs) {
                 const controller = new AbortController();
@@ -5449,185 +5458,107 @@
                     });
             }
 
+            async function call(path, options, timeoutMs) {
+                const base = serverBase();
+                if (!base) {
+                    const err = new Error('서버 주소를 찾지 못했어요');
+                    err.noServer = true;
+                    throw err;
+                }
+                const res = await fetchWithTimeout(base + path, options, timeoutMs);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            }
+
             /**
-             * 진행 중인 요청을 모두 끊고, 새 요청도 막는다.
+             * 진행 중인 요청을 모두 끊는다.
              * @returns {number} 실제로 끊은 요청 수 (사용자에게 알려 주려고 돌려준다)
              */
             function abortAll() {
-                closed = true;
                 const pending = Array.from(inflight);
                 inflight.clear();
                 pending.forEach(c => { try { c.abort(); } catch (e) { /* 이미 끝난 요청 */ } });
                 return pending.length;
             }
 
-            /** [연결 확인] / [스무고개 시작] 으로 다시 연결할 때 잠금을 푼다. */
-            function reopen() {
-                closed = false;
-            }
-
-            /** 지금 모델이 정말 메모리에 올라가 있는지 확인한다. (/api/ps 가 올라가 있는 모델만 알려 준다) */
-            async function isLoaded() {
-                const res = await fetchWithTimeout(endpoint() + '/api/ps', { method: 'GET' }, PING_TIMEOUT);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                const wanted = modelName();
-                return ((data && data.models) || [])
-                    .some(m => m.name === wanted || String(m.name).indexOf(wanted + ':') === 0);
-            }
-
-            // 설치된 모델 목록을 받아 연결 상태를 확인한다.
+            /** 지금 서버가 AI를 쓸 수 있는 상태인지 물어본다. */
             async function ping() {
-                const res = await fetchWithTimeout(endpoint() + '/api/tags', { method: 'GET' }, PING_TIMEOUT);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                const names = ((data && data.models) || []).map(m => m.name);
-                const wanted = modelName();
-                const hasModel = names.some(n => n === wanted || n.indexOf(wanted + ':') === 0);
-                return { names, hasModel };
+                const status = await call('/api/ai/status', { method: 'GET' }, PING_TIMEOUT);
+                if (status.model) model = status.model;
+                return status;
             }
 
-            // 예열은 모델당 한 번이면 된다. 모델 이름이 바뀌면 새로 예열한다.
-            let warmedModel = null;
-
-            /**
-             * 모델을 미리 메모리에 올려 둔다.
-             * Ollama 는 prompt 를 비워 보내면 생성 없이 로드만 하므로 예열에 딱 맞다.
-             * 이걸 해 두지 않으면 첫 문제 요청이 콜드 로드에 걸려 REQUEST_TIMEOUT 을 넘긴다.
-             */
-            async function warmUp() {
-                const model = modelName();
-                if (warmedModel === model) return;
-                warmedModel = model;
-                try {
-                    const res = await fetchWithTimeout(endpoint() + '/api/generate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ model: model, prompt: '', keep_alive: KEEP_ALIVE })
-                    }, WARMUP_TIMEOUT);
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
-                    // 본문을 읽어 버려야 연결이 제때 정리된다. (스트리밍 응답이라 그냥 두면 열린 채 남는다)
-                    await res.text().catch(() => '');
-                } catch (e) {
-                    warmedModel = null; // 실패했으면 다음에 다시 시도할 수 있게 되돌린다
-                    throw e;
-                }
-            }
-
-            /**
-             * 모델을 메모리에서 내린다. keep_alive 를 0으로 주면 Ollama 가 곧바로 언로드한다.
-             * 예열해 둔 것을 되돌리는 셈이라 warmedModel 도 함께 지운다.
-             *
-             * 주의: 이 요청 하나만으로는 부족하다. 다른 요청이 아직 돌고 있으면 그 요청이 끝나면서
-             * 모델을 다시 올린다. 부르는 쪽에서 abortAll() 로 먼저 끊고, isLoaded() 로 확인해야 한다.
-             */
-            async function unload() {
-                const model = modelName();
-                warmedModel = null;
-                const res = await fetchWithTimeout(endpoint() + '/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ model: model, prompt: '', keep_alive: 0 })
-                }, UNLOAD_TIMEOUT);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                await res.text().catch(() => '');
-            }
-
-            // 한글·숫자만 쓰라는 규칙. 정답을 고를 때든 힌트만 만들 때든 똑같이 붙인다.
-            const KOREAN_ONLY_RULES = [
-                '★ 가장 중요한 규칙: 한글과 숫자만 쓰세요.',
-                '  영어 알파벳, 한자, 일본어, 그 밖의 외국 문자를 한 글자라도 섞으면 안 됩니다.',
-                '  예를 들어 "big cat", "FOOTBALL", "圆形" 같은 표기는 금지입니다.',
-                '  외래어를 쓰려면 "빅캣", "풋볼" 처럼 한글로 적으세요.'
-            ];
-
-            /**
-             * 정답이 이미 정해져 있을 때 쓰는 프롬프트.
-             * 모델이 낱말을 지어내는 일이 없어지므로, 남은 일은 힌트를 쓰는 것뿐이다.
-             */
-            function buildHintPrompt(answer, category) {
-                return [
-                    `카테고리: "${category}"`,
-                    `정답: "${answer}"`,
-                    '',
-                    `이 정답을 맞히기 위한 스무고개 힌트 ${QUIZ_LLM_HINT_REQUEST}개를 만드세요.`,
-                    '   - 1번이 가장 막연하고, 뒤로 갈수록 구체적이어야 합니다.',
-                    `   - 힌트에 "${answer}" 를 그대로 쓰면 안 됩니다.`,
-                    '   - 각 힌트는 40자 이내의 한국어 한 문장입니다.',
-                    '   - 사실만 쓰세요. 확실하지 않은 내용은 아예 빼세요.',
-                    ''
-                ].concat(KOREAN_ONLY_RULES).concat([
-                    '',
-                    '아래 형식의 JSON만 출력하세요.',
-                    '{"hints":["힌트1","힌트2","힌트3"]}'
-                ]).join('\n');
-            }
-
-            // 힌트만 받아 오는 응답을 검사한다. 걸러내고 남은 것이 모자라면 실패로 돌려 재요청한다.
-            function parseHintsJson(content, answer) {
-                const text = String(content || '');
-                const start = text.indexOf('{');
-                const end = text.lastIndexOf('}');
-                if (start === -1 || end <= start) return null;
-                let parsed;
-                try {
-                    parsed = JSON.parse(text.slice(start, end + 1));
-                } catch (e) {
-                    return null;
-                }
-                const hints = QuizContent.cleanHints(Array.isArray(parsed.hints) ? parsed.hints : [], answer);
-                return hints.length >= QUIZ_LLM_HINT_MIN ? hints : null;
-            }
-
-            // 정답을 이미 알려 준 상태로 힌트만 요청한다.
-            async function requestHintsOnce(answer, category) {
-                // [연결 닫기] 이후에는 부르지 않는다. 여기서 막지 않으면 다음 라운드의 미리 받기가
-                // 모델을 다시 메모리에 올려, 방금 닫은 연결이 없던 일이 된다.
-                if (closed) throw new Error('AI 연결을 닫아 두었습니다.');
-                const res = await fetchWithTimeout(endpoint() + '/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: modelName(),
-                        stream: false,
-                        format: 'json',
-                        keep_alive: KEEP_ALIVE,
-                        // num_predict 로 출력 길이를 막아 둔다. 드물게 모델이 JSON 을 끝내지 못하고
-                        // 토큰을 계속 뽑아내다 REQUEST_TIMEOUT 을 통째로 써 버리는 일이 있었다.
-                        options: { temperature: HINT_TEMPERATURE, top_p: 0.95, num_predict: 400 },
-                        messages: [
-                            { role: 'system', content: SYSTEM_PROMPT },
-                            { role: 'user', content: buildHintPrompt(answer, category) }
-                        ]
-                    })
-                }, REQUEST_TIMEOUT);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                return parseHintsJson(data && data.message ? data.message.content : '', answer);
-            }
-
-            /** 정답이 정해진 상태에서 쓸 만한 힌트가 나올 때까지 몇 번 물어본다. */
-            async function createHints(answer, category) {
-                let lastError = null;
-                for (let attempt = 0; attempt < QUIZ_LLM_MAX_ATTEMPTS; attempt++) {
-                    let hints = null;
-                    try {
-                        hints = await requestHintsOnce(answer, category);
-                    } catch (e) {
+            /* 연결을 유지하는 동안 주기적으로 확인한다.
+               확인에 실패해도 **스스로 끊지 않는다** — 끊는 것은 사용자가 [연결 끊기] 를 누를 때뿐이다.
+               (인터넷이나 서버가 잠깐 흔들렸다고 연결이 없던 일이 되면 번거로움만 생긴다) */
+            function startKeepAlive() {
+                stopKeepAlive();
+                keepAliveTimer = setInterval(() => {
+                    if (!connected) return;
+                    ping().then((status) => {
+                        lastCheckedAt = Date.now();
+                        lastError = status.ok ? null : new Error(status.reason || 'AI를 쓸 수 없어요');
+                    }).catch((e) => {
                         lastError = e;
-                        if (e && e.name === 'AbortError') break;
-                        continue;
-                    }
-                    if (hints) return hints;
-                    lastError = new Error('쓸 만한 힌트를 받지 못했습니다.');
+                    }).then(() => {
+                        if (typeof onStatusChange === 'function') onStatusChange();
+                    });
+                }, KEEPALIVE_INTERVAL);
+            }
+
+            function stopKeepAlive() {
+                if (keepAliveTimer) {
+                    clearInterval(keepAliveTimer);
+                    keepAliveTimer = null;
                 }
-                throw lastError || new Error('힌트 생성 실패');
+            }
+
+            /**
+             * 연결을 연다. 서버 쪽 연결까지 열어 두고, 성공하면 [연결 끊기] 전까지 유지한다.
+             * 확인에 실패하면 예외를 올린다 (부르는 쪽이 사람 말로 풀어 알려 준다).
+             */
+            async function connect() {
+                const status = await call('/api/ai/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: '{}'
+                }, PING_TIMEOUT);
+                if (status.model) model = status.model;
+                if (!status.ok) {
+                    const err = new Error(status.reason || 'AI에 연결하지 못했어요');
+                    err.noKey = !status.hasKey;
+                    throw err;
+                }
+                connected = true;
+                lastCheckedAt = Date.now();
+                lastError = null;
+                StorageManager.setGroqConnected(true);
+                startKeepAlive();
+                if (typeof onStatusChange === 'function') onStatusChange();
+                return status;
+            }
+
+            /**
+             * 연결을 끊는다. 돌고 있는 요청도 함께 끊는다.
+             *
+             * **서버의 연결까지 끄지는 않는다.** 이 버튼은 '이 화면에서 AI를 안 쓴다' 는 뜻이고,
+             * 서버를 끄면 같은 서버로 놀고 있는 멀티플레이 방까지 확정 힌트로 떨어지기 때문이다.
+             * 서버 전체를 끄는 것은 멀티플레이 대기실의 방장 버튼이다.
+             */
+            function disconnect() {
+                const aborted = abortAll();
+                connected = false;
+                lastError = null;
+                stopKeepAlive();
+                StorageManager.setGroqConnected(false);
+                if (typeof onStatusChange === 'function') onStatusChange();
+                return aborted;
             }
 
             /**
              * 카테고리 하나로 스무고개 문제를 만든다.
              *
-             * **정답은 언제나 사전에서 고른다.** 모델에게는 힌트만 맡긴다.
+             * **정답은 언제나 사전에서 고른다.** 서버에는 힌트만 맡긴다.
              * 모델이 정답까지 고르면 제시어와 상관없는 낱말이 나와도 대조할 자료가 없어 걸러낼 수 없다.
              * 정답을 사전이 정해 주면 "제시어의 사전 안에 있는 낱말" 이라는 것이 구조적으로 보장된다.
              *
@@ -5643,22 +5574,36 @@
                     err.unknownCategory = true;
                     throw err;
                 }
-                // 힌트를 못 받으면 예외를 그대로 올린다. 호출부가 사전 힌트로 대체한다.
-                const hints = await createHints(answer, builtin);
-                return { answer, hints: QuizContent.assemble(answer, hints), category: builtin };
+                // 연결하지 않았으면 부르지 않는다. 여기서 막지 않으면 다음 라운드의 미리 받기가
+                // 방금 끊은 연결을 없던 일로 만든다.
+                if (!connected) throw new Error('AI 연결이 열려 있지 않습니다.');
+
+                const result = await call('/api/ai/hints', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ answer: answer, category: builtin })
+                }, REQUEST_TIMEOUT);
+
+                if (!result.ok || !Array.isArray(result.hints) || !result.hints.length) {
+                    throw new Error(result.reason || '쓸 만한 힌트를 받지 못했습니다.');
+                }
+                if (result.model) model = result.model;
+                // 서버가 준 힌트에 확정 힌트(글자 수·초성·첫 글자)를 합쳐 목록을 완성한다.
+                return { answer, hints: QuizContent.assemble(answer, result.hints), category: builtin };
             }
 
             return {
                 ping,
-                warmUp,
-                unload,
+                connect,
+                disconnect,
                 createQuiz,
                 abortAll,
-                reopen,
-                isLoaded,
-                get closed() { return closed; },
-                get model() { return modelName(); },
-                get endpoint() { return endpoint(); }
+                set onStatusChange(fn) { onStatusChange = fn; },
+                get connected() { return connected; },
+                get lastError() { return lastError; },
+                get lastCheckedAt() { return lastCheckedAt; },
+                get model() { return model; },
+                get serverBase() { return serverBase(); }
             };
         })();
 
@@ -5679,7 +5624,7 @@
             }
 
             function reset() {
-                showMessage(`카테고리를 입력하면 AI가 문제를 내고, 10초마다 힌트를 하나씩 (최대 ${QUIZ_HINT_TOTAL}개) 열어 줍니다.`);
+                showMessage(`카테고리를 고르면 AI(Groq · qwen/qwen3.8-27b)가 문제를 내고, 10초마다 힌트를 하나씩 (최대 ${QUIZ_HINT_TOTAL}개) 열어 줍니다.`);
                 nextEl.textContent = '대기중';
                 footEl.textContent = '힌트를 적게 볼수록 점수가 높아요';
             }
@@ -5780,7 +5725,7 @@
                 if (this.prefetch) return;
                 this.prefetchCategory = this.category;
                 // 실패는 여기서 삼킨다. 쓸 때가 되면 그 자리에서 다시 요청한다.
-                this.prefetch = LlamaClient.createQuiz(this.category).catch(() => null);
+                this.prefetch = AiClient.createQuiz(this.category).catch(() => null);
             },
 
             // 미리 받아 둔 문제를 꺼낸다. 카테고리가 다르면 쓰지 않는다.
@@ -5887,7 +5832,7 @@
                 QuizPanelUI.updateNext(-1);
                 // 정답을 사전에서 고르는 경우가 생겨서, 두 경우 모두 맞는 말로 바꿨다.
                 QuizPanelUI.setFoot(this.source === 'llm'
-                    ? 'AI가 힌트를 만든 문제였어요'
+                    ? 'AI(Groq · qwen/qwen3.8-27b)가 힌트를 만든 문제였어요'
                     : 'AI에 연결하지 못해 내장 사전으로 낸 문제였어요');
                 this.active = false;
             }
@@ -6176,6 +6121,7 @@
 
             // 모드 3 화면에 시간이 적혀 있으므로, 설정을 바꾸면 바로 반영한다.
             if (appMode === 'exam' && !ExamSession.active) resetExamPanel();
+            updateExamRuleBannerTime();
             UIManager.syncHud();
 
             ModalManager.closeSettings();
@@ -6298,7 +6244,9 @@
         // '게임 시작' 버튼. 고른 모드에 따라 갈라진다.
         function startGame() {
             if (appMode === 'quiz') {
-                openQuizSetup();
+                // 예전에는 준비 방법을 보여 주는 모달을 먼저 열었는데, 누를 것이 [스무고개 시작] 하나뿐이라
+                // 카테고리 고르기 앞을 가로막기만 했다. 지금은 곧바로 세션을 연다.
+                startQuizSession();
                 return;
             }
             if (appMode === 'exam') {
@@ -6481,7 +6429,7 @@
             UIManager.updateChampionBanner();
 
             const MODE_TOAST = {
-                quiz: "🤖 모드 2 — AI 스무고개! '스무고개 시작'을 눌러 카테고리를 정해주세요.",
+                quiz: "🤖 모드 2 — AI 스무고개! Groq(qwen/qwen3.8-27b)가 힌트를 만들어요. '스무고개 시작'을 눌러 카테고리를 정해주세요.",
                 exam: `📜 모드 3 — 산업재산권 문제! '문제 시작'을 누르면 한 문제에 ${examTimeLimit()}초씩 진행돼요.`,
                 classic: "🍬 모드 1 — 제시어 맞추기로 돌아왔어요."
             };
@@ -6518,7 +6466,7 @@
             ModalManager.syncSettingsMode();
         }
 
-        /* ---------- 모드 2: AI(qwen2.5:7b) 스무고개 ---------- */
+        /* ---------- 모드 2: AI(Groq · qwen/qwen3.8-27b) 스무고개 ---------- */
 
         // 연결 상태 줄은 [스무고개 시작] 화면과 ⚙️ 게임 설정 두 곳에 있다.
         // 어느 쪽에서 시작했든 같은 내용을 보여줘야 해서 둘 다 갱신한다.
@@ -6536,167 +6484,171 @@
             el.textContent = message;
         }
 
-        function saveLlmSettingsFromForm() {
-            StorageManager.setLlmEndpoint(dom('llmEndpointInput').value);
-            StorageManager.setLlmModel(dom('llmModelInput').value);
-        }
+        /**
+         * 예전에는 설정 화면의 API 키·모델 칸을 저장했다.
+         * 지금은 키가 서버에만 있고 모델도 서버가 정하므로, 이 화면에서 저장할 값이 없다.
+         * 부르는 곳(설정 닫기)을 그대로 두려고 이름만 남겨 둔다.
+         */
+        function saveLlmSettingsFromForm() { /* 저장할 값이 없다 */ }
 
-        // 브라우저에서 로컬 LLM을 부를 때 가장 흔한 실패 원인을 사람 말로 풀어준다.
+        // 서버를 거쳐 AI를 부를 때 가장 흔한 실패 원인을 사람 말로 풀어준다.
         function describeLlmError(error) {
             if (error && error.name === 'AbortError') return '응답이 너무 늦어 중단했어요';
+            if (error && error.noServer) return '서버 주소를 찾지 못했어요';
+            if (error && error.noKey) {
+                return '서버에 Groq API 키가 없어요 (QnA 폴더의 groq-key.txt 에 키를 한 줄 적어주세요)';
+            }
             const message = String((error && error.message) || error || '');
             if (message.indexOf('Failed to fetch') !== -1 || message.indexOf('NetworkError') !== -1) {
-                return 'Ollama가 꺼져 있거나 CORS(OLLAMA_ORIGINS) 설정이 필요해요';
+                return '게임 서버에 닿지 못했어요 ([서버 켜기.bat] 으로 서버를 켜고 그 주소로 열어주세요)';
             }
+            if (message.indexOf('HTTP 404') !== -1) return '서버가 예전 버전이에요 (AI 연동 주소가 없어요)';
             return message || '알 수 없는 오류';
         }
 
+        /* 마지막으로 연결에 실패한 이유. 시작 모달을 없앤 뒤로는 토스트가 사용자가 보는
+           유일한 안내라, 무엇을 하면 되는지 구체적으로 적기 위해 들고 있는다. */
+        let lastLlmFailure = null;
+
+        /** 연결에 실패했을 때 '무엇을 하면 되는지' 한 마디로 알려 준다. */
+        function llmFailureHint() {
+            if (!AiClient.serverBase) {
+                return '게임 서버를 통해 열어주세요 ([서버 켜기.bat] 을 켜고 http://localhost:3000 으로 접속).';
+            }
+            return describeLlmError(lastLlmFailure) + '.';
+        }
+
         /**
-         * AI 연결을 끝까지 맞춰 준다. 서버 확인 → 모델 설치 확인 → 메모리에 올리기.
-         * [연결 확인] 버튼과 [스무고개 시작] 버튼이 같은 경로를 쓴다.
+         * 지금 연결이 어떤 상태인지 한 문장으로 적는다.
+         * 설정 화면을 열었을 때처럼 '무슨 일이 있었는지'가 아니라 '지금 어떤가'를 물을 때 쓴다.
+         */
+        function describeLlmConnection() {
+            if (AiClient.connected) {
+                const trouble = AiClient.lastError;
+                return trouble
+                    ? `⚠ 연결은 유지 중이지만 마지막 확인에 실패했어요 (${describeLlmError(trouble)}).`
+                    : `✅ ${AiClient.model || 'AI'} 에 연결돼 있어요. [연결 끊기] 를 누를 때까지 유지됩니다.`;
+            }
+            return AiClient.serverBase
+                ? '[연결하기] 를 누르면 서버의 AI(Groq · qwen/qwen3.8-27b)에 연결합니다.'
+                : '게임 서버를 통해 열어야 AI를 쓸 수 있어요. 지금은 내장 사전으로 문제를 냅니다.';
+        }
+
+        /** 어느 서버의 키를 빌려 쓰는지 설정 화면에 적어 준다. */
+        function updateLlmServerInfo() {
+            const el = dom('llmServerInfo');
+            if (!el) return;
+            const base = AiClient.serverBase;
+            el.textContent = base
+                ? `🖥 ${base} 의 키(QnA 폴더의 groq-key.txt)를 씁니다`
+                : '🖥 게임 서버를 찾지 못했어요 — [서버 켜기.bat] 으로 서버를 켜고 그 주소로 게임을 열어주세요';
+        }
+
+        /**
+         * 연결 여부 표시를 지금 상태에 맞춘다.
+         * 상태 줄(llm-status)은 마지막에 있었던 일을 적고, 이 표시는 '지금 연결돼 있는가'만 말한다.
+         * 둘을 나눈 이유 — 연결해 둔 채 한참 지나면 상태 줄의 글은 오래된 이야기가 되기 때문이다.
+         */
+        function updateLlmConnBadge() {
+            const badge = dom('llmConnBadge');
+            const text = dom('llmConnText');
+            if (!badge || !text) return;
+
+            let kind = 'off';
+            let label = '연결 안 됨';
+            if (llmConnecting) {
+                kind = 'busy';
+                label = '연결하는 중…';
+            } else if (AiClient.connected) {
+                kind = AiClient.lastError ? 'busy' : 'on';
+                label = AiClient.lastError
+                    ? '연결 유지 중 (확인 실패)'
+                    : `연결됨 · ${AiClient.model || 'AI'}`;
+            }
+            badge.className = 'llm-conn ' + kind;
+            text.textContent = label;
+        }
+
+        /**
+         * AI 연결을 연다. [연결하기] 버튼과 [스무고개 시작] 버튼이 같은 경로를 쓴다.
          *
-         * 연결에 실패해도 예외를 던지지 않는다. 게임은 내장 사전으로 계속 진행되기 때문에,
+         * 이미 연결돼 있으면 아무 일도 하지 않는다 — 한 번 연결하면 [연결 끊기] 를 누를 때까지
+         * 그대로 두는 것이 이 기능의 약속이기 때문이다.
+         *
+         * 연결에 실패해도 예외를 던지지 않는다. 게임은 내장 사전으로 계속 진행되므로,
          * 무엇이 안 됐는지 알려 주고 `false` 를 돌려주는 것으로 충분하다.
          * @returns {Promise<boolean>} AI로 문제를 낼 수 있으면 true
          */
-        async function ensureLlmReady() {
-            // [연결 닫기] 로 걸어 둔 잠금을 푼다. 이걸 빼먹으면 닫은 뒤에 다시 연결할 수 없다.
-            LlamaClient.reopen();
-            const model = LlamaClient.model;
-            setLlmStatus(`🔌 ${model} 연결을 확인하는 중…`, '');
+        let llmConnecting = false; // 연결하는 동안 버튼을 두 번 누르는 것을 막는다
 
-            let info = null;
+        async function ensureLlmReady() {
+            if (AiClient.connected) {
+                setLlmStatus(describeLlmConnection(), 'ok');
+                updateLlmConnBadge();
+                return true;
+            }
+            if (llmConnecting) return false;
+
+            llmConnecting = true;
+            updateLlmConnBadge();
+            setLlmStatus('🔌 서버의 AI에 연결하는 중…', '');
+
             try {
-                info = await LlamaClient.ping();
+                const status = await AiClient.connect();
+                lastLlmFailure = null;
+                // 설정한 모델이 계정에 없어 다른 것으로 바뀐 경우, 그 사실을 숨기지 않는다.
+                const swapped = status.switched
+                    ? ` (${status.requested} 가 없어 자동으로 바꿨어요)`
+                    : '';
+                setLlmStatus(
+                    `✅ ${status.model} 에 연결했어요${swapped}. [연결 끊기] 를 누를 때까지 유지됩니다.`, 'ok');
+                return true;
             } catch (e) {
-                if (LlamaClient.closed) return false; // 확인하는 사이에 사용자가 연결을 닫았다
+                lastLlmFailure = e;
                 setLlmStatus(`❌ 연결 실패 (${describeLlmError(e)}). 내장 사전으로 문제를 냅니다.`, 'bad');
                 return false;
-            }
-
-            if (!info.hasModel) {
-                const installed = info.names.length ? info.names.join(', ') : '없음';
-                setLlmStatus(
-                    `⚠ '${model}' 모델이 없어요. 터미널에서 \`ollama pull ${model}\` 를 실행해주세요. (설치된 모델: ${installed})`, 'warn');
-                return false;
-            }
-
-            // 연결만 확인하고 끝내면 첫 문제 요청이 모델 로딩에 걸려 시간을 다 써 버린다.
-            // 여기서 미리 올려 두고, 그동안 무엇을 기다리는지 화면에 알린다.
-            // 콜드 로드는 측정값이 50~120초로 길다. 그동안 화면이 멈춘 것처럼 보이지 않도록
-            // 경과 시간을 1초마다 갱신한다. 이미 올라가 있으면 0.1초면 끝나 이 문구는 보이지도 않는다.
-            const warmStarted = Date.now();
-            const showWarming = () => {
-                // 예열 도중에 [연결 닫기]를 누를 수 있다. 그때는 닫기 쪽 안내를 덮어쓰지 않는다.
-                if (LlamaClient.closed) return;
-                const sec = Math.round((Date.now() - warmStarted) / 1000);
-                setLlmStatus(`✅ 연결됨 — ${model} 을(를) 메모리에 올리는 중… ${sec}초 (처음 한 번은 1~2분 걸릴 수 있어요)`, '');
-            };
-            showWarming();
-            const warmTicker = setInterval(showWarming, 1000);
-            try {
-                await LlamaClient.warmUp();
-                if (LlamaClient.closed) return false; // 예열이 끝나기 전에 사용자가 연결을 닫았다
-                setLlmStatus(`✅ ${model} 사용 준비 완료`, 'ok');
-            } catch (e) {
-                // 사용자가 [연결 닫기]로 끊은 것이라면 실패가 아니다. 닫기 쪽 안내를 그대로 둔다.
-                if (LlamaClient.closed) return false;
-                // 예열에 실패해도 연결 자체는 됐으므로 게임은 그대로 시작할 수 있다.
-                setLlmStatus(`✅ 연결됨 — 다만 예열에 실패했어요 (${describeLlmError(e)}). 첫 문제가 느릴 수 있어요.`, 'warn');
             } finally {
-                clearInterval(warmTicker);
+                llmConnecting = false;
+                updateLlmServerInfo();
+                updateLlmConnBadge();
             }
-            return true;
         }
 
-        async function testLlmConnection() {
-            saveLlmSettingsFromForm();
+        /** ⚙️ 게임 설정의 [연결하기] */
+        async function connectLlm() {
             await ensureLlmReady();
         }
 
         /**
-         * 연결을 닫고 모델을 메모리에서 내린다.
-         * 예열해 둔 모델은 30분 동안 램을 붙들고 있어서(7B 기준 약 4.4GB),
-         * 게임을 그만할 때 직접 돌려줄 수 있어야 한다.
-         *
-         * 내리는 요청 한 번만 보내면 제대로 닫히지 않는다. 판을 푸는 동안 다음 문제를 미리 받아 두는
-         * 요청이 돌고 있어서, 그 요청이 뒤늦게 끝나면서 keep_alive 30분으로 모델을 다시 올려 버린다.
-         * 그래서 순서가 중요하다: ① 돌고 있는 요청을 끊고 ② 미리 받기를 버리고 ③ 모델을 내린 뒤
-         * ④ /api/ps 로 정말 내려갔는지 확인한다. 확인까지 해야 "닫았다"고 말할 수 있다.
+         * ⚙️ 게임 설정의 [연결 끊기].
+         * 돌고 있는 요청을 끊고, 미리 받아 두던 다음 문제도 버린다.
+         * 남겨 두면 다음 라운드가 그걸 기다리면서 방금 끊은 연결을 없던 일로 만든다.
          */
-        let llmClosing = false; // 닫는 동안 버튼을 두 번 누르는 것을 막는다
-
-        async function closeLlmConnection() {
-            if (llmClosing) return;
-            llmClosing = true;
-            const btn = dom('llmCloseBtn');
-            if (btn) btn.disabled = true;
-
-            saveLlmSettingsFromForm();
-            const model = LlamaClient.model;
-            setLlmStatus('🔌 연결을 닫는 중…', '');
-
-            try {
-                // ① 돌고 있는 요청부터 끊는다. 여기서 새 요청도 함께 막힌다.
-                const aborted = LlamaClient.abortAll();
-                // ② 미리 받아 둔 다음 문제도 버린다. 남겨 두면 다음 라운드가 그걸 기다린다.
+        function disconnectLlm() {
+            if (!AiClient.connected) {
                 QuizSession.clearPrefetch();
-
-                // ③ 모델을 내린다. 끊긴 요청이 서버 쪽에서 정리될 틈을 조금 준다.
-                await new Promise(r => setTimeout(r, 200));
-                await LlamaClient.unload();
-
-                // ④ 정말 내려갔는지 확인하고, 아직 남아 있으면 한 번 더 내린다.
-                let stillLoaded = await LlamaClient.isLoaded().catch(() => null);
-                if (stillLoaded === true) {
-                    await new Promise(r => setTimeout(r, 800));
-                    await LlamaClient.unload();
-                    stillLoaded = await LlamaClient.isLoaded().catch(() => null);
-                }
-
-                if (stillLoaded === true) {
-                    setLlmStatus(
-                        `⚠ ${model} 이(가) 아직 메모리에 남아 있어요. 잠시 뒤 [연결 닫기]를 한 번 더 눌러주세요.`, 'warn');
-                } else {
-                    const extra = aborted > 0 ? ` (진행 중이던 요청 ${aborted}건도 취소했어요)` : '';
-                    // 상태를 확인하지 못했으면(구형 Ollama 등) 내렸다고 단정하지 않는다.
-                    const tail = stillLoaded === false ? '메모리에서 내린 것을 확인했어요.' : '메모리에서 내렸습니다.';
-                    setLlmStatus(`🔌 연결을 닫았어요 — ${model} 을(를) ${tail}${extra}`, 'ok');
-                }
-            } catch (e) {
-                // 서버가 이미 꺼져 있으면 내릴 것도 없다. 사용자 입장에서는 어차피 닫힌 상태다.
-                setLlmStatus(`🔌 연결을 닫았어요. (모델을 내리지는 못했어요: ${describeLlmError(e)})`, 'warn');
-            } finally {
-                llmClosing = false;
-                if (btn) btn.disabled = false;
+                setLlmStatus('🔌 이미 연결이 닫혀 있어요.', '');
+                updateLlmConnBadge();
+                return;
             }
+            const aborted = AiClient.disconnect();
+            QuizSession.clearPrefetch();
+            const extra = aborted > 0 ? ` (진행 중이던 요청 ${aborted}건도 취소했어요)` : '';
+            setLlmStatus(`🔌 연결을 끊었어요. 다음 문제부터는 내장 사전으로 냅니다.${extra}`, 'ok');
+            updateLlmConnBadge();
+        }
+
+        /* 화면을 처음 열 때, 지난번에 [연결하기] 로 열어 둔 연결을 되살린다.
+           [연결 끊기] 를 누르지 않았다면 계속 연결돼 있어야 한다는 약속을 새로고침 뒤에도 지킨다.
+           실패해도 조용히 넘어간다 — 게임은 내장 사전으로 진행되고, 화면 표시만 '연결 안 됨'이 된다. */
+        function restoreLlmConnection() {
+            AiClient.onStatusChange = updateLlmConnBadge;
+            updateLlmConnBadge();
+            if (!StorageManager.getGroqConnected() || !AiClient.serverBase) return;
+            ensureLlmReady().catch(() => {});
         }
 
         /* ----- 1단계: 몇 번 진행할지 정한다 ----- */
-
-        function openQuizSetup() {
-            ModalManager.hideGameOver();
-            hideQuizRoundResult();
-            hideQuizFinal();
-            closeQuizCategory();
-
-            // 준비 방법은 항상 접힌 상태로 연다.
-            const guide = dom('llmGuide');
-            const guideBtn = dom('llmGuideBtn');
-            if (guide && guideBtn) {
-                guide.style.display = 'none';
-                guideBtn.textContent = '준비 방법 ▾';
-                guideBtn.setAttribute('aria-expanded', 'false');
-            }
-            dom('quizSetupRounds').textContent =
-                `🔁 스무고개 ${StorageManager.getQuizRounds()}회 · 횟수는 ⚙️ 게임 설정에서 바꿔요`;
-            writeLlmStatus(dom('llmStatus'), '[스무고개 시작]을 누르면 AI 연결을 확인합니다.', '');
-            Overlay.open('quizSetupOverlay');
-        }
-
-        function closeQuizSetup() {
-            Overlay.close('quizSetupOverlay');
-        }
 
         /**
          * 스무고개 세션을 연다. 진행 횟수를 확정하고 첫 라운드의 카테고리를 물어본다.
@@ -6706,26 +6658,26 @@
         async function startQuizSession() {
             if (quizStarting) return;
 
+            ModalManager.hideGameOver();
+            hideQuizRoundResult();
+            hideQuizFinal();
+
             // 횟수와 연결 설정은 ⚙️ 게임 설정에서 정한다. 여기서는 저장된 값을 그대로 쓴다.
             const rounds = Math.min(Math.max(StorageManager.getQuizRounds(), 1), QUIZ_MAX_ROUNDS);
 
-            // 시작을 누르면 연결을 자동으로 맞춘다. 시작 화면을 열어 둔 채 진행 상황을 보여 준다.
+            // 시작을 누르면 연결을 자동으로 맞춘다.
             // 연결에 실패해도 게임은 내장 사전으로 진행하므로 멈추지 않고, 무엇이 안 됐는지만 알린다.
+            // 예전에는 그 안내를 시작 모달의 상태 줄에 적었는데, 그 모달을 없앴으므로 토스트로 알린다.
             quizStarting = true;
-            const startBtn = dom('quizStartBtn');
-            startBtn.disabled = true;
             let ready = false;
             try {
                 ready = await ensureLlmReady();
             } finally {
-                startBtn.disabled = false;
                 quizStarting = false;
             }
             if (!ready) {
-                UIManager.showToast('AI에 연결하지 못해 내장 사전으로 문제를 냅니다.', 'warn');
+                UIManager.showToast(`AI 연결 안 됨 — ${llmFailureHint()} 이번에는 내장 사전으로 문제를 냅니다.`, 'warn');
             }
-
-            closeQuizSetup();
 
             // 진행 중이던 판을 정리하고 새 세션을 시작한다.
             if (VersusManager.active) {
@@ -6897,7 +6849,7 @@
             if (prefetched) quiz = await prefetched; // 미리 받다가 실패했으면 null 이다
             if (!quiz) {
                 try {
-                    quiz = await LlamaClient.createQuiz(category);
+                    quiz = await AiClient.createQuiz(category);
                 } catch (e) {
                     console.warn('[AI 스무고개] LLM 호출 실패 — 내장 사전으로 대체합니다.', e);
                 }
@@ -7117,8 +7069,18 @@
                 : '보드에서 글자를 눌러 정답을 만들어보세요');
         }
 
+        /**
+         * 모드 3 안내 배너의 '한 문제에 N초' 를 설정값으로 맞춘다.
+         * 예전에는 10초가 글에 그대로 박혀 있어서, 설정에서 시간을 바꿔도 배너는 10초라고 말했다.
+         */
+        function updateExamRuleBannerTime() {
+            const el = dom('examRuleTime');
+            if (el) el.textContent = `${examTimeLimit()}초`;
+        }
+
         // 배너 칩과 패널 제목에 '몇 번째 문제인지'를 반영한다.
         function updateExamRoundDisplay() {
+            updateExamRuleBannerTime();
             const chip = dom('examRoundChip');
             if (!chip) return;
             if (ExamSession.active) {
@@ -7408,7 +7370,7 @@
             QuizSession.reset();
             QuizManager.reset();
             updateQuizRoundDisplay();
-            openQuizSetup();
+            startQuizSession();
         }
 
         /* ---------- 2인 대결 ---------- */
@@ -7538,7 +7500,7 @@
                     UIManager.showToast("AI 스무고개에서는 정답을 미리 볼 수 없어요!", "warn");
                     return;
                 }
-                openQuizSetup();
+                startQuizSession();
                 return;
             }
             if (GameState.isGameActive) {
@@ -7607,7 +7569,7 @@
         }
 
         // '작성 예시' 버튼: 파일 작성법 설명을 펼치고 접는다.
-        // qwen2.5:7b 준비 방법 — 시작 화면이 길어지지 않게 평소에는 접어 둔다.
+        // Groq 준비 방법 — 시작 화면이 길어지지 않게 평소에는 접어 둔다.
         function toggleLlmGuide() {
             const guide = dom('llmGuide');
             const button = dom('llmGuideBtn');
@@ -8239,6 +8201,9 @@
 
         // 모드 스위치 초기 상태 (기본은 모드 1)
         applyModeUI();
+
+        // 지난번에 [연결하기] 로 열어 둔 AI 연결을 되살린다 ([연결 끊기] 전까지는 계속 연결).
+        restoreLlmConnection();
 
         // 기록 1위 챔피언 뱃지 배너
         UIManager.updateChampionBanner();

@@ -33,7 +33,13 @@
 
 - 글꼴은 `assets/fonts/` · `server/public/assets/fonts/` 에 있다. CDN(`fonts.googleapis.com`)을 쓰지 않는다.
 - 서버 실행에 쓰는 Node.js는 `tools/node/`, 라이브러리는 `server/node_modules/` 에 있다.
-- 예외는 AI 스무고개의 문장 힌트를 만드는 Ollama 하나뿐이며, 없어도 게임은 진행되어야 한다.
+- 예외는 AI 스무고개의 문장 힌트를 만드는 Groq API(무료 티어, 기본 모델 `qwen/qwen3.8-27b`)
+  하나뿐이며, 없어도 게임은 진행되어야 한다.
+  **API 키는 QnA 폴더의 `groq-key.txt` 에 둔다** (`server/groq-key.txt` 와 `GROQ_API_KEY`
+  환경변수도 읽는다). 두 키 파일 모두 `.gitignore` 에 있으니 **절대 커밋하지 않는다.**
+  혼자 하기도 브라우저가 Groq 를 직접 부르지 않고 서버의 `/api/ai/*` 를 거치므로,
+  키가 브라우저로 내려가지 않는다.
+- **검사용 스크립트가 `groq-key.txt` 를 쓰거나 지우지 않는다.** 사용자의 진짜 키가 들어 있다.
 
 ## 게임 파일 작업 시 참고
 

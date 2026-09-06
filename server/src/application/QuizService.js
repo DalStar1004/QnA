@@ -139,16 +139,49 @@ class QuizService {
         if (!this.hintGenerator || !this.hintGenerator.ensureReady) {
             return { ok: false, reason: 'AI 힌트를 만들 수 없는 설정이에요' };
         }
+        // 방장이 [연결 끊기] 로 꺼 두었다면 상태만 알려 주고 다시 잇지 않는다.
+        if (this.hintGenerator.manuallyDisconnected) {
+            return { ok: false, connected: false, offByHost: true, reason: '방장이 AI 연결을 꺼 두었어요' };
+        }
         // 상태를 묻는 김에 **연결까지 끝내 둔다.** 방장이 대기실에서 스무고개를 고른 이 순간부터
         // 모델을 올려 두면, 게임을 시작했을 때 첫 문제를 기다리지 않는다
         // (예열이 없으면 콜드 로드로 실측 167초가 걸렸다).
         const status = await this.hintGenerator.ensureReady();
         return {
             ok: !!status.ok,
+            connected: !!this.hintGenerator.connected,
             model: status.model || null,
             switched: !!status.switched,
             reason: status.reason || null
         };
+    }
+
+    /**
+     * 대기실의 [연결하기] — 꺼 두었던 표시를 지우고 다시 잇는다.
+     * 한 번 이어 두면 [연결 끊기] 를 누를 때까지 유지된다.
+     */
+    async connectAi() {
+        if (!this.hintGenerator || !this.hintGenerator.connect) {
+            return { ok: false, reason: 'AI 힌트를 만들 수 없는 설정이에요' };
+        }
+        const status = await this.hintGenerator.connect();
+        return {
+            ok: !!status.ok,
+            connected: !!this.hintGenerator.connected,
+            model: status.model || null,
+            switched: !!status.switched,
+            requested: status.requested || null,
+            reason: status.reason || null
+        };
+    }
+
+    /** 대기실의 [연결 끊기] — 다음 판부터는 확정 힌트만으로 진행된다. */
+    disconnectAi() {
+        if (!this.hintGenerator || !this.hintGenerator.disconnect) {
+            return { ok: false, reason: 'AI 힌트를 만들 수 없는 설정이에요' };
+        }
+        this.hintGenerator.disconnect();
+        return { ok: true, connected: false };
     }
 
     /** Design §6.2 — 방이 비어 사라질 때 남은 타이머를 정리해 좀비 인터벌을 막는다 */
