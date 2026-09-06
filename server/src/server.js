@@ -20,9 +20,11 @@ const { InMemoryRoomRepository } = require('./infrastructure/InMemoryRoomReposit
 const { SocketIOBroadcaster } = require('./infrastructure/SocketIOBroadcaster');
 const { roomCodeGenerator } = require('./infrastructure/roomCodeGenerator');
 const { OllamaHintGenerator } = require('./infrastructure/OllamaHintGenerator');
+const GeminiService = require('./services/GeminiService');
 
 // 4. Presentation
 const { registerSocketHandlers } = require('./presentation/socketHandlers');
+const { registerAiRoutes } = require('./presentation/aiRoutes');
 
 // 5. Domain — 모드 3 문제 파일 (서버를 켤 때 미리 읽어 준비 상태를 알린다)
 const { getExamQuestions } = require('./domain/examContent');
@@ -31,6 +33,15 @@ const PORT = Number(process.env.PORT) || 3000;
 // AI 스무고개 힌트를 만들 로컬 LLM. 다른 PC의 Ollama 를 쓰려면 환경변수로 바꾼다.
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
+
+/* ---------- 시험 구현: AI 스무고개 힌트를 어디서 만들지 ----------
+ * AI_PROVIDER=gemini  → Google Gemini API (서버가 호출, GEMINI_API_KEY 필요)
+ * AI_PROVIDER=ollama  → 기존 로컬 LLM (기본값 — 지금까지의 동작을 그대로 유지한다)
+ * 그 밖의 값이거나 고른 것을 쓸 수 없으면(키 없음 등) 기존 내장 사전 힌트로 넘어간다.
+ * 이 값 하나로 배포 방식을 바꾸는 것은 아니다 — Render 등 실제 배포는 그대로 두고
+ * 로컬에서 켤 때만 넣어 시험해 보는 스위치다. */
+const AI_PROVIDER = (process.env.AI_PROVIDER || 'ollama').toLowerCase() === 'gemini'
+    ? 'gemini' : 'ollama';
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 /* ---------- 혼자 하기 게임 파일을 어디서 찾을 것인가 ----------
@@ -57,7 +68,11 @@ const io = new Server(httpServer);
 const roomRepository = new InMemoryRoomRepository();
 const broadcaster = new SocketIOBroadcaster(io);
 
-const hintGenerator = new OllamaHintGenerator({ endpoint: OLLAMA_URL, model: OLLAMA_MODEL });
+// AI_PROVIDER 가 'gemini'면 Gemini를, 아니면(기본값) 기존 Ollama를 그대로 쓴다.
+// 둘 다 HintGeneratorPort 모양(ensureReady/generateHints)이라 QuizService는 어느 쪽인지 모른다.
+const hintGenerator = AI_PROVIDER === 'gemini'
+    ? { ensureReady: GeminiService.ensureReady, generateHints: GeminiService.generateHints }
+    : new OllamaHintGenerator({ endpoint: OLLAMA_URL, model: OLLAMA_MODEL });
 
 const roomService = new RoomService({ roomRepository, broadcaster, codeGenerator: roomCodeGenerator });
 const roundService = new RoundService({ roomRepository, broadcaster });
@@ -97,6 +112,10 @@ app.get('/healthz', (req, res) => {
     res.json({ ok: true, rooms: roomRepository.size() });
 });
 
+// 혼자 하기(브라우저)가 AI_PROVIDER='gemini' 일 때만 쓰는 경로. 'ollama'(기본값)면
+// 브라우저가 예전처럼 Ollama를 직접 부르므로 이 라우트는 호출되지 않는다.
+registerAiRoutes(app, { getProvider: () => AI_PROVIDER, geminiService: GeminiService });
+
 /**
  * 같은 인터넷(공유기)에 물린 다른 PC가 적어 넣을 주소를 모아 돌려준다.
  * 친구가 접속할 때 주소를 직접 찾아보지 않아도 되게, 서버를 켜면 바로 보여 준다.
@@ -125,7 +144,12 @@ httpServer.listen(PORT, () => {
     console.log('');
     console.log('    그 주소로 들어가면 시작 화면이 뜹니다. [접속하기] 를 누르면 멀티플레이(/multi)로 갑니다.');
     console.log('');
-    console.log(`  · AI 스무고개 힌트  ${OLLAMA_URL} (${OLLAMA_MODEL})`);
+    if (AI_PROVIDER === 'gemini') {
+        // 모델명만 알려 준다 — 키가 있는지 없는지는 아래 연결 확인 결과로만 드러난다.
+        console.log(`  · AI 스무고개 힌트  Gemini (${GeminiService.getModel()}) — 시험 구현`);
+    } else {
+        console.log(`  · AI 스무고개 힌트  ${OLLAMA_URL} (${OLLAMA_MODEL})`);
+    }
     console.log('    AI 가 꺼져 있어도 글자 수·초성 힌트로 게임은 진행됩니다.');
     console.log('');
 
@@ -147,7 +171,9 @@ httpServer.listen(PORT, () => {
                 + (status.switched ? ` (설정한 ${OLLAMA_MODEL} 가 없어 자동으로 바꿨습니다)` : ''));
         } else {
             console.log(`  🤖 AI 연결 실패 — ${status.reason}`);
-            console.log('     스무고개는 글자 수·초성 힌트로 진행되며, Ollama 를 켜면 다음 판부터 자동으로 붙습니다.');
+            console.log(AI_PROVIDER === 'gemini'
+                ? '     스무고개는 글자 수·초성 힌트로 진행되며, GEMINI_API_KEY를 넣고 다시 켜면 붙습니다.'
+                : '     스무고개는 글자 수·초성 힌트로 진행되며, Ollama 를 켜면 다음 판부터 자동으로 붙습니다.');
         }
         console.log('');
     });

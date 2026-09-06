@@ -2102,6 +2102,62 @@
             };
         })();
 
+        /* ---------- AI 제공자 분기 (시험 구현) ----------
+           서버가 AI_PROVIDER 로 고른 것을 그대로 따른다. 'ollama'(기본값이자 지금까지의 동작)면
+           브라우저가 지금까지처럼 Ollama(LlamaClient)를 직접 부른다 — 이 블록은 LlamaClient를
+           한 글자도 바꾸지 않는다. 서버가 'gemini' 라고 답할 때만 /api/ai/* 를 거친다
+           (브라우저가 Gemini를 직접 호출하는 일은 없다). */
+        const AiQuiz = (function () {
+            let cachedProvider = 'ollama';
+
+            // /api/ai/status 자체가 없으면(정적 서버로만 열었을 때 등) Ollama 취급한다 —
+            // 지금까지 항상 그래 왔던 경로이므로 조용히 그대로 두는 것이 안전하다.
+            async function status() {
+                try {
+                    const res = await fetch('/api/ai/status');
+                    const data = res.ok ? await res.json() : null;
+                    cachedProvider = (data && data.provider === 'gemini') ? 'gemini' : 'ollama';
+                    return data || { provider: 'ollama', ok: false, reason: null };
+                } catch (e) {
+                    cachedProvider = 'ollama';
+                    return { provider: 'ollama', ok: false, reason: null };
+                }
+            }
+
+            function provider() {
+                return cachedProvider;
+            }
+
+            /** 정답은 여기서도 항상 사전에서 고른다 — LlamaClient.createQuiz와 같은 이유. */
+            async function createQuizViaGemini(category) {
+                const builtin = QuizContent.matchBuiltinCategory(category);
+                const answer = builtin ? QuizContent.pickAnswer(builtin) : null;
+                if (!answer) {
+                    const err = new Error('사전에 없는 카테고리입니다: ' + category);
+                    err.unknownCategory = true;
+                    throw err;
+                }
+                const res = await fetch('/api/ai/hints', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category: builtin, answer: answer })
+                });
+                const data = await res.json().catch(() => null);
+                if (!res.ok || !data || !data.ok || !Array.isArray(data.hints)) {
+                    throw new Error((data && data.reason) || 'Gemini 힌트를 받지 못했습니다.');
+                }
+                return { answer, hints: QuizContent.assemble(answer, data.hints), category: builtin };
+            }
+
+            /** 호출부는 이 함수 하나만 쓰면 된다. provider가 'gemini'가 아니면 기존 경로 그대로다. */
+            async function createQuiz(category) {
+                if (cachedProvider === 'gemini') return createQuizViaGemini(category);
+                return LlamaClient.createQuiz(category);
+            }
+
+            return { status, provider, createQuiz };
+        })();
+
         /* ---------- 힌트 패널 렌더링 (DOM 전담) ---------- */
         const QuizPanelUI = (function () {
             const listEl = dom('hintList');
@@ -2220,7 +2276,7 @@
                 if (this.prefetch) return;
                 this.prefetchCategory = this.category;
                 // 실패는 여기서 삼킨다. 쓸 때가 되면 그 자리에서 다시 요청한다.
-                this.prefetch = LlamaClient.createQuiz(this.category).catch(() => null);
+                this.prefetch = AiQuiz.createQuiz(this.category).catch(() => null);
             },
 
             // 미리 받아 둔 문제를 꺼낸다. 카테고리가 다르면 쓰지 않는다.
@@ -3005,6 +3061,19 @@
          * @returns {Promise<boolean>} AI로 문제를 낼 수 있으면 true
          */
         async function ensureLlmReady() {
+            const aiStatus = await AiQuiz.status();
+            if (aiStatus.provider === 'gemini') {
+                if (aiStatus.ok) {
+                    setLlmStatus(`✅ Gemini(${aiStatus.model || 'gemini'}) 사용 준비 완료`, 'ok');
+                    return true;
+                }
+                // API 키 여부·내부 사유는 화면에 보여 주지 않는다. 콘솔에만 남긴다.
+                console.warn('[AI] Gemini 사용 불가:', aiStatus.reason || '(사유 없음)');
+                setLlmStatus('❌ AI 연결을 사용할 수 없어 내장 힌트로 진행합니다.', 'bad');
+                return false;
+            }
+
+            // provider === 'ollama' (기본값) — 지금까지의 동작 그대로.
             // [연결 닫기] 로 걸어 둔 잠금을 푼다. 이걸 빼먹으면 닫은 뒤에 다시 연결할 수 없다.
             LlamaClient.reopen();
             const model = LlamaClient.model;
@@ -3076,6 +3145,14 @@
             llmClosing = true;
             const btn = dom('llmCloseBtn');
             if (btn) btn.disabled = true;
+
+            if (AiQuiz.provider() === 'gemini') {
+                // Gemini는 상태 없는 API라 Ollama처럼 메모리에서 내릴 모델이 없다.
+                setLlmStatus('🔌 Gemini는 별도로 닫을 연결이 없어요.', 'ok');
+                llmClosing = false;
+                if (btn) btn.disabled = false;
+                return;
+            }
 
             saveLlmSettingsFromForm();
             const model = LlamaClient.model;
@@ -3342,7 +3419,7 @@
             if (prefetched) quiz = await prefetched; // 미리 받다가 실패했으면 null 이다
             if (!quiz) {
                 try {
-                    quiz = await LlamaClient.createQuiz(category);
+                    quiz = await AiQuiz.createQuiz(category);
                 } catch (e) {
                     console.warn('[AI 스무고개] LLM 호출 실패 — 내장 사전으로 대체합니다.', e);
                 }
