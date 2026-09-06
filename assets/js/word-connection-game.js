@@ -957,8 +957,6 @@
         const scoreCard = dom('scoreCard');
         const timerCard = dom('timerCard');
         const shuffleFab = dom('shuffleFab');
-        const muteBtn = dom('muteBtn');
-        const muteIcon = dom('muteIcon');
         const categoryCard = dom('categoryCard');
         const championBanner = dom('championBanner');
         const versusBar = dom('versusBar');
@@ -1518,6 +1516,8 @@
                 openSettings() {
                     syncSettingsMode();
                     syncBackgroundPicker();
+                    const muteBtn = dom('settingsMuteBtn');
+                    if (muteBtn) muteBtn.textContent = AudioManager.isMuted ? '🔇 소리 켜기' : '🔊 소리 끄기';
                     renderCustomCategories();
                     // 모드 3 설정도 저장값으로 채운다. 모드 1의 블록 개수와 서로 다른 값이다.
                     dom('examBlockCount').value = StorageManager.getExamBlocks();
@@ -2695,11 +2695,8 @@
 
         function toggleMute() {
             const muted = AudioManager.toggleMute();
-            muteIcon.src = muted ? 'assets/icon-sound-off.png' : 'assets/icon-sound-on.png';
-            muteIcon.alt = muted ? '음소거됨' : '소리 켜짐';
-            muteBtn.title = muted ? '음소거 해제' : '음소거';
-            muteBtn.classList.toggle('muted', muted);
-            muteBtn.querySelector('.fab-tooltip').textContent = muted ? '소리 켜기' : '소리 끄기';
+            const btn = dom('settingsMuteBtn');
+            if (btn) btn.textContent = muted ? '🔇 소리 켜기' : '🔊 소리 끄기';
         }
 
         function currentNickname() {
@@ -3328,20 +3325,9 @@
             setTimeout(() => dom('quizCategorySelect').focus(), 60);
         }
 
-        /* 게임 방법 — 시작 전에 조작법을 확인한다.
-           모드에 따라 세 번째 칸만 바꾼다. 여는 것은 기존 Overlay 를 그대로 쓴다. */
+        /* 게임 설명 — 조작법과 모드 1/2/3 차이를 한 화면에 모두 보여준다.
+           내용이 모드와 무관하게 고정이라 여는 것은 기존 Overlay 만 그대로 쓴다. */
         function openHowTo() {
-            const isQuiz = appMode === 'quiz';
-            dom('howToSub').textContent = isQuiz
-                ? 'AI가 고른 낱말을 힌트를 보고 맞히는 게임이에요.'
-                : '글자를 이어 제시어와 관련된 단어를 만드는 게임이에요.';
-            const step3 = dom('howToStep3');
-            step3.querySelector('b').textContent = isQuiz
-                ? '힌트는 10초마다 하나씩 열립니다'
-                : '글자 수 제한은 없습니다';
-            step3.querySelector('p').textContent = isQuiz
-                ? '최대 6개까지 열리고, 적게 보고 맞힐수록 점수가 높습니다.'
-                : '2글자든 5글자든 제시어에 해당하는 단어면 모두 정답입니다. 연속으로 맞히면 콤보 점수가 붙습니다.';
             Overlay.open('howToOverlay');
         }
 

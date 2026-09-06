@@ -1329,7 +1329,7 @@
         .board-start-help:active { transform: translateY(1px); box-shadow: none; }
 
         /* ---------- 게임 방법 모달 ---------- */
-        .how-to-card { max-width: min(92vw, 640px); }
+        .how-to-card { max-width: min(92vw, 640px); max-height: min(86vh, 720px); overflow-y: auto; }
         .how-to-body {
             display: flex;
             flex-direction: column;
@@ -1365,7 +1365,7 @@
             color: var(--muted);
         }
 
-        /* ---------- 보드 위 원형 버튼: 음소거(왼쪽) / 단어 변경(오른쪽) ----------
+        /* ---------- 보드 위 원형 버튼: 게임 설명(왼쪽) / 단어 변경(오른쪽) ----------
            두 버튼은 놓이는 쪽과 색만 다르므로 모양은 .board-fab 하나로 정의하고,
            색은 --fab / --fab-dark 변수로만 갈아 끼운다. */
         .board-fab {
@@ -1405,8 +1405,22 @@
             transition: transform 0.35s cubic-bezier(.34,1.56,.64,1);
         }
 
-        .mute-fab { left: 16px; --fab: var(--sky); --fab-dark: var(--sky-dark); }
-        .mute-fab.muted { --fab: #c9c2be; --fab-dark: #a89f9a; }
+        /* 게임 설명 — 아이콘 대신 글자를 쓰므로 동그라미가 아니라 알약 모양이다.
+           .board-fab 의 위치·그림자·비활성 스타일은 그대로 물려받는다. */
+        .info-btn {
+            left: 16px;
+            --fab: var(--sky); --fab-dark: var(--sky-dark);
+            width: auto;
+            height: auto;
+            min-height: 44px;
+            border-radius: 999px;
+            padding: clamp(9px, 0.7vw, 14px) clamp(16px, 1.3vw, 26px);
+            font-size: var(--fs-label);
+            font-weight: 700;
+            color: #063a52;
+            white-space: nowrap;
+            letter-spacing: 0.2px;
+        }
         /* 단어변경 — 아이콘 대신 글자를 쓰므로 동그라미가 아니라 알약 모양이다.
            .board-fab 의 위치·그림자·비활성 스타일은 그대로 물려받는다. */
         .shuffle-btn {
@@ -1455,9 +1469,7 @@
             border: 6px solid transparent;
         }
         .board-fab:hover .fab-tooltip { opacity: 1; transform: translateY(-50%) scale(1); }
-        .mute-fab .fab-tooltip { left: calc(100% + 10px); }
-        .mute-fab .fab-tooltip::after { right: 100%; border-right-color: var(--ink); }
-        /* 단어변경 버튼은 글자가 보이므로 말풍선을 쓰지 않는다 (음소거 버튼만 남는다). */
+        /* 게임 설명 / 단어변경 버튼은 모두 글자가 보이므로 말풍선을 쓰지 않는다. */
 
         #board {
             display: flex;
