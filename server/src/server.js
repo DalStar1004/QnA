@@ -20,6 +20,7 @@ const { InMemoryRoomRepository } = require('./infrastructure/InMemoryRoomReposit
 const { SocketIOBroadcaster } = require('./infrastructure/SocketIOBroadcaster');
 const { roomCodeGenerator } = require('./infrastructure/roomCodeGenerator');
 const { OllamaHintGenerator } = require('./infrastructure/OllamaHintGenerator');
+const { GroqHintGenerator } = require('./infrastructure/GroqHintGenerator');
 const GeminiService = require('./services/GeminiService');
 
 // 4. Presentation
@@ -35,13 +36,19 @@ const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
 
 /* ---------- 시험 구현: AI 스무고개 힌트를 어디서 만들지 ----------
- * AI_PROVIDER=gemini  → Google Gemini API (서버가 호출, GEMINI_API_KEY 필요)
- * AI_PROVIDER=ollama  → 기존 로컬 LLM (기본값 — 지금까지의 동작을 그대로 유지한다)
+ * 이 값은 두 가지에 쓰인다.
+ *   ① 멀티플레이(QuizService)가 쓸 hintGenerator — 'gemini'가 아니면 전부 Ollama로 본다.
+ *      (이 분기는 이번 Groq 이식과 무관하게 예전 그대로다 — 아래에서 바뀌지 않는다)
+ *   ② 혼자 하기 모드 2의 /api/ai/* 가, 화면이 provider를 안 실어 보냈을 때 쓸 기본값
+ *      (③ 참고: 화면은 이제 항상 'groq'|'gemini' 를 실어 보내므로 평소엔 안 쓰인다)
+ * 'groq'는 ②에서만 의미가 있다 — 멀티플레이 hintGenerator는 여전히 gemini/ollama 둘뿐이다.
  * 그 밖의 값이거나 고른 것을 쓸 수 없으면(키 없음 등) 기존 내장 사전 힌트로 넘어간다.
  * 이 값 하나로 배포 방식을 바꾸는 것은 아니다 — Render 등 실제 배포는 그대로 두고
  * 로컬에서 켤 때만 넣어 시험해 보는 스위치다. */
-const AI_PROVIDER = (process.env.AI_PROVIDER || 'ollama').toLowerCase() === 'gemini'
-    ? 'gemini' : 'ollama';
+const AI_PROVIDER = (() => {
+    const value = (process.env.AI_PROVIDER || 'ollama').toLowerCase();
+    return (value === 'gemini' || value === 'groq') ? value : 'ollama';
+})();
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 /* ---------- 혼자 하기 게임 파일을 어디서 찾을 것인가 ----------
@@ -73,6 +80,25 @@ const broadcaster = new SocketIOBroadcaster(io);
 const hintGenerator = AI_PROVIDER === 'gemini'
     ? { ensureReady: GeminiService.ensureReady, generateHints: GeminiService.generateHints }
     : new OllamaHintGenerator({ endpoint: OLLAMA_URL, model: OLLAMA_MODEL });
+
+/* ---------- 혼자 하기 모드 2 전용: Groq를 Gemini와 나란히 상시 준비 ----------
+ * 위 hintGenerator(멀티플레이용, AI_PROVIDER로 Ollama/Gemini 중 고정)와는 별개다.
+ * 혼자 하기는 사용자가 설정에서 Groq/Gemini를 자유롭게 고르고 전환할 수 있어야 하므로,
+ * AI_PROVIDER 값과 무관하게 Groq도 항상 만들어 대기시켜 둔다(서버.js:presentation/aiRoutes.js 가 씀).
+ *
+ * 기존 GROQ_API_KEY/GEMINI_API_KEY 환경변수가 있으면 그 값을 초기 키로 그대로 써서
+ * 서버가 뜨자마자 연결까지 마쳐 둔다(예전처럼 별다른 조작 없이 바로 쓸 수 있게 하는 하위 호환).
+ * 실패해도 서버는 그대로 뜬다 — 화면에서 [연결하기]로 다시 시도할 수 있다. */
+const GROQ_MODEL = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
+const groqHintGenerator = new GroqHintGenerator({ model: GROQ_MODEL });
+if (process.env.GROQ_API_KEY) {
+    groqHintGenerator.setApiKey(process.env.GROQ_API_KEY);
+    groqHintGenerator.connect().catch(() => {});
+}
+if (process.env.GEMINI_API_KEY) {
+    GeminiService.setApiKey(process.env.GEMINI_API_KEY);
+    GeminiService.connect().catch(() => {});
+}
 
 const roomService = new RoomService({ roomRepository, broadcaster, codeGenerator: roomCodeGenerator });
 const roundService = new RoundService({ roomRepository, broadcaster });
@@ -114,7 +140,7 @@ app.get('/healthz', (req, res) => {
 
 // 혼자 하기(브라우저)가 AI_PROVIDER='gemini' 일 때만 쓰는 경로. 'ollama'(기본값)면
 // 브라우저가 예전처럼 Ollama를 직접 부르므로 이 라우트는 호출되지 않는다.
-registerAiRoutes(app, { getProvider: () => AI_PROVIDER, geminiService: GeminiService });
+registerAiRoutes(app, { getDefaultProvider: () => AI_PROVIDER, geminiService: GeminiService, groqHintGenerator });
 
 /**
  * 같은 인터넷(공유기)에 물린 다른 PC가 적어 넣을 주소를 모아 돌려준다.
@@ -151,6 +177,7 @@ httpServer.listen(PORT, () => {
         console.log(`  · AI 스무고개 힌트  ${OLLAMA_URL} (${OLLAMA_MODEL})`);
     }
     console.log('    AI 가 꺼져 있어도 글자 수·초성 힌트로 게임은 진행됩니다.');
+    console.log('  · 혼자 하기 모드 2  Groq/Gemini 중 골라 연결 가능 (⚙️ 게임 설정, 기본값 Groq)');
     console.log('');
 
     // 모드 3은 문제 파일이 있어야 한다. 서버를 켤 때 미리 읽어 두면, 없을 때 여기서 바로 알 수 있다.

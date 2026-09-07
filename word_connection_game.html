@@ -88,7 +88,7 @@
             </button>
         </div>
 
-        <!-- 게임 모드 전환: 1) 제시어 맞추기  2) qwen2.5:7b 기반 AI 스무고개 -->
+        <!-- 게임 모드 전환: 1) 제시어 맞추기  2) Groq/Gemini 기반 AI 힌트 맞히기 -->
         <div class="mode-switch" id="modeSwitch">
             <button type="button" class="mode-btn active" data-mode="classic" onclick="selectMode('classic')">
                 🍬 모드 1 · 제시어 맞추기
@@ -320,21 +320,28 @@
                     </div>
                 </div>
                 <div class="settings-row settings-row-col">
-                    <label>⚙️ qwen2.5:7b 연결 (Ollama)</label>
+                    <label for="aiProviderSelect">🤖 AI 힌트 제공자</label>
                     <div class="llm-fields">
-                        <input type="text" id="llmEndpointInput" placeholder="http://localhost:11434" aria-label="Ollama 주소">
-                        <input type="text" id="llmModelInput" placeholder="qwen2.5:7b" aria-label="모델 이름">
-                        <button type="button" class="jelly-btn btn-file-ghost" onclick="testLlmConnection()">연결 확인</button>
-                        <button type="button" class="jelly-btn btn-file-ghost" id="llmCloseBtn" onclick="closeLlmConnection()">연결 닫기</button>
+                        <select id="aiProviderSelect" onchange="onAiProviderChange()" aria-label="AI 제공자">
+                            <option value="groq">Groq</option>
+                            <option value="gemini">Gemini</option>
+                        </select>
+                        <input type="password" id="aiKeyInput" placeholder="API 키 (연결할 때만 사용, 저장되지 않음)" aria-label="API 키" autocomplete="off">
+                        <button type="button" class="jelly-btn btn-file-ghost" onclick="connectAi()">연결하기</button>
+                        <button type="button" class="jelly-btn btn-file-ghost" id="aiDisconnectBtn" onclick="disconnectAi()">연결 끊기</button>
                     </div>
-                    <div class="llm-status" id="llmSettingsStatus">연결 상태를 보려면 [연결 확인]을 눌러주세요.</div>
+                    <div class="llm-status" id="llmSettingsStatus">연결 상태를 확인하는 중…</div>
                     <div class="settings-note">
                         <div class="guide-rule">
-                            ✅ 여기를 건드리지 않아도 [스무고개 시작]이 알아서 연결합니다.
-                            준비 방법은 스무고개 시작 화면의 [준비 방법] 버튼에서 볼 수 있어요.
+                            🔁 Groq와 Gemini를 각각 연결해 두면, 위 드롭다운만 바꿔서 바로 전환할 수 있어요
+                            (다시 키를 넣지 않아도 됩니다).
                         </div>
                         <div class="guide-rule">
-                            🔌 [연결 닫기]는 예열해 둔 모델을 램에서 내립니다(7B 기준 약 4.4GB).
+                            ✅ 연결하지 못해도 게임은 진행됩니다. 이때는 내장 힌트(글자 수 등)로 문제를 만들어 드려요.
+                        </div>
+                        <div class="guide-rule">
+                            🔒 API 키는 서버 메모리에만 잠깐 남고, 이 브라우저에는 저장되지 않아요.
+                            서버를 다시 켜면 다시 넣어야 합니다.
                         </div>
                     </div>
                 </div>
@@ -490,7 +497,7 @@
     </div>
 
     <!-- 모드 2 시작 모달: 여기서 누를 것은 [스무고개 시작] 하나다.
-         횟수와 Ollama 주소·모델·연결 확인/닫기는 ⚙️ 게임 설정으로 옮겼고,
+         횟수와 AI 제공자(Groq/Gemini) 선택·키 연결/끊기는 ⚙️ 게임 설정으로 옮겼고,
          준비 방법은 [준비 방법] 버튼으로 펼쳐 본다. -->
     <div class="modal-overlay" id="quizSetupOverlay">
         <div class="modal-card wide">
@@ -505,19 +512,21 @@
                                 onclick="toggleLlmGuide()" aria-expanded="false"
                                 aria-controls="llmGuide">준비 방법 ▾</button>
                     </div>
-                    <!-- qwen2.5:7b 준비 방법: 평소에는 접어 두고 버튼으로 펼친다 -->
+                    <!-- Groq/Gemini 키 준비 방법: 평소에는 접어 두고 버튼으로 펼친다 -->
                     <div class="settings-note" id="llmGuide" style="display:none;">
                         <div class="guide-item">
-                            <b>qwen2.5:7b 준비 방법</b>
-                            <pre>1) https://ollama.com 에서 Ollama 설치
-2) ollama pull qwen2.5:7b
-3) 브라우저에서 접속할 수 있게 CORS 허용 후 실행
-   Windows PowerShell:
-     $env:OLLAMA_ORIGINS="*"; ollama serve</pre>
+                            <b>Groq 키 준비 방법</b>
+                            <pre>1) https://console.groq.com 접속 → 로그인 → API 키 발급
+2) 발급된 키(gsk_로 시작)를 복사
+3) ⚙️ 게임 설정 › AI 힌트 제공자에서 Groq 선택 → 키 붙여넣기 → [연결하기]</pre>
                         </div>
                         <div class="guide-item">
-                            <b>주소·모델을 바꾸려면</b> — ⚙️ 게임 설정 › qwen2.5:7b 연결
-                            <pre>기본값: http://localhost:11434 · qwen2.5:7b</pre>
+                            <b>Gemini 키 준비 방법</b>
+                            <pre>1) https://aistudio.google.com 접속 → API 키 발급
+2) ⚙️ 게임 설정 › AI 힌트 제공자에서 Gemini 선택 → 키 붙여넣기 → [연결하기]</pre>
+                        </div>
+                        <div class="guide-rule">
+                            🔁 두 AI를 각각 연결해 두면 드롭다운만 바꿔서 다시 키 없이 전환할 수 있어요.
                         </div>
                         <div class="guide-rule">
                             ✅ AI에 연결하지 못해도 게임은 진행됩니다. 이때는 내장 사전으로 문제를 만들어 드려요.

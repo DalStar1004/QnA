@@ -354,6 +354,9 @@
             const CATEGORY_KEY = 'wordConnectionGame.category';
             const LLM_ENDPOINT_KEY = 'wordConnectionGame.llmEndpoint';
             const LLM_MODEL_KEY = 'wordConnectionGame.llmModel';
+            // 모드 2에서 고른 AI(Groq/Gemini). 키는 절대 여기 저장하지 않는다 — 선택값만 기억한다.
+            const AI_PROVIDER_KEY = 'wordConnectionGame.aiProvider';
+            const DEFAULT_AI_PROVIDER = 'groq';
             const QUIZ_CATEGORY_KEY = 'wordConnectionGame.quizCategory';
             const QUIZ_ROUNDS_KEY = 'wordConnectionGame.quizRounds';
             // 모드 2의 블록 개수. 예전에는 모드 1의 칸을 같이 썼는데, 두 모드는 판의 성격이 달라
@@ -398,7 +401,7 @@
                 leaderboard: null, quizLeaderboard: null, examLeaderboard: null,
                 nickname: null, background: null, customCategories: null, examExtras: null,
                 llmEndpoint: null, llmModel: null, quizCategory: null, quizRounds: null,
-                multiplayerUrl: null
+                multiplayerUrl: null, aiProvider: null
             };
 
             function readRaw(key) {
@@ -501,6 +504,18 @@
                     const value = (name || '').trim() || DEFAULT_LLM_MODEL;
                     memory.llmModel = value;
                     writeRaw(LLM_MODEL_KEY, value);
+                },
+                /* ---------- 모드 2: AI 힌트 제공자 선택 (Groq/Gemini) ----------
+                   저장하는 것은 어느 쪽을 고를지 뿐이다. API 키는 여기 저장하지 않는다. */
+                getAiProvider() {
+                    if (memory.aiProvider !== null) return memory.aiProvider;
+                    const saved = readRaw(AI_PROVIDER_KEY);
+                    return (saved === 'groq' || saved === 'gemini') ? saved : DEFAULT_AI_PROVIDER;
+                },
+                setAiProvider(name) {
+                    const value = (name === 'gemini') ? 'gemini' : 'groq';
+                    memory.aiProvider = value;
+                    writeRaw(AI_PROVIDER_KEY, value);
                 },
                 getQuizCategory() {
                     if (memory.quizCategory !== null) return memory.quizCategory;
@@ -1525,13 +1540,12 @@
                     // 목록에 '기본 문제 몇 개'를 적어 주려면 파일을 읽어야 한다. 실패해도 그냥 넘어간다.
                     ExamBank.load().catch(() => {}).then(renderExamExtras);
                     renderExamExtras();
-                    // 모드 2 설정(블록 개수 · 횟수 · Ollama 주소 · 모델)도 저장값으로 채워 둔다.
+                    // 모드 2 설정(블록 개수 · 횟수 · AI 제공자)도 저장값으로 채워 둔다.
                     dom('quizBlockCount').value = StorageManager.getQuizBlocks();
                     dom('quizRoundsInput').value = StorageManager.getQuizRounds();
-                    dom('llmEndpointInput').value = StorageManager.getLlmEndpoint();
-                    dom('llmModelInput').value = StorageManager.getLlmModel();
-                    writeLlmStatus(dom('llmSettingsStatus'),
-                        '연결 상태를 보려면 [연결 확인]을 눌러주세요.', '');
+                    const providerSelect = dom('aiProviderSelect');
+                    if (providerSelect) providerSelect.value = StorageManager.getAiProvider();
+                    refreshAiStatusDisplay();
                     // 설명은 항상 접힌 상태로 열어 설정 화면이 길어지지 않게 한다.
                     [['formatGuide', 'formatGuideBtn'], ['examGuide', 'examGuideBtn']].forEach(([guideId, btnId]) => {
                         const guide = dom(guideId);
@@ -1662,10 +1676,10 @@
 
 
         /* =========================================================
-           4.5 모드 2 — AI(qwen2.5:7b) 스무고개
-           사용자가 입력한 카테고리에서 LLM이 정답 낱말 하나를 고르고,
+           4.5 모드 2 — AI(Groq/Gemini 중 선택) 스무고개
+           사용자가 입력한 카테고리에서 AI가 정답 낱말 하나를 고르고,
            10초마다 힌트를 하나씩 보드 옆 패널에 열어 준다.
-           LLM에 연결하지 못하면 내장 사전으로 문제를 만들어 게임은 계속되게 한다.
+           AI에 연결하지 못하면 내장 사전으로 문제를 만들어 게임은 계속되게 한다.
         ========================================================= */
 
         const QUIZ_HINT_INTERVAL = 10;  // 힌트가 하나씩 열리는 간격(초)
@@ -2102,34 +2116,59 @@
             };
         })();
 
-        /* ---------- AI 제공자 분기 (시험 구현) ----------
-           서버가 AI_PROVIDER 로 고른 것을 그대로 따른다. 'ollama'(기본값이자 지금까지의 동작)면
-           브라우저가 지금까지처럼 Ollama(LlamaClient)를 직접 부른다 — 이 블록은 LlamaClient를
-           한 글자도 바꾸지 않는다. 서버가 'gemini' 라고 답할 때만 /api/ai/* 를 거친다
-           (브라우저가 Gemini를 직접 호출하는 일은 없다). */
+        /* ---------- AI 제공자 분기 (Groq/Gemini 선택) ----------
+           ⚙️ 게임 설정에서 고른 provider(기본값 Groq)를 그대로 서버로 넘긴다. 두 provider 모두
+           서버가 대신 부르고(/api/ai/*), 브라우저는 완성된 힌트 문장만 받는다 — 정답과 API 키는
+           서버 밖으로 나가지 않는다.
+           Ollama(LlamaClient)는 이 분기에서 더는 쓰이지 않는다. 되돌릴 수 있도록 LlamaClient 코드
+           자체는 그대로 남겨 뒀다(호출하는 곳만 없앴다). */
         const AiQuiz = (function () {
-            let cachedProvider = 'ollama';
+            function provider() {
+                return StorageManager.getAiProvider();
+            }
 
-            // /api/ai/status 자체가 없으면(정적 서버로만 열었을 때 등) Ollama 취급한다 —
-            // 지금까지 항상 그래 왔던 경로이므로 조용히 그대로 두는 것이 안전하다.
-            async function status() {
+            async function status(providerName) {
+                const p = providerName || provider();
                 try {
-                    const res = await fetch('/api/ai/status');
+                    const res = await fetch('/api/ai/status?provider=' + encodeURIComponent(p));
                     const data = res.ok ? await res.json() : null;
-                    cachedProvider = (data && data.provider === 'gemini') ? 'gemini' : 'ollama';
-                    return data || { provider: 'ollama', ok: false, reason: null };
+                    return data || { ok: false, provider: p, reason: null };
                 } catch (e) {
-                    cachedProvider = 'ollama';
-                    return { provider: 'ollama', ok: false, reason: null };
+                    return { ok: false, provider: p, reason: '서버에 연결할 수 없습니다' };
                 }
             }
 
-            function provider() {
-                return cachedProvider;
+            async function connect(providerName, apiKey) {
+                try {
+                    const res = await fetch('/api/ai/connect', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider: providerName, apiKey: apiKey || '' })
+                    });
+                    const data = await res.json().catch(() => null);
+                    return data || { ok: false, reason: '서버에 연결할 수 없습니다' };
+                } catch (e) {
+                    return { ok: false, reason: '서버에 연결할 수 없습니다' };
+                }
             }
 
-            /** 정답은 여기서도 항상 사전에서 고른다 — LlamaClient.createQuiz와 같은 이유. */
-            async function createQuizViaGemini(category) {
+            async function disconnect(providerName) {
+                try {
+                    const res = await fetch('/api/ai/disconnect', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider: providerName })
+                    });
+                    const data = await res.json().catch(() => null);
+                    return data || { ok: false };
+                } catch (e) {
+                    return { ok: false };
+                }
+            }
+
+            /** 정답은 여기서도 항상 사전에서 고른다 — 예전 LlamaClient.createQuiz와 같은 이유. */
+            async function createQuiz(category) {
+                const p = provider();
                 const builtin = QuizContent.matchBuiltinCategory(category);
                 const answer = builtin ? QuizContent.pickAnswer(builtin) : null;
                 if (!answer) {
@@ -2140,22 +2179,16 @@
                 const res = await fetch('/api/ai/hints', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ category: builtin, answer: answer })
+                    body: JSON.stringify({ provider: p, category: builtin, answer: answer })
                 });
                 const data = await res.json().catch(() => null);
                 if (!res.ok || !data || !data.ok || !Array.isArray(data.hints)) {
-                    throw new Error((data && data.reason) || 'Gemini 힌트를 받지 못했습니다.');
+                    throw new Error((data && data.reason) || 'AI 힌트를 받지 못했습니다.');
                 }
                 return { answer, hints: QuizContent.assemble(answer, data.hints), category: builtin };
             }
 
-            /** 호출부는 이 함수 하나만 쓰면 된다. provider가 'gemini'가 아니면 기존 경로 그대로다. */
-            async function createQuiz(category) {
-                if (cachedProvider === 'gemini') return createQuizViaGemini(category);
-                return LlamaClient.createQuiz(category);
-            }
-
-            return { status, provider, createQuiz };
+            return { status, provider, connect, disconnect, createQuiz };
         })();
 
         /* ---------- 힌트 패널 렌더링 (DOM 전담) ---------- */
@@ -3016,7 +3049,7 @@
             ModalManager.syncSettingsMode();
         }
 
-        /* ---------- 모드 2: AI(qwen2.5:7b) 스무고개 ---------- */
+        /* ---------- 모드 2: AI(Groq/Gemini) 연결 관리 ---------- */
 
         // 연결 상태 줄은 [스무고개 시작] 화면과 ⚙️ 게임 설정 두 곳에 있다.
         // 어느 쪽에서 시작했든 같은 내용을 보여줘야 해서 둘 다 갱신한다.
@@ -3034,161 +3067,81 @@
             el.textContent = message;
         }
 
+        // 저장할 것은 이제 provider 선택뿐이다. API 키는 절대 저장하지 않는다(보안 요구사항).
         function saveLlmSettingsFromForm() {
-            StorageManager.setLlmEndpoint(dom('llmEndpointInput').value);
-            StorageManager.setLlmModel(dom('llmModelInput').value);
+            const sel = dom('aiProviderSelect');
+            if (sel) StorageManager.setAiProvider(sel.value);
         }
 
-        // 브라우저에서 로컬 LLM을 부를 때 가장 흔한 실패 원인을 사람 말로 풀어준다.
-        function describeLlmError(error) {
-            if (error && error.name === 'AbortError') return '응답이 너무 늦어 중단했어요';
-            const message = String((error && error.message) || error || '');
-            if (message.indexOf('Failed to fetch') !== -1 || message.indexOf('NetworkError') !== -1) {
-                return 'Ollama가 꺼져 있거나 CORS(OLLAMA_ORIGINS) 설정이 필요해요';
-            }
-            return message || '알 수 없는 오류';
+        function currentAiLabel() {
+            return AiQuiz.provider() === 'gemini' ? 'Gemini' : 'Groq';
         }
 
         /**
-         * AI 연결을 끝까지 맞춰 준다. 서버 확인 → 모델 설치 확인 → 메모리에 올리기.
-         * [연결 확인] 버튼과 [스무고개 시작] 버튼이 같은 경로를 쓴다.
-         *
-         * 연결에 실패해도 예외를 던지지 않는다. 게임은 내장 사전으로 계속 진행되기 때문에,
-         * 무엇이 안 됐는지 알려 주고 `false` 를 돌려주는 것으로 충분하다.
+         * 지금 고른 provider의 실제 연결 상태를 물어보고 화면에 보여 준다. 연결을 새로 시도하지는
+         * 않는다(아직 잠겨 있으면 잠긴 채로 보여 줄 뿐이다) — 그냥 지금 상태를 보여 주는 것뿐이라
+         * [스무고개 시작] · ⚙️ 게임 설정을 열 때 · provider를 바꿀 때 아무 때나 불러도 안전하다.
+         * @returns {Promise<boolean>} 지금 이 provider로 힌트를 만들 수 있으면 true
+         */
+        async function refreshAiStatusDisplay() {
+            const label = currentAiLabel();
+            const status = await AiQuiz.status();
+            if (status.ok) {
+                const usage = (status.usage && typeof status.usage.cap === 'number')
+                    ? ` · 오늘 ${status.usage.used}/${status.usage.cap}회` : '';
+                setLlmStatus(`✅ ${label}(${status.model || label}) 연결됨${usage}`, 'ok');
+                return true;
+            }
+            if (status.needsKey || status.locked) {
+                setLlmStatus(`🔑 ${label} 연결 안 됨 — API 키를 넣고 [연결하기]를 눌러주세요. 지금은 내장 힌트로 진행됩니다.`, 'warn');
+            } else {
+                console.warn(`[AI] ${label} 사용 불가:`, status.reason || '(사유 없음)');
+                setLlmStatus(`❌ ${label} 사용 불가 — 내장 힌트로 진행합니다.`, 'bad');
+            }
+            return false;
+        }
+
+        /** [연결하기]. 옆 칸에 넣은 키로 지금 고른 provider에 연결한다. */
+        async function connectAi() {
+            const label = currentAiLabel();
+            const input = dom('aiKeyInput');
+            const apiKey = (input && input.value || '').trim();
+            setLlmStatus(`🔌 ${label}에 연결하는 중…`, '');
+            const status = await AiQuiz.connect(AiQuiz.provider(), apiKey);
+            // 보낸 즉시 입력칸을 비운다 — 키를 화면에 남겨 두거나 저장하지 않는다는 것을 눈으로도 보이게 한다.
+            if (input) input.value = '';
+            if (status.ok) {
+                const switched = status.switched ? ` (요청한 모델이 없어 ${status.model}(으)로 자동 대체)` : '';
+                setLlmStatus(`✅ ${label}(${status.model || label}) 연결 완료${switched}`, 'ok');
+            } else {
+                setLlmStatus(`❌ ${label} 연결 실패 — ${status.reason || '알 수 없는 오류'}`, 'bad');
+            }
+        }
+
+        /** [연결 끊기]. 서버 메모리에 들고 있던 키도 함께 지운다. */
+        async function disconnectAi() {
+            const label = currentAiLabel();
+            const btn = dom('aiDisconnectBtn');
+            if (btn) btn.disabled = true;
+            await AiQuiz.disconnect(AiQuiz.provider());
+            if (btn) btn.disabled = false;
+            setLlmStatus(`🔌 ${label} 연결을 끊었어요. 지금은 내장 힌트로 진행됩니다.`, 'ok');
+        }
+
+        /** ⚙️ 게임 설정의 AI 제공자 드롭다운을 바꿨을 때 — 선택을 저장하고 그 provider의 상태를 바로 보여 준다. */
+        function onAiProviderChange() {
+            saveLlmSettingsFromForm();
+            refreshAiStatusDisplay();
+        }
+
+        /**
+         * [스무고개 시작]을 누르면 지금 고른 provider가 쓸 수 있는지 확인한다.
+         * 연결에 실패해도 예외를 던지지 않는다 — 게임은 내장 사전으로 계속 진행되기 때문에,
+         * 상태만 화면에 보여 주고 `false`를 돌려주는 것으로 충분하다.
          * @returns {Promise<boolean>} AI로 문제를 낼 수 있으면 true
          */
         async function ensureLlmReady() {
-            const aiStatus = await AiQuiz.status();
-            if (aiStatus.provider === 'gemini') {
-                if (aiStatus.ok) {
-                    setLlmStatus(`✅ Gemini(${aiStatus.model || 'gemini'}) 사용 준비 완료`, 'ok');
-                    return true;
-                }
-                // API 키 여부·내부 사유는 화면에 보여 주지 않는다. 콘솔에만 남긴다.
-                console.warn('[AI] Gemini 사용 불가:', aiStatus.reason || '(사유 없음)');
-                setLlmStatus('❌ AI 연결을 사용할 수 없어 내장 힌트로 진행합니다.', 'bad');
-                return false;
-            }
-
-            // provider === 'ollama' (기본값) — 지금까지의 동작 그대로.
-            // [연결 닫기] 로 걸어 둔 잠금을 푼다. 이걸 빼먹으면 닫은 뒤에 다시 연결할 수 없다.
-            LlamaClient.reopen();
-            const model = LlamaClient.model;
-            setLlmStatus(`🔌 ${model} 연결을 확인하는 중…`, '');
-
-            let info = null;
-            try {
-                info = await LlamaClient.ping();
-            } catch (e) {
-                if (LlamaClient.closed) return false; // 확인하는 사이에 사용자가 연결을 닫았다
-                setLlmStatus(`❌ 연결 실패 (${describeLlmError(e)}). 내장 사전으로 문제를 냅니다.`, 'bad');
-                return false;
-            }
-
-            if (!info.hasModel) {
-                const installed = info.names.length ? info.names.join(', ') : '없음';
-                setLlmStatus(
-                    `⚠ '${model}' 모델이 없어요. 터미널에서 \`ollama pull ${model}\` 를 실행해주세요. (설치된 모델: ${installed})`, 'warn');
-                return false;
-            }
-
-            // 연결만 확인하고 끝내면 첫 문제 요청이 모델 로딩에 걸려 시간을 다 써 버린다.
-            // 여기서 미리 올려 두고, 그동안 무엇을 기다리는지 화면에 알린다.
-            // 콜드 로드는 측정값이 50~120초로 길다. 그동안 화면이 멈춘 것처럼 보이지 않도록
-            // 경과 시간을 1초마다 갱신한다. 이미 올라가 있으면 0.1초면 끝나 이 문구는 보이지도 않는다.
-            const warmStarted = Date.now();
-            const showWarming = () => {
-                // 예열 도중에 [연결 닫기]를 누를 수 있다. 그때는 닫기 쪽 안내를 덮어쓰지 않는다.
-                if (LlamaClient.closed) return;
-                const sec = Math.round((Date.now() - warmStarted) / 1000);
-                setLlmStatus(`✅ 연결됨 — ${model} 을(를) 메모리에 올리는 중… ${sec}초 (처음 한 번은 1~2분 걸릴 수 있어요)`, '');
-            };
-            showWarming();
-            const warmTicker = setInterval(showWarming, 1000);
-            try {
-                await LlamaClient.warmUp();
-                if (LlamaClient.closed) return false; // 예열이 끝나기 전에 사용자가 연결을 닫았다
-                setLlmStatus(`✅ ${model} 사용 준비 완료`, 'ok');
-            } catch (e) {
-                // 사용자가 [연결 닫기]로 끊은 것이라면 실패가 아니다. 닫기 쪽 안내를 그대로 둔다.
-                if (LlamaClient.closed) return false;
-                // 예열에 실패해도 연결 자체는 됐으므로 게임은 그대로 시작할 수 있다.
-                setLlmStatus(`✅ 연결됨 — 다만 예열에 실패했어요 (${describeLlmError(e)}). 첫 문제가 느릴 수 있어요.`, 'warn');
-            } finally {
-                clearInterval(warmTicker);
-            }
-            return true;
-        }
-
-        async function testLlmConnection() {
-            saveLlmSettingsFromForm();
-            await ensureLlmReady();
-        }
-
-        /**
-         * 연결을 닫고 모델을 메모리에서 내린다.
-         * 예열해 둔 모델은 30분 동안 램을 붙들고 있어서(7B 기준 약 4.4GB),
-         * 게임을 그만할 때 직접 돌려줄 수 있어야 한다.
-         *
-         * 내리는 요청 한 번만 보내면 제대로 닫히지 않는다. 판을 푸는 동안 다음 문제를 미리 받아 두는
-         * 요청이 돌고 있어서, 그 요청이 뒤늦게 끝나면서 keep_alive 30분으로 모델을 다시 올려 버린다.
-         * 그래서 순서가 중요하다: ① 돌고 있는 요청을 끊고 ② 미리 받기를 버리고 ③ 모델을 내린 뒤
-         * ④ /api/ps 로 정말 내려갔는지 확인한다. 확인까지 해야 "닫았다"고 말할 수 있다.
-         */
-        let llmClosing = false; // 닫는 동안 버튼을 두 번 누르는 것을 막는다
-
-        async function closeLlmConnection() {
-            if (llmClosing) return;
-            llmClosing = true;
-            const btn = dom('llmCloseBtn');
-            if (btn) btn.disabled = true;
-
-            if (AiQuiz.provider() === 'gemini') {
-                // Gemini는 상태 없는 API라 Ollama처럼 메모리에서 내릴 모델이 없다.
-                setLlmStatus('🔌 Gemini는 별도로 닫을 연결이 없어요.', 'ok');
-                llmClosing = false;
-                if (btn) btn.disabled = false;
-                return;
-            }
-
-            saveLlmSettingsFromForm();
-            const model = LlamaClient.model;
-            setLlmStatus('🔌 연결을 닫는 중…', '');
-
-            try {
-                // ① 돌고 있는 요청부터 끊는다. 여기서 새 요청도 함께 막힌다.
-                const aborted = LlamaClient.abortAll();
-                // ② 미리 받아 둔 다음 문제도 버린다. 남겨 두면 다음 라운드가 그걸 기다린다.
-                QuizSession.clearPrefetch();
-
-                // ③ 모델을 내린다. 끊긴 요청이 서버 쪽에서 정리될 틈을 조금 준다.
-                await new Promise(r => setTimeout(r, 200));
-                await LlamaClient.unload();
-
-                // ④ 정말 내려갔는지 확인하고, 아직 남아 있으면 한 번 더 내린다.
-                let stillLoaded = await LlamaClient.isLoaded().catch(() => null);
-                if (stillLoaded === true) {
-                    await new Promise(r => setTimeout(r, 800));
-                    await LlamaClient.unload();
-                    stillLoaded = await LlamaClient.isLoaded().catch(() => null);
-                }
-
-                if (stillLoaded === true) {
-                    setLlmStatus(
-                        `⚠ ${model} 이(가) 아직 메모리에 남아 있어요. 잠시 뒤 [연결 닫기]를 한 번 더 눌러주세요.`, 'warn');
-                } else {
-                    const extra = aborted > 0 ? ` (진행 중이던 요청 ${aborted}건도 취소했어요)` : '';
-                    // 상태를 확인하지 못했으면(구형 Ollama 등) 내렸다고 단정하지 않는다.
-                    const tail = stillLoaded === false ? '메모리에서 내린 것을 확인했어요.' : '메모리에서 내렸습니다.';
-                    setLlmStatus(`🔌 연결을 닫았어요 — ${model} 을(를) ${tail}${extra}`, 'ok');
-                }
-            } catch (e) {
-                // 서버가 이미 꺼져 있으면 내릴 것도 없다. 사용자 입장에서는 어차피 닫힌 상태다.
-                setLlmStatus(`🔌 연결을 닫았어요. (모델을 내리지는 못했어요: ${describeLlmError(e)})`, 'warn');
-            } finally {
-                llmClosing = false;
-                if (btn) btn.disabled = false;
-            }
+            return refreshAiStatusDisplay();
         }
 
         /* ----- 1단계: 몇 번 진행할지 정한다 ----- */
@@ -3209,7 +3162,7 @@
             }
             dom('quizSetupRounds').textContent =
                 `🔁 스무고개 ${StorageManager.getQuizRounds()}회 · 횟수는 ⚙️ 게임 설정에서 바꿔요`;
-            writeLlmStatus(dom('llmStatus'), '[스무고개 시작]을 누르면 AI 연결을 확인합니다.', '');
+            refreshAiStatusDisplay();
             Overlay.open('quizSetupOverlay');
         }
 
@@ -4115,7 +4068,7 @@
         }
 
         // '작성 예시' 버튼: 파일 작성법 설명을 펼치고 접는다.
-        // qwen2.5:7b 준비 방법 — 시작 화면이 길어지지 않게 평소에는 접어 둔다.
+        // Groq/Gemini 키 준비 방법 — 시작 화면이 길어지지 않게 평소에는 접어 둔다.
         function toggleLlmGuide() {
             const guide = dom('llmGuide');
             const button = dom('llmGuideBtn');

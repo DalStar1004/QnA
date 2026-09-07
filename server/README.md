@@ -134,7 +134,7 @@ OLLAMA_URL=http://127.0.0.1:11434  OLLAMA_MODEL=qwen2.5:7b
 ```bash
 AI_PROVIDER=gemini          # 아무 값도 없거나 'ollama'면 기존 방식 그대로
 GEMINI_API_KEY=<발급받은 키>  # 실제 값은 여기(문서)에 적지 말고 환경변수로만 넣습니다
-GEMINI_MODEL=gemini-3.8-flash  # 생략하면 기본값으로 이 모델을 씁니다
+GEMINI_MODEL=gemini-3.5-flash-lite  # 생략하면 기본값으로 이 모델을 씁니다 (gemini-3.8-flash는 실제 힌트 생성 시 HTTP 503으로 막혀 있었음)
 ```
 
 `GEMINI_API_KEY`가 없거나 Gemini 호출이 실패하면(사용량 제한 · 시간 초과 · 잘못된 응답 등)

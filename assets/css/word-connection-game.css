@@ -2545,7 +2545,7 @@
         .btn-quiz { --btn: var(--purple); --btn-dark: var(--purple-dark); }
 
         .llm-fields { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-        .llm-fields input {
+        .llm-fields input, .llm-fields select {
             flex: 1 1 180px;
             min-width: 150px;
             font-family: inherit;
@@ -2556,7 +2556,8 @@
             border-radius: 14px;
             background: #fff;
         }
-        .llm-fields input:focus { outline: none; border-color: var(--purple); }
+        .llm-fields select { flex: 0 1 120px; min-width: 100px; cursor: pointer; }
+        .llm-fields input:focus, .llm-fields select:focus { outline: none; border-color: var(--purple); }
         .llm-status {
             margin-top: 8px;
             font-size: 13px;

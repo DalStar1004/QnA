@@ -10,7 +10,9 @@ const {
     cleanHints
 } = require('../domain/quizContent');
 
-const DEFAULT_MODEL = 'gemini-3.8-flash';
+// gemini-3.8-flash는 실제 힌트 생성 시 HTTP 503으로 막혀 있었고(작업기록 073 추가검증),
+// gemini-3.5-flash-lite는 같은 검증에서 실제로 힌트 생성에 성공했다 — 그래서 기본값으로 쓴다.
+const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const REQUEST_TIMEOUT = 20000;
 const MAX_ATTEMPTS = 2; // Gemini는 콜드 로드가 없으므로 Ollama보다 적게 재시도한다 (비용 보호)
@@ -45,16 +47,59 @@ const HINT_RESPONSE_SCHEMA = {
     required: ['hints']
 };
 
+// ---------- 연결 상태 (싱글플레이 설정에서 관리) ----------
+// Groq의 [연결하기]/[연결 끊기]와 같은 모양으로 맞춘다. 서버가 다시 뜨면 사라진다 —
+// 파일에 쓰지 않고, 여기 있는 상태는 이 프로세스가 켜져 있는 동안만 유지된다.
+//
+// 주의: 이 상태는 서버 프로세스 전체가 공유한다. 멀티플레이가 AI_PROVIDER=gemini로 켜져
+// 있다면 같은 서버의 혼자 하기 화면에서 [연결 끊기]를 누르면 멀티플레이 쪽 Gemini 힌트도
+// 함께 꺼진다(Groq는 멀티플레이에 전혀 연결돼 있지 않아 이 문제가 없다).
+let runtimeApiKey = '';
+let active = false;
+
 function getApiKey() {
-    return process.env.GEMINI_API_KEY || '';
+    return runtimeApiKey || process.env.GEMINI_API_KEY || '';
 }
 
 function getModel() {
     return process.env.GEMINI_MODEL || DEFAULT_MODEL;
 }
 
-function isConfigured() {
+function hasApiKey() {
     return getApiKey().length > 0;
+}
+
+function isConfigured() {
+    return hasApiKey();
+}
+
+function isConnected() {
+    return active && hasApiKey();
+}
+
+function isLocked() {
+    return !active;
+}
+
+/** 화면에서 받은 키를 메모리에만 둔다. 서버 재시작 시 그대로 사라진다. */
+function setApiKey(key) {
+    const value = String(key || '').trim();
+    if (!value) return false;
+    runtimeApiKey = value;
+    return true;
+}
+
+/** [연결하기] — 잠금을 풀고 준비 상태를 확인한다. */
+async function connect() {
+    active = true;
+    return ensureReady();
+}
+
+/** [연결 끊기] — 다시 잠그고 들고 있던 키도 지운다(환경변수는 남아 있어도 더는 쓰지 않는다). */
+function disconnect() {
+    active = false;
+    runtimeApiKey = '';
+    return { ok: true };
 }
 
 /** 정답이 이미 정해져 있을 때 쓰는 프롬프트. 모델이 낱말을 지어낼 여지를 없앤다. */
@@ -224,8 +269,9 @@ async function callGemini(prompt, timeoutMs) {
  * @returns {Promise<string[]>} 다듬어진 힌트 목록 (LLM_HINT_MIN 개 이상)
  */
 async function generateHints(answer, category) {
-    if (!isConfigured()) {
-        throw new Error('GEMINI_API_KEY가 설정되지 않았습니다');
+    const ready = await ensureReady();
+    if (!ready.ok) {
+        throw new Error(ready.reason || 'Gemini 연결이 준비되지 않았습니다');
     }
     const prompt = buildHintPrompt(answer, category);
 
@@ -267,8 +313,11 @@ async function generateHints(answer, category) {
  * 호출부(QuizService/aiRoutes)가 이미 내장 힌트로 넘어가도록 처리한다.
  */
 async function ensureReady() {
-    if (!isConfigured()) {
-        return { ok: false, model: getModel(), reason: 'GEMINI_API_KEY가 설정되지 않았습니다' };
+    if (!active) {
+        return { ok: false, locked: true, reason: '아직 AI에 연결하지 않았어요' };
+    }
+    if (!hasApiKey()) {
+        return { ok: false, needsKey: true, reason: 'Gemini API 키가 없어요 ([연결하기] 에서 키를 넣어주세요)' };
     }
     return { ok: true, model: getModel(), switched: false };
 }
@@ -276,6 +325,12 @@ async function ensureReady() {
 module.exports = {
     DEFAULT_MODEL,
     isConfigured,
+    hasApiKey,
+    isConnected,
+    isLocked,
+    setApiKey,
+    connect,
+    disconnect,
     getModel,
     generateHints,
     ensureReady
