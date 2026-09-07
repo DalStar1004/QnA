@@ -26,6 +26,12 @@ COPY assets ./public/assets
 # 모드 3(산업재산권 문제)이 읽는 문제 파일
 COPY quiz-data ./public/quiz-data
 
+# 배경음악(music/ 의 mp3)은 한 곡이 5~7MB 라 이미지가 40MB 넘게 무거워진다.
+# 그래서 기본으로는 담지 않는다 — 음악만 나오지 않고 게임은 그대로 돌아간다.
+# 도커로 띄운 서버에서도 음악을 틀고 싶으면 아래 줄의 주석을 풀고 다시 빌드한다.
+# (music/ 폴더가 빌드 컨텍스트, 즉 저장소 루트에 실제로 있어야 한다. 없으면 빌드가 실패한다)
+# COPY music ./public/music
+
 ENV NODE_ENV=production
 ENV PORT=3000
 

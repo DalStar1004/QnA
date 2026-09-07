@@ -2058,6 +2058,60 @@
             .home-fab { padding: 10px 12px; font-size: 0; }
             .home-fab .home-icon { margin-right: 0; font-size: 18px; }
         }
+        /* ---------- 배경음악 고르개 (화면 맨 위 오른쪽 끝) ----------
+           music/ 폴더에 넣어 둔 mp3 를 배경음악으로 튼다. 인터넷에서 받아 오지 않는다.
+           왼쪽 위 [처음 화면] 단추와 같은 층(z-index 200)에 둬서, 모달이나 시작 화면이
+           열리면 그 아래로 가려지게 한다. */
+        .bgm-fab {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px 6px 6px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(120, 95, 90, 0.16);
+            box-shadow: 0 4px 12px rgba(120, 95, 90, 0.16);
+        }
+        .bgm-fab .bgm-toggle {
+            width: 34px;
+            height: 34px;
+            flex-shrink: 0;
+            border: 0;
+            border-radius: 50%;
+            background: linear-gradient(160deg, #ffd9e3, var(--pink));
+            color: #fff;
+            font-size: 17px;
+            line-height: 1;
+            cursor: pointer;
+            transition: transform 0.12s ease;
+        }
+        .bgm-fab .bgm-toggle:hover { transform: scale(1.06); }
+        .bgm-fab.off .bgm-toggle { background: linear-gradient(160deg, #ece6e3, #b6a9a4); }
+        .bgm-fab .bgm-select {
+            max-width: 176px;
+            padding: 6px 10px;
+            border: 1px solid rgba(120, 95, 90, 0.18);
+            border-radius: 999px;
+            background: #fffaf3;
+            color: var(--ink);
+            font-family: inherit;
+            font-size: 0.86em;
+            cursor: pointer;
+        }
+        /* 곡 파일을 찾지 못했을 때 — 눌러도 소리가 안 나는 이유를 색으로 알린다 */
+        .bgm-fab.missing .bgm-toggle { background: linear-gradient(160deg, #ffd9b8, var(--orange)); }
+        .bgm-fab.missing .bgm-select { opacity: 0.6; }
+        @media (max-width: 720px) {
+            /* 좁은 화면에서는 제목과 겹치지 않도록 작게 줄인다 */
+            .bgm-fab { top: 12px; right: 12px; gap: 6px; padding: 5px 8px 5px 5px; }
+            .bgm-fab .bgm-toggle { width: 30px; height: 30px; font-size: 15px; }
+            .bgm-fab .bgm-select { max-width: 96px; font-size: 0.76em; padding: 5px 8px; }
+        }
+
         /* ---------- 챔피언 배너 (기록 1위에게 챔피언 뱃지.png) ---------- */
         .champion-banner {
             display: flex;
@@ -2937,6 +2991,15 @@
             title="혼자/멀티 고르는 처음 화면으로 돌아갑니다">
         <span class="home-icon">🏠</span>처음 화면
     </button>
+    <!-- 배경음악: music/ 폴더에 넣어 둔 곡을 골라 틀고, 언제든 끌 수 있다.
+         자리는 화면 맨 위 오른쪽 끝 — 왼쪽 위 [처음 화면] 단추와 짝을 맞춘다.
+         모드 1·2·3 을 가리지 않고 계속 흐르므로 게임 화면 바깥에 따로 둔다. -->
+    <div class="bgm-fab" id="bgmFab">
+        <button type="button" class="bgm-toggle" id="bgmToggle" title="배경음악 끄기"
+                aria-label="배경음악 켜기 / 끄기" aria-pressed="true">🎵</button>
+        <select class="bgm-select" id="bgmSelect" title="배경음악 고르기" aria-label="배경음악 고르기"></select>
+    </div>
+
 
     <h1 class="title">🍭 단어 연결 게임 🍬</h1>
 
@@ -8291,6 +8354,197 @@
         // 기록 1위 챔피언 뱃지 배너
         UIManager.updateChampionBanner();
         UIManager.updateVersusBar();
+        /* =========================================================
+           배경음악(BGM) — music/ 폴더의 곡을 골라 튼다
+           CLAUDE.md "이 폴더만으로 돌아가야 한다" — 인터넷에서 받아 오지 않는다.
+
+           · 곡 목록은 아래에 적어 둔다. 파일을 두 번 눌러 연 경우(file://)에는 폴더 안을
+             훑어볼 방법이 없어서, 목록을 서버에 물어볼 수가 없기 때문이다.
+             music/ 에 곡을 더하거나 뺐다면 TRACKS 도 함께 고친다.
+           · 켜짐/꺼짐과 고른 곡은 이 브라우저에 저장해, 다음에 열 때 그대로 이어 간다.
+           · 브라우저는 사람이 한 번 누르기 전에는 소리를 못 내게 막는다(자동재생 정책).
+             막히면 조용히 기다렸다가 첫 클릭·첫 키 입력 때 다시 튼다.
+           · 모드 1·2·3 을 가리지 않고 화면 전체에서 흐른다. 판이 바뀌어도 끊기지 않는다.
+           · 글자판의 [음소거]는 정답·오답 효과음만 끈다. 배경음악은 여기서 따로 끈다.
+        ========================================================= */
+        const BgmPlayer = (function () {
+            const TRACKS = [
+                'Coin_Op Bounce',
+                'Hearthside Waltz',
+                'Marimba Mornings',
+                'Marimba Quiz Trail',
+                'The Heather Path',
+                'The Quiet Turn',
+                'Ticking Rhodes'
+            ];
+            const ALL = 'all';        // '모두 이어서' — 한 곡이 끝나면 다음 곡으로 넘어간다
+            const KEY_ON = 'wcg_bgm_on';
+            const KEY_PICK = 'wcg_bgm_pick';
+            const VOLUME = 0.35;      // 효과음과 이야기 소리를 덮지 않을 만큼만
+            /* 파일을 두 번 눌러 연 경우엔 게임 파일 옆의 music/ 을, 서버로 연 경우엔 서버가
+               열어 주는 /music/ 을 본다. 주소가 '/' 든 '/multi' 든 같은 곳을 가리키게 된다. */
+            const BASE = (window.location.protocol === 'file:') ? 'music/' : '/music/';
+
+            let audio = null;
+            let on = true;
+            let pick = ALL;
+            let current = 0;
+            let blockedByBrowser = false;
+            let box = null;
+            let toggleBtn = null;
+            let selectEl = null;
+
+            function readStore(key, fallback) {
+                try {
+                    const saved = window.localStorage.getItem(key);
+                    return saved === null ? fallback : saved;
+                } catch (e) {
+                    return fallback;  // 사생활 보호 모드 등 — 못 읽어도 음악은 나와야 한다
+                }
+            }
+
+            function writeStore(key, value) {
+                try { window.localStorage.setItem(key, value); } catch (e) { /* 기억만 못 할 뿐 */ }
+            }
+
+            function trackUrl(index) {
+                // 곡 이름에 빈칸이 있어서 주소에 그대로 넣으면 안 된다
+                return BASE + encodeURIComponent(TRACKS[index]) + '.mp3';
+            }
+
+            function fillOptions() {
+                selectEl.innerHTML = '';
+                const every = document.createElement('option');
+                every.value = ALL;
+                every.textContent = '🔀 모두 이어서';
+                selectEl.appendChild(every);
+                TRACKS.forEach(function (name, index) {
+                    const option = document.createElement('option');
+                    option.value = String(index);
+                    option.textContent = '🎵 ' + name;
+                    selectEl.appendChild(option);
+                });
+            }
+
+            function ensureAudio() {
+                if (audio) return audio;
+                audio = new Audio();
+                audio.volume = VOLUME;
+                audio.addEventListener('ended', function () {
+                    // 한 곡만 고른 경우는 loop 가 알아서 되풀이하므로 여기까지 오지 않는다
+                    current = (current + 1) % TRACKS.length;
+                    loadTrack();
+                    playTrack();
+                });
+                audio.addEventListener('error', function () {
+                    box.classList.add('missing');
+                    toggleBtn.title = 'music 폴더에서 음악 파일을 찾지 못했어요';
+                });
+                return audio;
+            }
+
+            function loadTrack() {
+                const player = ensureAudio();
+                player.loop = (pick !== ALL);
+                const url = trackUrl(current);
+                if (player.getAttribute('src') !== url) {
+                    box.classList.remove('missing');
+                    player.setAttribute('src', url);
+                    player.load();
+                }
+            }
+
+            function playTrack() {
+                const started = ensureAudio().play();
+                if (started && typeof started.catch === 'function') {
+                    started.catch(function () {
+                        /* 아직 아무것도 누르지 않아 브라우저가 막았거나, 파일을 못 찾았다.
+                           막힌 경우라면 사람이 화면을 처음 건드릴 때 다시 튼다. */
+                        blockedByBrowser = true;
+                    });
+                }
+            }
+
+            function paint() {
+                box.classList.toggle('off', !on);
+                toggleBtn.textContent = on ? '🎵' : '🔇';
+                toggleBtn.title = on ? '배경음악 끄기' : '배경음악 켜기';
+                toggleBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+                selectEl.value = (pick === ALL) ? ALL : String(current);
+            }
+
+            function apply() {
+                if (on) {
+                    loadTrack();
+                    playTrack();
+                } else if (audio) {
+                    audio.pause();
+                }
+                paint();
+            }
+
+            function toggle() {
+                on = !on;
+                blockedByBrowser = false;
+                writeStore(KEY_ON, on ? '1' : '0');
+                apply();
+            }
+
+            function choose(value) {
+                if (value === ALL) {
+                    pick = ALL;            // 지금 나오던 곡에서 이어 다음 곡으로 넘어간다
+                } else {
+                    pick = value;
+                    current = Number(value);
+                }
+                writeStore(KEY_PICK, pick);
+                on = true;                 // 곡을 고르는 것은 '듣고 싶다'는 뜻이다
+                writeStore(KEY_ON, '1');
+                apply();
+            }
+
+            function init() {
+                box = document.getElementById('bgmFab');
+                if (!box) return;
+                toggleBtn = document.getElementById('bgmToggle');
+                selectEl = document.getElementById('bgmSelect');
+
+                on = readStore(KEY_ON, '1') !== '0';
+                const saved = readStore(KEY_PICK, ALL);
+                const savedIndex = Number(saved);
+                if (saved !== ALL && Number.isInteger(savedIndex)
+                    && savedIndex >= 0 && savedIndex < TRACKS.length) {
+                    pick = String(savedIndex);
+                    current = savedIndex;
+                } else {
+                    // 고른 곡이 없으면 시작 곡을 매번 바꿔, 같은 노래만 듣지 않게 한다
+                    pick = ALL;
+                    current = Math.floor(Math.random() * TRACKS.length);
+                }
+
+                fillOptions();
+                toggleBtn.addEventListener('click', toggle);
+                selectEl.addEventListener('change', function () { choose(selectEl.value); });
+
+                /* 자동재생이 막혔다면 사람이 처음 화면을 건드릴 때 다시 튼다.
+                   ([혼자 하기]·[게임 시작]을 누르는 순간이 대개 그때다) */
+                const retry = function () {
+                    if (on && blockedByBrowser) {
+                        blockedByBrowser = false;
+                        playTrack();
+                    }
+                };
+                document.addEventListener('click', retry);
+                document.addEventListener('keydown', retry);
+
+                apply();
+            }
+
+            return { init: init };
+        })();
+
+        BgmPlayer.init();
+
     </script>
 </body>
 </html>

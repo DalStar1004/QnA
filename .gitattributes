@@ -8,3 +8,5 @@ server/node_modules/** -text
 *.woff2 binary
 *.woff  binary
 *.ttf   binary
+# 배경음악 (music/)
+*.mp3   binary

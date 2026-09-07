@@ -96,6 +96,18 @@ if (LOCAL_RUN) {
     app.use('/quiz-data', express.static(path.join(ROOT_DIR, 'quiz-data'), { index: false }));
 }
 
+/* ---------- 배경음악 파일 ----------
+ * 두 화면(혼자 하기 '/' · 멀티플레이 '/multi')이 오른쪽 위 [🎵] 에서 고른 곡을 '/music/…' 로 받아 간다.
+ * 곡은 저장소 루트의 music/ 에 있고, 도커 이미지에 담은 경우에는 public/music 으로 들어온다.
+ * 두 자리를 모두 살펴 먼저 있는 쪽을 열어 준다.
+ * 폴더가 아예 없으면 열지 않는다 — 그때는 화면의 [🎵] 가 '찾지 못했어요' 로 바뀌고,
+ * 음악만 나오지 않을 뿐 게임은 그대로 돌아간다. */
+const MUSIC_DIR = [path.join(PUBLIC_DIR, 'music'), path.join(ROOT_DIR, 'music')]
+    .find((dir) => fs.existsSync(dir));
+if (MUSIC_DIR) {
+    app.use('/music', express.static(MUSIC_DIR, { index: false }));
+}
+
 // 컨테이너 헬스체크용 엔드포인트
 app.get('/healthz', (req, res) => {
     res.json({ ok: true, rooms: roomRepository.size() });
