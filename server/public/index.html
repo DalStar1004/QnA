@@ -849,6 +849,13 @@
             --sky: #63C7FF;
             --sky-dark: #2fa7f0;
             --ink: #5b4b45;
+            /* 글자 블록 크기 — 혼자 하기(word-connection-game.css)와 같은 방식의 반응형 토큰.
+               멀티는 화면 폭이 더 좁은 카드 구조(.app-container max-width 680~1020px)라
+               최대값만 혼자 하기보다 조금 낮춰 잡았다. */
+            --tile: clamp(64px, 7vw, 100px);
+            --tile-gap: clamp(10px, 1.6vw, 20px);
+            --tile-font: clamp(24px, 3vw, 38px);
+            --tile-radius: clamp(14px, 1.6vw, 22px);
         }
 
         * { box-sizing: border-box; }
@@ -1038,7 +1045,7 @@
         #board-container {
             position: relative;
             background: linear-gradient(160deg, #ffffff, #fff6ec);
-            padding: 32px;
+            padding: clamp(16px, 3vw, 32px);
             border-radius: 28px;
             box-shadow: 0 14px 0 rgba(255, 214, 226, 0.9), 0 22px 30px rgba(255, 140, 170, 0.18), inset 0 2px 0 rgba(255,255,255,0.9);
             min-height: 280px;
@@ -1060,21 +1067,30 @@
             100% { box-shadow: 0 14px 0 rgba(255,214,226,0.9), 0 22px 30px rgba(255,140,170,0.18); }
         }
 
-        #board { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; position: relative; z-index: 2; }
+        /* 보드 폭 = 실제 열 개수(--board-cols, renderBoard()가 매 판마다 설정) × 블록 한 칸.
+           예전에는 4칸으로 고정해 뒀었는데, 방장이 16이 아닌 블록 개수를 고르면(4~36 아무
+           정수나 가능) 실제 열 수(2~6)와 달라져 배치가 어색해졌다. 렌더링 때마다 정해지는
+           실제 열 수를 그대로 쓰면 개수가 몇이든 정사각형에 가깝게 나온다. 화면이 좁아 그
+           폭이 안 나오면 100%(부모 폭)를 넘지 않게 min()으로 막아 잘리지 않는다.
+           --board-cols가 아직 없을 때(첫 렌더 전)를 대비해 기본값 4를 둔다. */
+        #board {
+            display: flex; flex-wrap: wrap; gap: var(--tile-gap); justify-content: center; position: relative; z-index: 2;
+            width: min(calc(var(--board-cols, 4) * (var(--tile) + var(--tile-gap))), 100%);
+        }
         #board.locked { pointer-events: none; opacity: 0.75; }
 
         .block {
-            width: 72px;
-            height: 72px;
+            width: var(--tile);
+            height: var(--tile);
             /* 클릭으로 고르는 방식이라 글자가 끌려 선택되면 방해가 된다 */
             user-select: none;
             -webkit-user-select: none;
             background: linear-gradient(160deg, #ffffff, #ffeef2);
-            border-radius: 20px;
+            border-radius: var(--tile-radius);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
+            font-size: var(--tile-font);
             font-weight: 700;
             color: var(--ink);
             cursor: pointer;
@@ -2072,7 +2088,9 @@
                 clearCanvas();
 
                 const cols = Math.ceil(Math.sqrt(board.length));
-                boardEl.style.width = `${cols * 90}px`;
+                // 실제 폭 계산은 CSS(--board-cols)에 맡긴다 — 블록 크기가 화면마다 달라지므로
+                // 여기서 px로 고정하지 않는다.
+                boardEl.style.setProperty('--board-cols', cols);
 
                 board.forEach((char, index) => {
                     const div = document.createElement('div');
