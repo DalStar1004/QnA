@@ -950,6 +950,7 @@
         }
         .field-row input:focus, .field-row select:focus { border-color: var(--orange); }
         .field-row input[type="text"] { flex: 1; text-align: center; letter-spacing: 1px; }
+        .field-row input[type="password"] { flex: 1; text-align: left; letter-spacing: 1px; }
         .field-row input[type="number"] { width: 78px; text-align: center; }
         .field-row select { width: 150px; text-align: center; }
 
@@ -1492,10 +1493,24 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
             gap: 8px;
             margin-bottom: 10px;
         }
         .hint-title { font-size: 16px; font-weight: 700; color: var(--purple-dark); }
+        /* 이번 라운드 힌트를 실제로 만든 AI(또는 내장 힌트 대체) 표시 — 방장·참가자
+           모두 서버가 보낸 같은 값을 그린다. 좁은 화면에서는 hint-head가 줄바꿈된다. */
+        .hint-provider-badge {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            white-space: nowrap;
+            background: #eef2ff;
+            color: #4c4a8a;
+        }
+        .hint-provider-badge.offline { background: #fff1e6; color: #9a5a22; }
+        .hint-provider-badge[hidden] { display: none; }
         .hint-next {
             font-size: 12px;
             font-weight: 700;
@@ -1688,6 +1703,13 @@
                 <h2>👥 참가자</h2>
                 <div class="player-list" id="waitingPlayerList"></div>
 
+                <!-- 참가자는 이 줄만 본다(읽기 전용). 방장에게만 보이는 아래 hostSettings의
+                     선택 UI와 달리, 모드와 상관없이 항상 떠 있다 — 참가자는 게임이 시작되기
+                     전까지 지금 고른 모드를 알 방법이 없기 때문이다. -->
+                <div class="panel-sub" id="aiProviderReadout">🤖 AI 힌트 맞히기(모드 2)에서 쓸 AI: <b id="aiProviderReadoutValue">Groq</b> — 방장만 바꿀 수 있어요<br>
+                    <span id="aiProviderReadoutStatus">연결 상태를 확인하는 중…</span>
+                </div>
+
                 <div id="hostSettings">
                     <div class="divider"></div>
                     <h2>⚙️ 게임 설정</h2>
@@ -1752,6 +1774,25 @@
                                 <option value="10">10문제</option>
                             </select>
                         </div>
+                        <div class="field-row">
+                            <label for="aiProviderSelect">🧠 힌트 AI</label>
+                            <select id="aiProviderSelect">
+                                <option value="groq" selected>Groq</option>
+                                <option value="gemini">Gemini</option>
+                            </select>
+                        </div>
+                        <!-- 혼자 하기 설정과 같은 방식 — 키는 여기서 연결에만 쓰고 화면에도,
+                             서버 응답에도 남기지 않는다. 기존 /api/ai/connect·disconnect·status를
+                             그대로 부른다(새 저장소·인스턴스를 만들지 않는다). -->
+                        <div class="field-row">
+                            <label for="aiKeyInput">🔑 API 키</label>
+                            <input type="password" id="aiKeyInput" placeholder="연결할 때만 사용, 저장되지 않음" autocomplete="off">
+                        </div>
+                        <div class="btn-row">
+                            <button type="button" class="jelly-btn btn-join" id="aiConnectBtn">🔌 연결하기</button>
+                            <button type="button" class="jelly-btn btn-leave" id="aiDisconnectBtn">연결 끊기</button>
+                        </div>
+                        <div class="panel-sub">🔌 연결 끊기는 지금 고른 AI의 서버 전체 연결(다른 방·혼자 하기 포함)에 영향을 줘요.</div>
                         <div class="ai-status" id="aiStatus">AI 연결 상태를 확인하는 중…</div>
                     </div>
 
@@ -1837,6 +1878,7 @@
                 <aside id="hintPanel">
                     <div class="hint-head">
                         <span class="hint-title" id="hintTitle">🤖 AI 힌트 맞히기</span>
+                        <span class="hint-provider-badge" id="hintProviderBadge" hidden></span>
                         <span class="hint-next" id="hintNext">준비 중</span>
                     </div>
                     <div class="hint-list" id="hintList"></div>
@@ -1939,7 +1981,7 @@
                     <span class="how-to-num">7</span>
                     <div>
                         <b>🤖 AI 힌트 맞히기</b>
-                        <p>AI가 고른 낱말을 힌트로 유추해요. 10초마다 힌트가 하나씩 열리고, 힌트를 적게 보고 맞힐수록 높은 점수예요. 한 문제에서 가장 먼저 맞힌 사람만 득점하고 다음 문제로 넘어가요.</p>
+                        <p>AI가 고른 낱말을 힌트로 유추해요. 10초마다 힌트가 하나씩 열리고, 힌트를 적게 보고 맞힐수록 높은 점수예요. 한 문제에서 가장 먼저 맞힌 사람만 득점하고 다음 문제로 넘어가요. 힌트를 만드는 AI(Groq/Gemini)는 방장이 대기실에서 고릅니다.</p>
                     </div>
                 </div>
                 <div class="how-to-step">
@@ -2062,6 +2104,38 @@
             };
         })();
 
+        /* ---------- 혼자 하기와 같은 /api/ai/* REST를 그대로 쓴다 ----------
+           서버 전역 Groq/Gemini 인스턴스를 그대로 재사용하는 기존 API라, 여기서 새로
+           만들 것이 없다. 같은 서버(같은 출처)에서 서빙되므로 그대로 fetch만 하면 된다. */
+        const AiConnect = {
+            async connect(provider, apiKey) {
+                try {
+                    const res = await fetch('/api/ai/connect', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider, apiKey: apiKey || '' })
+                    });
+                    const data = await res.json().catch(() => null);
+                    return data || { ok: false, reason: '서버에 연결할 수 없습니다' };
+                } catch (e) {
+                    return { ok: false, reason: '서버에 연결할 수 없습니다' };
+                }
+            },
+            async disconnect(provider) {
+                try {
+                    const res = await fetch('/api/ai/disconnect', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider })
+                    });
+                    const data = await res.json().catch(() => null);
+                    return data || { ok: false };
+                } catch (e) {
+                    return { ok: false };
+                }
+            }
+        };
+
         // 마지막 블록 선택 후 이 시간(ms) 동안 추가 선택이 없으면 내 선택만 자동으로 푼다.
         // 혼자 하기(word_connection_game.js)의 AUTO_DESELECT_MS와 같은 값·같은 이름이다.
         const AUTO_DESELECT_MS = 2000;
@@ -2077,6 +2151,7 @@
             quizRound: 0,
             quizTotalRounds: 0,
             quizLocked: true,    // 문제를 준비하는 동안과 라운드 사이에는 제출을 막는다
+            aiProvider: 'groq',  // 이 방이 고른 힌트 AI — room:aiProvider로 갱신된다
             category: '',
             timeLeft: 60,
             boardLocked: true,
@@ -2334,6 +2409,7 @@
                 } else {
                     hint.textContent = '준비되면 게임을 시작하세요!';
                 }
+                renderAiProvider();
                 renderModeChoice();
             }
 
@@ -2352,6 +2428,18 @@
                 document.getElementById('examSettings').hidden = mode !== 'exam';
                 // 카테고리는 사전에서 낱말을 뽑는 두 모드만 쓴다.
                 document.getElementById('categoryRow').hidden = mode === 'exam';
+            }
+
+            /**
+             * 방장은 select로 고를 수 있게, 참가자는 읽기 전용 안내 줄만 보이게 한다.
+             * 참가자 쪽은 모드와 무관하게 항상 떠 있다 — 참가자는 지금 모드를 알 방법이 없다.
+             */
+            function renderAiProvider() {
+                const select = document.getElementById('aiProviderSelect');
+                if (select.value !== ClientState.aiProvider) select.value = ClientState.aiProvider;
+                const label = ClientState.aiProvider === 'gemini' ? 'Gemini' : 'Groq';
+                document.getElementById('aiProviderReadoutValue').textContent = label;
+                document.getElementById('aiProviderReadout').style.display = ClientState.isHost ? 'none' : '';
             }
 
             /** AI 연결 상태 안내 — 꺼져 있어도 시작은 막지 않는다 */
@@ -2381,12 +2469,38 @@
                 hintListEl.appendChild(empty);
             }
 
+            const hintProviderBadgeEl = document.getElementById('hintProviderBadge');
+
+            /**
+             * 이번 라운드 힌트를 실제로 만든 AI를 배지로 보여 준다. 서버가 보낸
+             * aiGenerated/provider/model을 그대로 쓰므로 방장·참가자가 항상 같은 값을 본다.
+             */
+            function setHintProviderBadge(aiGenerated, provider, model) {
+                if (!hintProviderBadgeEl) return;
+                if (aiGenerated && provider) {
+                    const label = provider === 'gemini' ? 'Gemini' : 'Groq';
+                    hintProviderBadgeEl.textContent = `🤖 ${label}${model ? ' · ' + model : ''}`;
+                    hintProviderBadgeEl.className = 'hint-provider-badge';
+                } else {
+                    hintProviderBadgeEl.textContent = '📚 내장 힌트 사용 중';
+                    hintProviderBadgeEl.className = 'hint-provider-badge offline';
+                }
+                hintProviderBadgeEl.hidden = false;
+            }
+
+            function hideHintProviderBadge() {
+                if (hintProviderBadgeEl) hintProviderBadgeEl.hidden = true;
+            }
+
             /** 모드에 맞춰 화면을 갈아 끼운다. 세 모드가 같은 게임 화면을 쓴다. */
             function applyMode(mode) {
                 const quiz = mode === 'quiz';
                 const exam = mode === 'exam';
                 // 스무고개와 산업재산권 문제는 보드 옆에 패널이 붙는 같은 틀을 쓴다.
                 const usesPanel = quiz || exam;
+                // 모드 2가 아니면 지난 라운드의 배지가 남아 있지 않게 감춘다
+                // (모드 2로 돌아오면 quiz:round:started가 실제 값으로 다시 켠다).
+                if (!quiz) hideHintProviderBadge();
                 document.body.classList.toggle('quiz-layout', usesPanel);
                 boardContainer.classList.toggle('quiz-mode', usesPanel);
                 document.getElementById('wordRuleBanner').hidden = usesPanel;
@@ -2535,7 +2649,8 @@
                 shakeBlocks, popBlocks, renderBoard, setBoardLocked, resizeCanvas, clearCanvas,
                 drawLines, resetSelection, renderWaitingRoom, renderRanking, updateTimer,
                 showGameOver, hideGameOver, populateCategorySelect,
-                renderModeChoice, setAiStatus, applyMode, showExamQuestion,
+                renderModeChoice, renderAiProvider, setAiStatus, applyMode, showExamQuestion,
+                setHintProviderBadge, hideHintProviderBadge,
                 resetHintPanel, appendHint, updateNextHint, appendHintAnswer, setHintFoot, hintMessage
             };
         })();
@@ -2562,6 +2677,9 @@
                 ClientState.roomCode = result.roomCode;
                 ClientState.players = result.players;
                 ClientState.hostId = result.hostId;
+                ClientState.aiProvider = result.aiProvider || 'groq';
+                // 방에 막 들어온 참가자도 지금 AI 연결 상태를 바로 볼 수 있게 한 번 물어본다.
+                NetworkManager.emit('room:refreshAiStatus', {});
                 // 카테고리는 서버 사전이 원본이다. 방에 들어온 지금 받아서 선택칸을 채운다.
                 categoryOptions = result.categories || [];
                 UIManager.populateCategorySelect();
@@ -2611,21 +2729,76 @@
                 ClientState.mode = mode;
                 UIManager.renderModeChoice();
                 if (mode !== 'quiz') return;
+                await LobbyController.refreshAiStatus();
+            },
 
-                // 서버가 알아서 연결까지 끝내고 결과를 돌려준다 (사람이 할 일은 없다)
+            /** 지금 방이 고른 AI(Groq/Gemini)의 연결 상태를 물어 안내 문구를 갱신한다 */
+            async refreshAiStatus() {
                 UIManager.setAiStatus('🔌 AI에 연결하는 중… (모델을 처음 올릴 때는 조금 걸려요)', '');
                 const status = await NetworkManager.emit('ai:status', {});
+                const label = status && status.provider === 'gemini' ? 'Gemini' : 'Groq';
                 if (status && status.ok) {
                     UIManager.setAiStatus(
-                        `✅ AI 연결 완료 (${status.model}) — 문장 힌트가 함께 나와요`
+                        `✅ ${label} 연결 완료 (${status.model}) — 문장 힌트가 함께 나와요`
                         + (status.switched ? ' · 설정한 모델이 없어 자동으로 바꿨어요' : ''), 'ok');
                 } else {
                     UIManager.setAiStatus(
-                        `⚠ AI에 연결하지 못했어요${status && status.reason ? ` (${status.reason})` : ''}. `
+                        `⚠ ${label}에 연결하지 못했어요${status && status.reason ? ` (${status.reason})` : ''}. `
                         + '글자 수·초성 힌트만으로도 게임은 됩니다 — 시작할 때 다시 연결해 봅니다.', 'warn');
                 }
             },
 
+            /**
+             * 방장이 힌트 AI(Groq/Gemini)를 바꾼다. 참가자는 이 select 자체를 볼 수 없으므로
+             * (hostSettings가 통째로 숨겨져 있다) 여기 도달하는 것은 언제나 방장뿐이지만,
+             * 서버도 다시 확인한다 — 실패하면 select를 원래 값으로 되돌린다.
+             */
+            async setAiProvider(provider) {
+                const select = document.getElementById('aiProviderSelect');
+                select.disabled = true;
+                const result = await NetworkManager.emit('room:setAiProvider', { provider });
+                select.disabled = false;
+                if (!result.ok) {
+                    select.value = ClientState.aiProvider;
+                    UIManager.showToast((result.error && result.error.message) || 'AI를 바꾸지 못했어요', 'warn');
+                    return;
+                }
+                ClientState.aiProvider = result.provider;
+                UIManager.renderAiProvider();
+                if (ClientState.mode === 'quiz') {
+                    await LobbyController.refreshAiStatus();
+                }
+            },
+
+
+            /**
+             * [연결하기]. 옆 칸에 넣은 키로 지금 고른 provider(Groq/Gemini)에 연결한다.
+             * 혼자 하기 설정의 connectAi()와 같은 흐름 — 보낸 즉시 입력칸을 비우고,
+             * 실제 연결 상태는 room:refreshAiStatus로 다시 물어 room:aiStatus로 받는다
+             * (참가자 화면도 같이 갱신하려면 브로드캐스트를 거쳐야 한다).
+             */
+            async connectAi() {
+                const input = document.getElementById('aiKeyInput');
+                const apiKey = (input && input.value || '').trim();
+                const btn = document.getElementById('aiConnectBtn');
+                const label = ClientState.aiProvider === 'gemini' ? 'Gemini' : 'Groq';
+                btn.disabled = true;
+                UIManager.setAiStatus(`🔌 ${label}에 연결하는 중…`, '');
+                await AiConnect.connect(ClientState.aiProvider, apiKey);
+                // 서버로 보낸 즉시 비운다 — 키를 화면에 남겨 두거나 저장하지 않는다.
+                if (input) input.value = '';
+                btn.disabled = false;
+                await NetworkManager.emit('room:refreshAiStatus', {});
+            },
+
+            /** [연결 끊기]. 서버 메모리에 들고 있던 키도 함께 지운다(서버 전체 영향은 화면에 안내돼 있다). */
+            async disconnectAi() {
+                const btn = document.getElementById('aiDisconnectBtn');
+                btn.disabled = true;
+                await AiConnect.disconnect(ClientState.aiProvider);
+                btn.disabled = false;
+                await NetworkManager.emit('room:refreshAiStatus', {});
+            },
 
             leaveRoom() {
                 // 서버는 disconnect로 이탈을 처리하므로, 가장 단순하고 확실한 방법은 새로고침이다
@@ -2800,6 +2973,31 @@
             }
         });
 
+        // 방장이 힌트 AI를 바꾸면 같은 방의 모든 참가자 화면에 즉시 반영한다
+        NetworkManager.on('room:aiProvider', (payload) => {
+            ClientState.aiProvider = payload.provider;
+            if (!ClientState.inGame) {
+                UIManager.renderAiProvider();
+            }
+        });
+
+        // provider를 바꾸거나 [연결하기]/[연결 끊기]를 누르면 방 전체(방장+참가자)에 온다.
+        // 참가자는 이 값만 읽기 전용으로 본다 — API 키는 이 payload 어디에도 없다.
+        NetworkManager.on('room:aiStatus', (payload) => {
+            const label = payload.provider === 'gemini' ? 'Gemini' : 'Groq';
+            const usage = (payload.usage && typeof payload.usage.cap === 'number')
+                ? ` · 오늘 ${payload.usage.used}/${payload.usage.cap}회` : '';
+            const readoutEl = document.getElementById('aiProviderReadoutStatus');
+            if (payload.ok) {
+                UIManager.setAiStatus(`✅ ${label}(${payload.model || label}) 연결됨${usage}`, 'ok');
+                if (readoutEl) readoutEl.textContent = `✅ 연결됨 (${payload.model || label})`;
+            } else {
+                UIManager.setAiStatus(
+                    `🔑 ${label} 연결 안 됨${payload.reason ? ` (${payload.reason})` : ''} — 내장 힌트로 진행됩니다.`, 'warn');
+                if (readoutEl) readoutEl.textContent = '🔑 연결 안 됨 — 내장 힌트로 진행돼요';
+            }
+        });
+
         NetworkManager.on('game:started', (payload) => {
             ClientState.inGame = true;
             ClientState.mode = payload.mode || 'word';
@@ -2853,13 +3051,14 @@
 
         // 스무고개를 시작하면 서버가 AI 연결을 자동으로 잡고, 그 결과를 알려 준다.
         NetworkManager.on('quiz:ai', (payload) => {
+            const label = payload.provider === 'gemini' ? 'Gemini' : 'Groq';
             if (payload.ok) {
                 UIManager.showToast(
-                    `🤖 AI 연결 완료 (${payload.model})`
+                    `🤖 ${label} 연결 완료 (${payload.model})`
                     + (payload.switched ? ' · 설정한 모델이 없어 자동으로 바꿨어요' : ''), 'info');
                 return;
             }
-            UIManager.showToast('🤖 AI 없이 진행해요 — 글자 수·초성 힌트가 열립니다', 'warn');
+            UIManager.showToast(`🤖 ${label} 없이 진행해요 — 글자 수·초성 힌트가 열립니다`, 'warn');
         });
 
         NetworkManager.on('quiz:round:started', (payload) => {
@@ -2872,6 +3071,7 @@
             document.getElementById('quizRuleCategoryName').textContent = payload.category;
             UIManager.updateTimer(payload.timeLeft);
             UIManager.resetHintPanel(payload.roundIndex, payload.totalRounds);
+            UIManager.setHintProviderBadge(payload.aiGenerated, payload.provider, payload.model);
             if (!payload.aiGenerated) {
                 UIManager.setHintFoot('AI 없이 진행 중이에요 — 글자 수·초성 힌트가 열립니다');
             }
@@ -3069,6 +3269,9 @@
         document.getElementById('modeWordBtn').addEventListener('click', () => LobbyController.pickMode('word'));
         document.getElementById('modeQuizBtn').addEventListener('click', () => LobbyController.pickMode('quiz'));
         document.getElementById('modeExamBtn').addEventListener('click', () => LobbyController.pickMode('exam'));
+        document.getElementById('aiProviderSelect').addEventListener('change', (e) => LobbyController.setAiProvider(e.target.value));
+        document.getElementById('aiConnectBtn').addEventListener('click', () => LobbyController.connectAi());
+        document.getElementById('aiDisconnectBtn').addEventListener('click', () => LobbyController.disconnectAi());
 
         document.getElementById('createRoomBtn').addEventListener('click', LobbyController.createRoom);
         document.getElementById('joinRoomBtn').addEventListener('click', LobbyController.joinRoom);

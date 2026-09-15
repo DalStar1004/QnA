@@ -12,13 +12,17 @@ class QuizRound {
      * @param {string[]} params.board 블록에 깔 글자 (정답 글자 + 채움 글자, 섞은 것)
      * @param {boolean} params.aiGenerated LLM 힌트가 섞여 있는지 (없으면 확정 힌트만)
      */
-    constructor({ roundIndex, category, answer, hints, board, aiGenerated }) {
+    constructor({ roundIndex, category, answer, hints, board, aiGenerated, provider, model }) {
         this.roundIndex = roundIndex;
         this.category = category;
         this.answer = answer;
         this.hints = hints;
         this.board = board;
         this.aiGenerated = Boolean(aiGenerated);
+        // 이번 라운드 힌트를 실제로 만든 AI. aiGenerated가 false면 의미가 없다
+        // (내장 힌트로 대체됐다는 뜻이라 어느 provider를 시도했는지는 화면에 중요하지 않다).
+        this.provider = provider || null;
+        this.model = model || null;
         this.shown = 0;      // 지금까지 열어 준 힌트 수
         this.solved = false;
     }
@@ -74,7 +78,9 @@ class QuizRound {
             category: this.category,
             hintTotal: this.hints.length,
             board: this.board,
-            aiGenerated: this.aiGenerated
+            aiGenerated: this.aiGenerated,
+            provider: this.provider,
+            model: this.model
         };
     }
 }

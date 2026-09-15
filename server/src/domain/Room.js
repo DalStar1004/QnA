@@ -30,6 +30,12 @@ const RoomStatus = {
     ENDED: 'ended'
 };
 
+// 모드 2(AI 힌트 맞히기)의 힌트를 어느 AI로 만들지. 방장이 대기실에서 고른다.
+// 혼자 하기가 이미 연결해 둔 두 서비스(GroqHintGenerator/GeminiService)만 재사용하므로 이 둘뿐이다.
+const AiProvider = { GROQ: 'groq', GEMINI: 'gemini' };
+const AI_PROVIDERS = [AiProvider.GROQ, AiProvider.GEMINI];
+const DEFAULT_AI_PROVIDER = AiProvider.GROQ;
+
 class Room {
     constructor(code, hostId) {
         this.code = code;
@@ -59,6 +65,8 @@ class Room {
         this.roundIndex = 0;
         this.timerHandle = null;
         this.timeLeft = GAME_DURATION_SECONDS;
+        // 모드 2 힌트를 만들 AI. 새 방은 항상 Groq로 시작한다(요청 사항).
+        this.aiProvider = DEFAULT_AI_PROVIDER;
         this.createdAt = Date.now();
     }
 
@@ -125,6 +133,9 @@ module.exports = {
     Room,
     RoomStatus,
     GameMode,
+    AiProvider,
+    AI_PROVIDERS,
+    DEFAULT_AI_PROVIDER,
     MIN_QUIZ_ROUNDS,
     MAX_QUIZ_ROUNDS,
     EXAM_SECONDS_PER_QUESTION,

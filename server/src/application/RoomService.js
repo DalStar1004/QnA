@@ -42,6 +42,8 @@ class RoomService {
             players: room.playersPayload(),
             hostId: room.hostId,
             settings: room.settings,
+            // 모드 2 힌트 AI — 이름만 보낸다. API 키는 Room에 저장된 적이 없어 여기서 나갈 수도 없다.
+            aiProvider: room.aiProvider,
             // 카테고리 선택칸은 서버 사전이 원본이다 — 방에 들어오는 이 시점에 함께 내려준다
             categories: getCategories()
         };
@@ -75,6 +77,8 @@ class RoomService {
             players: room.playersPayload(),
             hostId: room.hostId,
             settings: room.settings,
+            // 모드 2 힌트 AI — 이름만 보낸다. API 키는 Room에 저장된 적이 없어 여기서 나갈 수도 없다.
+            aiProvider: room.aiProvider,
             // 카테고리 선택칸은 서버 사전이 원본이다 — 방에 들어오는 이 시점에 함께 내려준다
             categories: getCategories()
         };

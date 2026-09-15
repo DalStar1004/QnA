@@ -8,7 +8,7 @@
 // 실패하면 확정 힌트(글자 수·초성·첫 글자)만으로 라운드를 진행한다.
 
 const { QuizRound } = require('../domain/QuizRound');
-const { RoomStatus, GameMode, MIN_QUIZ_ROUNDS, MAX_QUIZ_ROUNDS } = require('../domain/Room');
+const { RoomStatus, GameMode, MIN_QUIZ_ROUNDS, MAX_QUIZ_ROUNDS, AiProvider, AI_PROVIDERS } = require('../domain/Room');
 const { getCategories } = require('../domain/dictionary');
 const { pickAnswer, assembleHints, buildQuizBoard } = require('../domain/quizContent');
 const { fail } = require('./ports');
@@ -24,12 +24,39 @@ class QuizService {
      * @param {Object} deps
      * @param {import('./ports').RoomRepositoryPort} deps.roomRepository
      * @param {import('./ports').BroadcasterPort} deps.broadcaster
-     * @param {import('./ports').HintGeneratorPort} deps.hintGenerator
+     * @param {typeof import('../services/GeminiService')} deps.geminiService 혼자 하기와 공유하는 전역 인스턴스
+     * @param {import('../infrastructure/GroqHintGenerator').GroqHintGenerator} deps.groqHintGenerator 혼자 하기와 공유하는 전역 인스턴스
      */
-    constructor({ roomRepository, broadcaster, hintGenerator }) {
+    constructor({ roomRepository, broadcaster, geminiService, groqHintGenerator }) {
         this.roomRepository = roomRepository;
         this.broadcaster = broadcaster;
-        this.hintGenerator = hintGenerator;
+        // 새로 만들지 않고 server.js(합성 루트)가 혼자 하기 API와 함께 주입하는 것을 그대로 쓴다.
+        this.geminiService = geminiService;
+        this.groqHintGenerator = groqHintGenerator;
+    }
+
+    /**
+     * 방이 고른 provider(Groq/Gemini)를 혼자 하기와 같은 모양(ensureReady/generateHints/model)으로
+     * 감싼다. 어느 쪽이든 server.js가 만든 **전역 인스턴스 하나뿐**이라, 서로 다른 두 방이
+     * 같은 provider를 골라도 같은 연결·사용량 상태를 공유한다(혼자 하기와도 공유한다).
+     */
+    _generatorFor(providerName) {
+        if (providerName === AiProvider.GROQ) {
+            const groq = this.groqHintGenerator;
+            return {
+                ensureReady: () => groq.ensureReady(),
+                generateHints: (answer, category) => groq.generateHints(answer, category),
+                model: () => groq.model,
+                usage: () => groq.usage
+            };
+        }
+        const gemini = this.geminiService;
+        return {
+            ensureReady: () => gemini.ensureReady(),
+            generateHints: (answer, category) => gemini.generateHints(answer, category),
+            model: () => gemini.getModel(),
+            usage: () => null
+        };
     }
 
     /** 방장이 스무고개를 시작한다. 첫 문제를 만드는 동안 방 전체에 준비 중임을 알린다. */
@@ -132,23 +159,85 @@ class QuizService {
     }
 
     /**
-     * 대기실에서 스무고개를 고른 방장에게 보여 줄 AI 연결 상태.
+     * 대기실에서 부르는 AI 연결 상태 확인. 이제는 고정된 하나가 아니라
+     * **그 방이 고른 aiProvider**를 확인한다 — 방장·참가자 누가 불러도 같은(읽기 전용) 결과를 본다.
      * 꺼져 있어도 게임은 되므로(확정 힌트만 나온다) 시작을 막지는 않고 알려 주기만 한다.
      */
-    async checkAi() {
-        if (!this.hintGenerator || !this.hintGenerator.ensureReady) {
-            return { ok: false, reason: 'AI 힌트를 만들 수 없는 설정이에요' };
+    async checkAi({ playerId }) {
+        const room = this.findRoomByPlayer(playerId);
+        if (!room) {
+            return { ok: false, reason: '방을 찾을 수 없어요' };
         }
+        const provider = room.aiProvider;
+        const generator = this._generatorFor(provider);
         // 상태를 묻는 김에 **연결까지 끝내 둔다.** 방장이 대기실에서 스무고개를 고른 이 순간부터
         // 모델을 올려 두면, 게임을 시작했을 때 첫 문제를 기다리지 않는다
         // (예열이 없으면 콜드 로드로 실측 167초가 걸렸다).
-        const status = await this.hintGenerator.ensureReady();
+        const status = await generator.ensureReady();
         return {
             ok: !!status.ok,
-            model: status.model || null,
+            provider,
+            model: status.model || generator.model() || null,
             switched: !!status.switched,
-            reason: status.reason || null
+            reason: status.reason || null,
+            usage: generator.usage()
         };
+    }
+
+    /**
+     * 방장이 대기실에서 힌트 AI(Groq/Gemini)를 고른다.
+     * 참가자가 시도하거나 게임 중에 부르면 서버가 거부한다 — 화면에는 방장에게만
+     * 보이는 선택 UI가 있지만, 클라이언트를 신뢰하지 않고 여기서도 다시 확인한다.
+     */
+    setAiProvider({ playerId, provider }) {
+        const room = this.findRoomByPlayer(playerId);
+        if (!room) {
+            return fail('ROOM_NOT_FOUND');
+        }
+        if (!room.isHost(playerId)) {
+            return fail('NOT_HOST');
+        }
+        if (room.isPlaying()) {
+            return fail('GAME_ALREADY_STARTED');
+        }
+        const normalized = String(provider || '').toLowerCase();
+        if (AI_PROVIDERS.indexOf(normalized) === -1) {
+            return fail('INVALID_AI_PROVIDER');
+        }
+        room.aiProvider = normalized;
+        this.roomRepository.save(room);
+
+        this.broadcaster.toRoom(room.code, 'room:aiProvider', { provider: room.aiProvider });
+        // 바꾼 AI가 지금 연결돼 있는지도 곧바로 알려 준다(참가자 화면도 함께 갱신).
+        this._broadcastAiStatus(room).catch(() => null);
+        return { ok: true, provider: room.aiProvider };
+    }
+
+    /** 방이 고른 provider의 지금 연결 상태를 방 전체에 알린다 (설명은 checkAi와 같다) */
+    async _broadcastAiStatus(room) {
+        const generator = this._generatorFor(room.aiProvider);
+        const status = await generator.ensureReady();
+        this.broadcaster.toRoom(room.code, 'room:aiStatus', {
+            provider: room.aiProvider,
+            ok: !!status.ok,
+            model: status.model || generator.model() || null,
+            reason: status.reason || null,
+            usage: generator.usage()
+        });
+    }
+
+    /**
+     * 방장이 대기실에서 [연결하기]/[연결 끊기]를 누른 뒤(둘 다 기존 /api/ai/* REST를 그대로
+     * 쓴다 — 여기서 새로 만들지 않는다), 지금 상태를 방 전체에 다시 알려 달라고 부를 때 쓴다.
+     * 상태를 다시 계산해서 알리기만 할 뿐 아무것도 바꾸지 않으므로 방장이 아니어도 된다.
+     */
+    refreshAiStatus({ playerId }) {
+        const room = this.findRoomByPlayer(playerId);
+        if (!room) {
+            return fail('ROOM_NOT_FOUND');
+        }
+        this._broadcastAiStatus(room).catch(() => null);
+        return { ok: true };
     }
 
     /** Design §6.2 — 방이 비어 사라질 때 남은 타이머를 정리해 좀비 인터벌을 막는다 */
@@ -171,12 +260,13 @@ class QuizService {
      * 실패해도 게임을 막지 않는다. 확정 힌트(글자 수·초성·첫 글자)만으로 계속 진행한다.
      */
     _autoConnect(room) {
-        if (!this.hintGenerator || !this.hintGenerator.ensureReady) return;
-        Promise.resolve(this.hintGenerator.ensureReady())
+        const generator = this._generatorFor(room.aiProvider);
+        Promise.resolve(generator.ensureReady())
             .then((status) => {
                 this.broadcaster.toRoom(room.code, 'quiz:ai', {
                     ok: !!status.ok,
-                    model: status.model || null,
+                    provider: room.aiProvider,
+                    model: status.model || generator.model() || null,
                     switched: !!status.switched,
                     reason: status.reason || null
                 });
@@ -193,14 +283,16 @@ class QuizService {
         const answer = pickAnswer(room.activeCategory, blockCount, room.usedAnswers);
         if (!answer) return null;
 
+        const generator = this._generatorFor(room.aiProvider);
         let llmHints = [];
         let aiGenerated = false;
         try {
-            llmHints = await this.hintGenerator.generateHints(answer, room.activeCategory);
+            llmHints = await generator.generateHints(answer, room.activeCategory);
             aiGenerated = llmHints.length > 0;
         } catch (error) {
             // AI 가 꺼져 있어도 확정 힌트(글자 수·초성·첫 글자)만으로 풀 수 있다.
-            console.warn(`[quiz] 힌트 생성 실패 — 확정 힌트로 진행합니다: ${error.message}`);
+            // 선택하지 않은 다른 AI로 자동 전환하지 않는다 — 실패하면 그냥 내장 힌트로 넘어간다.
+            console.warn(`[quiz] ${room.aiProvider} 힌트 생성 실패 — 확정 힌트로 진행합니다: ${error.message}`);
         }
 
         return new QuizRound({
@@ -209,7 +301,11 @@ class QuizService {
             answer,
             hints: assembleHints(answer, llmHints),
             board: buildQuizBoard(answer, blockCount),
-            aiGenerated
+            aiGenerated,
+            // 실패해서 내장 힌트로 대체된 경우에는 어떤 provider를 시도했는지 화면에
+            // 보여줄 필요가 없으므로 null로 둔다(성공했을 때만 의미 있는 값이다).
+            provider: aiGenerated ? room.aiProvider : null,
+            model: aiGenerated ? generator.model() : null
         });
     }
 

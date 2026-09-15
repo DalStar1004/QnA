@@ -1073,7 +1073,7 @@
                     ? 'AI가 낸 낱말을 힌트를 보고 맞히는 게임이에요. 힌트를 적게 볼수록 점수가 높아요.'
                     : '글자를 이어 제시어와 관련된 단어를 만드는 게임이에요.';
                 panel.querySelector('.board-start-go').lastChild.textContent =
-                    isQuiz ? '스무고개 시작' : '게임 시작';
+                    isQuiz ? 'AI 힌트 맞히기 시작' : '게임 시작';
             }
 
             /* 게임 중에는 [게임 시작]이 할 일이 없다. 버튼 줄이 흔들리지 않게
@@ -1100,7 +1100,10 @@
             function updateCategoryDisplay() {
                 // 모드 2에서는 사용자가 입력한 카테고리를 보여준다. (정답 목록은 열 수 없다)
                 if (appMode === 'quiz') {
-                    const quizLabel = QuizManager.category || StorageManager.getQuizCategory() || '카테고리 선택';
+                    const savedQuizCategory = StorageManager.getQuizCategory();
+                    const quizLabel = QuizManager.category
+                        || (savedQuizCategory === 'random' ? '🎲 랜덤' : savedQuizCategory)
+                        || '카테고리 선택';
                     dom('categoryName').textContent = `🤖 ${quizLabel}`;
                     dom('quizRuleCategoryName').textContent = quizLabel;
                     const quizHint = dom('categoryHint');
@@ -2185,7 +2188,10 @@
                 if (!res.ok || !data || !data.ok || !Array.isArray(data.hints)) {
                     throw new Error((data && data.reason) || 'AI 힌트를 받지 못했습니다.');
                 }
-                return { answer, hints: QuizContent.assemble(answer, data.hints), category: builtin };
+                return {
+                    answer, hints: QuizContent.assemble(answer, data.hints), category: builtin,
+                    provider: p, model: data.model || null
+                };
             }
 
             return { status, provider, connect, disconnect, createQuiz };
@@ -2197,6 +2203,29 @@
             const nextEl = dom('hintNext');
             const footEl = dom('hintFoot');
             const titleEl = dom('hintTitle');
+            const providerBadgeEl = dom('hintProviderBadge');
+
+            /**
+             * 이번 라운드의 힌트를 실제로 만든 AI를 배지로 보여 준다.
+             * source가 'llm'이 아니면(=AI 호출 실패로 확정 힌트만 나온 경우)
+             * provider와 무관하게 "내장 힌트 사용 중"만 보여 준다.
+             */
+            function setProviderBadge(source, provider, model) {
+                if (!providerBadgeEl) return;
+                if (source === 'llm' && provider) {
+                    const label = provider === 'gemini' ? 'Gemini' : 'Groq';
+                    providerBadgeEl.textContent = `🤖 ${label}${model ? ' · ' + model : ''}`;
+                    providerBadgeEl.className = 'hint-provider-badge';
+                } else {
+                    providerBadgeEl.textContent = '📚 내장 힌트 사용 중';
+                    providerBadgeEl.className = 'hint-provider-badge offline';
+                }
+                providerBadgeEl.hidden = false;
+            }
+
+            function hideProviderBadge() {
+                if (providerBadgeEl) providerBadgeEl.hidden = true;
+            }
 
             function setVisible(on) {
                 boardContainer.classList.toggle('quiz-mode', !!on);
@@ -2262,7 +2291,7 @@
                 titleEl.textContent = text;
             }
 
-            return { setVisible, reset, render, updateNext, setFoot, appendAnswer, showMessage, setRound, setTitle };
+            return { setVisible, reset, render, updateNext, setFoot, appendAnswer, showMessage, setRound, setTitle, setProviderBadge, hideProviderBadge };
         })();
 
         /* ---------- 모드 2 세션: '스무고개를 몇 번 진행할지'와 라운드별 기록 ---------- */
@@ -2355,6 +2384,9 @@
             shown: 0,       // 지금까지 열린 힌트 수
             nextIn: 0,      // 다음 힌트까지 남은 초
             source: 'llm',  // 'llm' = AI가 만든 힌트, 'offline' = 내장 사전
+            // 실제로 이번 문제의 힌트를 만든 AI. source가 'llm'일 때만 의미가 있다.
+            provider: null,
+            model: null,
 
             load(category, quiz, source) {
                 this.active = true;
@@ -2364,6 +2396,9 @@
                 this.shown = 0;
                 this.nextIn = 0;
                 this.source = source;
+                this.provider = source === 'llm' ? (quiz.provider || null) : null;
+                this.model = source === 'llm' ? (quiz.model || null) : null;
+                QuizPanelUI.setProviderBadge(this.source, this.provider, this.model);
             },
 
             reset() {
@@ -2373,6 +2408,9 @@
                 this.hints = [];
                 this.shown = 0;
                 this.nextIn = 0;
+                this.provider = null;
+                this.model = null;
+                QuizPanelUI.hideProviderBadge();
             },
 
             isAnswer(word) {
@@ -3012,7 +3050,7 @@
             UIManager.updateChampionBanner();
 
             const MODE_TOAST = {
-                quiz: "🤖 모드 2 — AI 힌트 맞히기! '스무고개 시작'을 눌러 카테고리를 정해주세요.",
+                quiz: "🤖 모드 2 — AI 힌트 맞히기! 'AI 힌트 맞히기 시작'을 눌러 카테고리를 정해주세요.",
                 exam: `📜 모드 3 — 산업재산권 문제! '문제 시작'을 누르면 한 문제에 ${examTimeLimit()}초씩 진행돼요.`,
                 classic: "🍬 모드 1 — 제시어 맞추기로 돌아왔어요."
             };
@@ -3034,7 +3072,7 @@
             dom('quizRuleBanner').style.display = isQuiz ? 'flex' : 'none';
             dom('examRuleBanner').style.display = isExam ? 'flex' : 'none';
             document.querySelector('#startNavBtn .nav-label').textContent =
-                isQuiz ? '스무고개 시작' : (isExam ? '문제 시작' : '게임 시작');
+                isQuiz ? 'AI 힌트 맞히기 시작' : (isExam ? '문제 시작' : '게임 시작');
             document.body.classList.toggle('quiz-layout', usesPanel);
             QuizPanelUI.setVisible(usesPanel);
             // 두 모드가 패널 제목을 공유하므로, 지금 고른 모드 쪽만 적어야 서로 덮어쓰지 않는다.
@@ -3043,6 +3081,7 @@
             } else {
                 updateQuizRoundDisplay();
             }
+            if (!isQuiz) QuizPanelUI.hideProviderBadge();
             if (isQuiz && !QuizManager.active) QuizPanelUI.reset();
             if (isExam && !ExamManager.active) resetExamPanel();
             // 설정 화면은 지금 고른 모드의 항목만 보여 준다. 모드를 바꾸면 그 내용도 함께 바뀐다.
@@ -3236,13 +3275,14 @@
          */
         function populateQuizCategorySelect(preferred) {
             const select = dom('quizCategorySelect');
+            // 모드 1(populateCategorySelect)과 같은 기본값 규칙 — 고른 것이 없으면 랜덤이다.
+            const keep = preferred || select.value || 'random';
             const custom = CategoryManager.getCustom();
             select.innerHTML = '';
 
-            const placeholder = makeEl('option', null, '카테고리를 선택하세요');
-            placeholder.value = '';
-            placeholder.disabled = true;
-            select.appendChild(placeholder);
+            const randomOption = makeEl('option', null, '🎲 랜덤');
+            randomOption.value = 'random';
+            select.appendChild(randomOption);
 
             const usable = Dictionary.getCategories()
                 .filter(cat => QuizContent.pickAnswer(cat));
@@ -3252,8 +3292,7 @@
                 select.appendChild(option);
             });
 
-            select.value = (preferred && usable.indexOf(preferred) !== -1) ? preferred : '';
-            if (!select.value) placeholder.selected = true;
+            select.value = (keep === 'random' || usable.indexOf(keep) !== -1) ? keep : 'random';
             syncQuizStartButton();
         }
 
@@ -3303,10 +3342,22 @@
         async function startQuizRound() {
             if (!QuizSession.active) return;
 
-            const category = dom('quizCategorySelect').value;
-            if (!category) {
+            const selected = dom('quizCategorySelect').value;
+            if (!selected) {
                 UIManager.showToast('목록에서 카테고리를 선택해주세요.', 'warn');
                 return;
+            }
+
+            // '랜덤'이면 여기서 실제 카테고리를 하나 뽑는다 — 모드 1(beginPlay)이
+            // selectedCategoryOption === 'random'일 때 쓰는 것과 같은 방식이다.
+            let category = selected;
+            if (category === 'random') {
+                const usable = Dictionary.getCategories().filter(cat => QuizContent.pickAnswer(cat));
+                if (usable.length === 0) {
+                    UIManager.showToast('낼 수 있는 카테고리가 없어요.', 'warn');
+                    return;
+                }
+                category = usable[Math.floor(Math.random() * usable.length)];
             }
 
             // 목록을 사전에서 만들었으므로 여기서 걸릴 일은 없다.
@@ -3321,7 +3372,7 @@
             }
 
             QuizSession.category = category;
-            StorageManager.setQuizCategory(category);
+            StorageManager.setQuizCategory(selected);
             closeQuizCategory();
             await runQuizRound(category);
         }
@@ -3717,6 +3768,7 @@
 
         /** 모드 3 화면을 처음 상태로 되돌린다. */
         function resetExamPanel() {
+            QuizPanelUI.hideProviderBadge();
             QuizPanelUI.setTitle('📜 산업재산권 문제');
             QuizPanelUI.showMessage(`[문제 시작] 을 누르면 파일에 있는 문제를 처음부터 냅니다. 한 문제에 ${examTimeLimit()}초예요.`);
             QuizPanelUI.updateNext('대기중');
@@ -4264,7 +4316,7 @@
             }
 
             const STOP_TOAST = {
-                quiz: "게임이 종료되었습니다. '스무고개 시작'을 눌러 새 문제를 받으세요.",
+                quiz: "게임이 종료되었습니다. 'AI 힌트 맞히기 시작'을 눌러 새 문제를 받으세요.",
                 exam: "문제 풀이를 그만뒀어요. '문제 시작'을 누르면 처음부터 다시 냅니다.",
                 classic: "게임이 종료되었습니다. '게임 시작'을 눌러 다시 시작하세요."
             };

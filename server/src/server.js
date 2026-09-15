@@ -102,7 +102,16 @@ if (process.env.GEMINI_API_KEY) {
 
 const roomService = new RoomService({ roomRepository, broadcaster, codeGenerator: roomCodeGenerator });
 const roundService = new RoundService({ roomRepository, broadcaster });
-const quizService = new QuizService({ roomRepository, broadcaster, hintGenerator });
+// 모드 2는 이제 고정된 하나가 아니라 방마다 고른 Groq/Gemini를 쓴다(대기실에서 방장이 고른다).
+// 혼자 하기 API(aiRoutes.js)가 쓰는 것과 같은 전역 인스턴스를 그대로 넘겨 새로 만들지 않는다.
+// (위 hintGenerator/AI_PROVIDER는 더 이상 멀티플레이가 쓰지 않지만, 서버 시작 로그 안내에는
+//  여전히 쓰이므로 그대로 둔다.)
+const quizService = new QuizService({
+    roomRepository,
+    broadcaster,
+    geminiService: GeminiService,
+    groqHintGenerator
+});
 // 모드 3은 문제 파일만 있으면 되므로 LLM 을 주입하지 않는다.
 const examService = new ExamService({ roomRepository, broadcaster });
 

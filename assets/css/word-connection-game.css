@@ -999,7 +999,8 @@
         .top-nav .btn-settings,
         .top-nav .btn-versus,
         .top-nav .btn-rank,
-        .top-nav .btn-stop {
+        .top-nav .btn-stop,
+        .top-nav .btn-info {
             background: var(--surface-2);
             color: var(--ink);
             border: 1px solid var(--line);
@@ -1009,11 +1010,13 @@
         .top-nav .btn-settings:hover,
         .top-nav .btn-versus:hover,
         .top-nav .btn-rank:hover,
-        .top-nav .btn-stop:hover { background: var(--surface); filter: none; }
+        .top-nav .btn-stop:hover,
+        .top-nav .btn-info:hover { background: var(--surface); filter: none; }
         .top-nav .btn-settings:active,
         .top-nav .btn-versus:active,
         .top-nav .btn-rank:active,
-        .top-nav .btn-stop:active { transform: translateY(1px); box-shadow: none; }
+        .top-nav .btn-stop:active,
+        .top-nav .btn-info:active { transform: translateY(1px); box-shadow: none; }
         /* 되돌릴 수 없는 동작이라 글자만 빨갛게. 배경까지 빨갛게 하지는 않는다. */
         .top-nav .btn-stop { color: var(--straw-dark); }
 
@@ -1405,22 +1408,6 @@
             transition: transform 0.35s cubic-bezier(.34,1.56,.64,1);
         }
 
-        /* 게임 설명 — 아이콘 대신 글자를 쓰므로 동그라미가 아니라 알약 모양이다.
-           .board-fab 의 위치·그림자·비활성 스타일은 그대로 물려받는다. */
-        .info-btn {
-            left: 16px;
-            --fab: var(--sky); --fab-dark: var(--sky-dark);
-            width: auto;
-            height: auto;
-            min-height: 44px;
-            border-radius: 999px;
-            padding: clamp(9px, 0.7vw, 14px) clamp(16px, 1.3vw, 26px);
-            font-size: var(--fs-label);
-            font-weight: 700;
-            color: #063a52;
-            white-space: nowrap;
-            letter-spacing: 0.2px;
-        }
         /* 단어변경 — 아이콘 대신 글자를 쓰므로 동그라미가 아니라 알약 모양이다.
            .board-fab 의 위치·그림자·비활성 스타일은 그대로 물려받는다. */
         .shuffle-btn {
@@ -2486,10 +2473,24 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
             gap: 8px;
             margin-bottom: 10px;
         }
         .hint-title { font-size: var(--fs-body); font-weight: 700; color: var(--purple-dark); }
+        /* 이번 라운드 힌트를 실제로 만든 AI(또는 내장 힌트 대체) 표시 — 좁은 화면에서는
+           .hint-head가 줄바꿈되므로 .hint-next와 겹치지 않는다. */
+        .hint-provider-badge {
+            font-size: var(--fs-label);
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            white-space: nowrap;
+            background: #eef2ff;
+            color: #4c4a8a;
+        }
+        .hint-provider-badge.offline { background: #fff1e6; color: #9a5a22; }
+        .hint-provider-badge[hidden] { display: none; }
         .hint-next {
             font-size: var(--fs-label);
             font-weight: 700;

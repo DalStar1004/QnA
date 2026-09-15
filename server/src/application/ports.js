@@ -45,6 +45,7 @@ const ERROR_CODES = {
     INVALID_SETTINGS: '게임 설정 값이 올바르지 않아요',
     NO_VALID_CATEGORY: '해당 글자 수의 단어가 충분한 카테고리가 없어요',
     INVALID_MODE: '고를 수 없는 게임 종류예요',
+    INVALID_AI_PROVIDER: '지원하지 않는 AI예요 (Groq 또는 Gemini만 선택할 수 있어요)',
     NO_EXAM_QUESTIONS: '서버에서 문제 파일을 찾지 못했어요 (quiz-data/산업재산권_문제.txt)'
 };
 

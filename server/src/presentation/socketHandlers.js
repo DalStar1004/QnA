@@ -119,10 +119,25 @@ function registerSocketHandlers(io, { roomService, roundService, quizService, ex
         // ---- AI(로컬 LLM) 연결 상태 확인 — 대기실에서 스무고개를 고른 방장에게 보여 준다 ----
         handle(socket, 'ai:status', (payload, ack) => {
             if (typeof ack !== 'function') return undefined;
-            quizService.checkAi()
+            quizService.checkAi({ playerId: socket.id })
                 .then((status) => ack(status))
                 .catch(() => ack({ ok: false }));
             return undefined;
+        });
+
+        // ---- 방장이 대기실에서 모드 2 힌트 AI(Groq/Gemini)를 고른다 ----
+        handle(socket, 'room:setAiProvider', (payload, ack) => {
+            const result = quizService.setAiProvider({
+                playerId: socket.id,
+                provider: payload && payload.provider
+            });
+            return respond(socket, ack, result);
+        });
+
+        // ---- 대기실에서 /api/ai/connect·/api/ai/disconnect를 부른 뒤, 방 전체에 상태를 다시 알린다 ----
+        handle(socket, 'room:refreshAiStatus', (payload, ack) => {
+            const result = quizService.refreshAiStatus({ playerId: socket.id });
+            return respond(socket, ack, result);
         });
 
         // ---- Design §6.2 연결 종료 처리 ----
