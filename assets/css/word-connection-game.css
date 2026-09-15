@@ -1746,6 +1746,15 @@
         }
         .btn-close-gameover { --btn: #cbb9ae; --btn-dark: #a89485; }
 
+        /* 087: [AI 힌트 맞히기 시작] 모달의 '준비 방법' 버튼과 Groq/Gemini 키 안내를
+           항상 숨긴다. HTML·JS(toggleLlmGuide 등)는 그대로 두고 CSS로만 감췄으므로,
+           이 규칙 두 줄만 지우면 원래대로 다시 보인다. 연결 상태 줄(#llmStatus)은
+           이 규칙의 대상이 아니라 그대로 보인다. */
+        #quizSetupOverlay .file-actions,
+        #quizSetupOverlay #llmGuide {
+            display: none;
+        }
+
         /* settings modal specifics */
         .settings-body {
             display: flex;
