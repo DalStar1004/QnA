@@ -47,7 +47,8 @@ class QuizService {
                 ensureReady: () => groq.ensureReady(),
                 generateHints: (answer, category) => groq.generateHints(answer, category),
                 model: () => groq.model,
-                usage: () => groq.usage
+                usage: () => groq.usage,
+                managed: () => groq.managed
             };
         }
         const gemini = this.geminiService;
@@ -55,7 +56,8 @@ class QuizService {
             ensureReady: () => gemini.ensureReady(),
             generateHints: (answer, category) => gemini.generateHints(answer, category),
             model: () => gemini.getModel(),
-            usage: () => null
+            usage: () => null,
+            managed: () => gemini.isManaged()
         };
     }
 
@@ -180,7 +182,8 @@ class QuizService {
             model: status.model || generator.model() || null,
             switched: !!status.switched,
             reason: status.reason || null,
-            usage: generator.usage()
+            usage: generator.usage(),
+            managed: generator.managed()
         };
     }
 
@@ -222,7 +225,8 @@ class QuizService {
             ok: !!status.ok,
             model: status.model || generator.model() || null,
             reason: status.reason || null,
-            usage: generator.usage()
+            usage: generator.usage(),
+            managed: generator.managed()
         });
     }
 

@@ -39,6 +39,7 @@ function adapterFor(providerName, { geminiService, groqHintGenerator }) {
             locked: () => groqHintGenerator.locked,
             model: () => groqHintGenerator.model,
             usage: () => groqHintGenerator.usage,
+            managed: () => groqHintGenerator.managed,
             setApiKey: (key) => groqHintGenerator.setApiKey(key),
             connect: () => groqHintGenerator.connect(),
             disconnect: () => groqHintGenerator.disconnect(),
@@ -53,6 +54,7 @@ function adapterFor(providerName, { geminiService, groqHintGenerator }) {
         locked: () => geminiService.isLocked(),
         model: () => geminiService.getModel(),
         usage: () => null, // Gemini는 하루 사용량 상한을 따로 두지 않는다
+        managed: () => geminiService.isManaged(),
         setApiKey: (key) => geminiService.setApiKey(key),
         connect: () => geminiService.connect(),
         disconnect: () => geminiService.disconnect(),
@@ -100,6 +102,18 @@ async function connectAi(adapter, apiKey) {
 function disconnectAi(adapter) {
     adapter.disconnect();
     return { ok: true, connected: false };
+}
+
+/**
+ * provider가 환경변수로 관리 중일 때 /api/ai/connect·disconnect를 막는 고정 응답.
+ * 코드(PROVIDER_MANAGED)는 화면이 그대로 분기에 쓸 수 있게 항상 같은 문자열로 둔다.
+ * 키 값은 이 응답 어디에도 없다 — 관리 여부(managed)만 알린다.
+ */
+function managedBlockResponse(adapter, provider, action) {
+    const reason = action === 'disconnect'
+        ? `서버에서 관리하는 ${adapter.label} 키라 화면에서 연결을 끊을 수 없어요`
+        : `서버에서 이미 연결된 ${adapter.label} 키라 화면에서 바꿀 수 없어요`;
+    return { ok: false, code: 'PROVIDER_MANAGED', managed: true, provider, reason };
 }
 
 /**
@@ -159,7 +173,7 @@ function registerAiRoutes(app, { getDefaultProvider, geminiService, groqHintGene
         const adapter = adapterFor(provider, services);
         try {
             const status = await checkAi(adapter);
-            res.json({ ...status, provider, usage: adapter.usage() });
+            res.json({ ...status, provider, usage: adapter.usage(), managed: adapter.managed() });
         } catch (error) {
             res.json({ ok: false, provider, reason: '연결 상태를 확인할 수 없습니다' });
         }
@@ -173,8 +187,13 @@ function registerAiRoutes(app, { getDefaultProvider, geminiService, groqHintGene
             res.status(400).json({ ok: false, reason: '지원하지 않는 provider입니다' });
             return;
         }
+        const adapter = adapterFor(provider, services);
+        if (adapter.managed()) {
+            res.status(403).json(managedBlockResponse(adapter, provider, 'connect'));
+            return;
+        }
         try {
-            const status = await connectAi(adapterFor(provider, services), body.apiKey);
+            const status = await connectAi(adapter, body.apiKey);
             res.json({ ...status, provider });
         } catch (error) {
             res.json({ ok: false, provider, reason: '연결하지 못했습니다' });
@@ -188,7 +207,12 @@ function registerAiRoutes(app, { getDefaultProvider, geminiService, groqHintGene
             res.status(400).json({ ok: false, reason: '지원하지 않는 provider입니다' });
             return;
         }
-        const status = disconnectAi(adapterFor(provider, services));
+        const adapter = adapterFor(provider, services);
+        if (adapter.managed()) {
+            res.status(403).json(managedBlockResponse(adapter, provider, 'disconnect'));
+            return;
+        }
+        const status = disconnectAi(adapter);
         res.json({ ...status, provider });
     });
 

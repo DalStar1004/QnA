@@ -3117,6 +3117,18 @@
         }
 
         /**
+         * 서버가 환경변수(GROQ_API_KEY/GEMINI_API_KEY)로 관리하는 provider면 키 입력·
+         * 연결·연결 끊기를 감추고 안내만 보여 준다. 값은 여기 어디에도 들어오지 않는다 —
+         * /api/ai/status가 있는지 없는지(managed:true/false)만 알려 준다.
+         */
+        function applyManagedUi(managed) {
+            const fields = dom('llmKeyFields');
+            const note = dom('llmManagedNote');
+            if (fields) fields.hidden = !!managed;
+            if (note) note.hidden = !managed;
+        }
+
+        /**
          * 지금 고른 provider의 실제 연결 상태를 물어보고 화면에 보여 준다. 연결을 새로 시도하지는
          * 않는다(아직 잠겨 있으면 잠긴 채로 보여 줄 뿐이다) — 그냥 지금 상태를 보여 주는 것뿐이라
          * [스무고개 시작] · ⚙️ 게임 설정을 열 때 · provider를 바꿀 때 아무 때나 불러도 안전하다.
@@ -3125,6 +3137,7 @@
         async function refreshAiStatusDisplay() {
             const label = currentAiLabel();
             const status = await AiQuiz.status();
+            applyManagedUi(status.managed);
             if (status.ok) {
                 const usage = (status.usage && typeof status.usage.cap === 'number')
                     ? ` · 오늘 ${status.usage.used}/${status.usage.cap}회` : '';

@@ -329,9 +329,16 @@
                             <option value="groq">Groq</option>
                             <option value="gemini">Gemini</option>
                         </select>
-                        <input type="password" id="aiKeyInput" placeholder="API 키 (연결할 때만 사용, 저장되지 않음)" aria-label="API 키" autocomplete="off">
-                        <button type="button" class="jelly-btn btn-file-ghost" onclick="connectAi()">연결하기</button>
-                        <button type="button" class="jelly-btn btn-file-ghost" id="aiDisconnectBtn" onclick="disconnectAi()">연결 끊기</button>
+                        <!-- 서버가 환경변수로 관리하는 provider면 applyManagedUi()가 이 묶음을
+                             통째로 숨긴다(display:contents라 select와 같은 줄에 있던 배치는 그대로다). -->
+                        <div id="llmKeyFields" style="display:contents;">
+                            <input type="password" id="aiKeyInput" placeholder="API 키 (연결할 때만 사용, 저장되지 않음)" aria-label="API 키" autocomplete="off">
+                            <button type="button" class="jelly-btn btn-file-ghost" onclick="connectAi()">연결하기</button>
+                            <button type="button" class="jelly-btn btn-file-ghost" id="aiDisconnectBtn" onclick="disconnectAi()">연결 끊기</button>
+                        </div>
+                    </div>
+                    <div class="settings-note" id="llmManagedNote" hidden>
+                        <div class="guide-rule">🔒 서버에서 연결된 AI입니다. API 키 입력이 필요하지 않습니다.</div>
                     </div>
                     <div class="llm-status" id="llmSettingsStatus">연결 상태를 확인하는 중…</div>
                     <div class="settings-note">

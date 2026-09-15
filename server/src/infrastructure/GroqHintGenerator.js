@@ -136,6 +136,15 @@ class GroqHintGenerator {
         return !!this.apiKey;
     }
 
+    /**
+     * GROQ_API_KEY 환경변수가 있으면 이 서버가 직접 관리하는 키로 본다.
+     * 값은 절대 읽어서 돌려주지 않고 있는지 없는지만 본다 — 화면에서 덮어쓰거나
+     * 끊지 못하게 막는 기준으로만 쓴다(aiRoutes.js).
+     */
+    get managed() {
+        return !!process.env.GROQ_API_KEY;
+    }
+
     /** 오늘 얼마나 썼는지 (화면과 서버 로그에 보여 준다) */
     get usage() {
         this._rolloverDay();

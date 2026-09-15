@@ -81,6 +81,15 @@ function isLocked() {
     return !active;
 }
 
+/**
+ * GEMINI_API_KEY 환경변수가 있으면 이 서버가 직접 관리하는 키로 본다.
+ * 값은 절대 읽어서 돌려주지 않고 있는지 없는지만 본다 — 화면에서 덮어쓰거나
+ * 끊지 못하게 막는 기준으로만 쓴다(aiRoutes.js).
+ */
+function isManaged() {
+    return !!process.env.GEMINI_API_KEY;
+}
+
 /** 화면에서 받은 키를 메모리에만 둔다. 서버 재시작 시 그대로 사라진다. */
 function setApiKey(key) {
     const value = String(key || '').trim();
@@ -328,6 +337,7 @@ module.exports = {
     hasApiKey,
     isConnected,
     isLocked,
+    isManaged,
     setApiKey,
     connect,
     disconnect,
