@@ -140,6 +140,8 @@ if (LOCAL_RUN) {
     app.use('/assets', express.static(path.join(ROOT_DIR, 'assets'), { index: false }));
     // 모드 3(산업재산권 문제)이 읽는 문제 파일도 루트에 있다.
     app.use('/quiz-data', express.static(path.join(ROOT_DIR, 'quiz-data'), { index: false }));
+    // 배경음악(music/*.mp3) — 혼자 하기('/')와 멀티플레이('/multi') 둘 다 music/ 상대 경로로 받는다.
+    app.use('/music', express.static(path.join(ROOT_DIR, 'music'), { index: false }));
 }
 
 // 컨테이너 헬스체크용 엔드포인트

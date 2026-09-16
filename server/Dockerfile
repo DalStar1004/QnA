@@ -25,6 +25,8 @@ COPY word_connection_game.html ./public/
 COPY assets ./public/assets
 # 모드 3(산업재산권 문제)이 읽는 문제 파일
 COPY quiz-data ./public/quiz-data
+# 배경음악(오른쪽 위 🎵 위젯이 튼다). public/ 아래에 두면 express.static 이 그대로 내준다.
+COPY music ./public/music
 
 ENV NODE_ENV=production
 ENV PORT=3000

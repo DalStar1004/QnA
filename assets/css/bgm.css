@@ -1,0 +1,159 @@
+/* =========================================================
+   배경음악 위젯 — 혼자 하기 · 멀티플레이 공용 (assets/js/bgm.js 가 만든다)
+   오른쪽 위 구석에 고정된 🎵 단추 하나와, 누르면 그 아래 펼쳐지는 작은 판.
+   시작 화면(.start-overlay, z-index 500)에서도 눌러야 하므로 그보다 위에 둔다.
+   색은 두 화면이 같은 이름으로 정의한 토큰을 쓰되, 없을 때를 대비해 값을 함께 적었다.
+   ========================================================= */
+.bgm-widget {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    font-family: 'Fredoka', 'Jua', 'Pretendard', sans-serif;
+    color: var(--ink, #5b4b45);
+}
+
+/* 항상 보이는 단추 */
+.bgm-fab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-family: inherit;
+    font-size: 0.92em;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    background: linear-gradient(160deg, #e6dcff, var(--purple, #A78BFA));
+    box-shadow: 0 4px 0 var(--purple-dark, #8563f0), 0 8px 14px rgba(0, 0, 0, 0.12);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+    user-select: none;
+}
+.bgm-fab:hover { filter: brightness(1.05); }
+.bgm-fab:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--purple-dark, #8563f0); }
+.bgm-fab-icon { font-size: 1.15em; line-height: 1; }
+.bgm-widget:not(.is-on) .bgm-fab {
+    background: linear-gradient(160deg, #e9e4ea, #b9aeb8);
+    box-shadow: 0 4px 0 #9b8f9a, 0 8px 14px rgba(0, 0, 0, 0.1);
+}
+/* 재생 중엔 음표가 살짝 흔들린다 */
+.bgm-widget.is-playing .bgm-fab-icon { animation: bgmBounce 1.4s ease-in-out infinite; }
+@keyframes bgmBounce {
+    0%, 100% { transform: translateY(0) rotate(-6deg); }
+    50% { transform: translateY(-2px) rotate(6deg); }
+}
+/* 브라우저가 자동 재생을 막아 첫 클릭을 기다릴 때는 단추를 깜박여 알린다 */
+.bgm-widget.is-waiting .bgm-fab { animation: bgmPulse 1.6s ease-in-out infinite; }
+@keyframes bgmPulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.18); }
+}
+
+/* 펼쳐지는 판 */
+.bgm-panel {
+    display: none;
+    width: min(280px, calc(100vw - 32px));
+    background: #fff;
+    border: 1px solid rgba(120, 95, 90, 0.16);
+    border-radius: 18px;
+    padding: 14px 16px 16px;
+    box-shadow: 0 10px 0 rgba(167, 139, 250, 0.22), 0 18px 30px rgba(60, 35, 50, 0.18);
+    text-align: left;
+}
+.bgm-widget.open .bgm-panel { display: block; animation: bgmDrop 0.16s ease-out; }
+@keyframes bgmDrop {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.bgm-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.bgm-panel-title { font-weight: 700; font-size: 1.02em; color: var(--pink-dark, #e0506f); }
+.bgm-close {
+    border: none;
+    background: #f3eeff;
+    color: var(--purple-dark, #8563f0);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 700;
+    line-height: 1;
+}
+.bgm-close:hover { background: #e6dcff; }
+
+.bgm-on-btn {
+    width: 100%;
+    border: none;
+    border-radius: 14px;
+    padding: 11px 14px;
+    font-family: inherit;
+    font-size: 0.98em;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    background: linear-gradient(160deg, #8fe6c8, var(--mint, #4ECCA3));
+    box-shadow: 0 4px 0 var(--mint-dark, #2fa580);
+    margin-bottom: 12px;
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.bgm-on-btn.is-on {
+    background: linear-gradient(160deg, #ffb3b2, var(--straw, #FF7675));
+    box-shadow: 0 4px 0 var(--straw-dark, #e2504f);
+}
+.bgm-on-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2); }
+
+.bgm-label {
+    display: block;
+    font-size: 0.82em;
+    font-weight: 700;
+    color: rgba(91, 75, 69, 0.9);
+    margin: 0 0 4px 2px;
+}
+.bgm-select {
+    width: 100%;
+    font-family: inherit;
+    font-size: 0.95em;
+    color: var(--ink, #5b4b45);
+    background: #fffaf3;
+    border: 2px solid #f4c9d2;
+    border-radius: 12px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+.bgm-select:focus { outline: none; border-color: var(--purple, #A78BFA); }
+
+.bgm-vol-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.bgm-vol-icon { font-size: 1em; }
+.bgm-volume { flex: 1; accent-color: var(--purple, #A78BFA); cursor: pointer; min-width: 0; }
+.bgm-vol-value { min-width: 3.2em; text-align: right; font-size: 0.85em; font-weight: 700; }
+
+.bgm-now {
+    font-size: 0.82em;
+    color: rgba(91, 75, 69, 0.85);
+    background: #fffaf3;
+    border-radius: 10px;
+    padding: 7px 10px;
+    min-height: 1.4em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 좁은 화면에서는 제목과 겹치지 않게 아이콘만 남긴다 (왼쪽 위 처음 화면 단추와 같은 방식) */
+@media (max-width: 720px) {
+    .bgm-fab { padding: 10px 12px; }
+    .bgm-fab-label { display: none; }
+    .bgm-fab-icon { font-size: 18px; }
+}
