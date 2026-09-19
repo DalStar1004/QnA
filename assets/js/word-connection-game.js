@@ -77,7 +77,20 @@
                     }
                 });
 
-                Object.keys(parsed).forEach(name => { BUILTIN_DICTIONARY[name] = parsed[name].slice(); });
+                /* 파일로 넣은 카테고리와 같은 규칙(한글 2~10글자, 중복 제거)으로 거른다.
+                   게임은 블록 2개부터 낱말로 인정하므로 '감'·'배' 같은 한 글자 단어는 목표로
+                   나와도 만들 수가 없다. 그런 단어가 파일에 있으면 빼고, 무엇을 뺐는지 콘솔에 남긴다. */
+                Object.keys(parsed).forEach(name => {
+                    const { words, skipped } = CategoryManager.sanitizeWords(parsed[name]);
+                    if (skipped.length) {
+                        console.warn(`[word-categories] '${name}' 에서 만들 수 없는 단어 ${skipped.length}개를 뺐습니다 (한글 2~10글자만 씁니다): ${skipped.join(', ')}`);
+                    }
+                    if (words.length < 2) {
+                        console.warn(`[word-categories] '${name}' 은(는) 쓸 수 있는 단어가 2개 미만이라 건너뜁니다.`);
+                        return;
+                    }
+                    BUILTIN_DICTIONARY[name] = words;
+                });
                 CategoryManager.rebuild(); // 여기서 사용자 카테고리와 합쳐 dictionary 를 완성한다.
                 dictionaryReady = true;
             } catch (err) {
@@ -129,6 +142,27 @@
             // 보드에서 만든 글자 조합이 해당 카테고리의 단어인지 확인한다 (길이 무관).
             hasWord(category, word) {
                 return this.getWords(category).includes(word);
+            },
+            /**
+             * 지금 보드의 글자로 만들 수 있는 이 카테고리의 단어를 모두 찾는다.
+             * 목표로 심은 두 단어 말고도, 채움 글자와 섞이면서 우연히 다른 단어가 만들어질 때가 있다.
+             * 그런 단어도 정답이므로, 판을 바꿀지 말지는 이 목록이 비었는지로 정한다.
+             * 글자는 한 칸에 하나뿐이라, 같은 글자가 두 번 들어간 단어('사사')는 보드에도 두 칸이 있어야 한다.
+             * @param {string[]} boardChars 보드에 깔린 글자 (순서 무관)
+             * @param {string[]} exclude 이미 맞힌 단어 — 다시 세지 않는다
+             */
+            findWordsOnBoard(category, boardChars, exclude) {
+                const skip = exclude || [];
+                return this.getWords(category).filter(word => {
+                    if (skip.indexOf(word) !== -1 || word.length > boardChars.length) return false;
+                    const pool = boardChars.slice();
+                    return word.split('').every(ch => {
+                        const at = pool.indexOf(ch);
+                        if (at === -1) return false;
+                        pool.splice(at, 1);
+                        return true;
+                    });
+                });
             }
         };
 
@@ -694,6 +728,25 @@
                 buckets[name] = (buckets[name] || []).concat(words);
             }
 
+            /**
+             * 단어 목록에서 게임에 쓸 수 있는 것만 남긴다 — 한글 2~10글자, 공백 제거, 중복 제거.
+             * 기본 사전(word-categories.json)과 파일로 넣은 카테고리가 같은 기준을 쓰도록 한 곳에 둔다.
+             * @returns {{ words: string[], skipped: string[] }} 남긴 단어와 뺀 단어
+             */
+            function sanitizeWords(rawWords) {
+                const words = [];
+                const skipped = [];
+                (Array.isArray(rawWords) ? rawWords : []).forEach(raw => {
+                    const word = String(raw).trim().replace(/\s+/g, '');
+                    if (!WORD_RE.test(word)) {
+                        if (word) skipped.push(word);
+                        return;
+                    }
+                    if (!words.includes(word)) words.push(word);
+                });
+                return { words, skipped };
+            }
+
             // JSON 파일. 두 가지 형식을 모두 받아들인다.
             //   { "이름": [단어...] }   또는   [{ category: "이름", words: [단어...] }, ...]
             function parseJson(text, fileName, warnings, buckets) {
@@ -773,16 +826,8 @@
                         return;
                     }
 
-                    const words = [];
-                    let skipped = 0;
-                    buckets[rawName].forEach(raw => {
-                        const word = String(raw).trim().replace(/\s+/g, '');
-                        if (!WORD_RE.test(word)) {
-                            if (word) skipped++;
-                            return;
-                        }
-                        if (!words.includes(word)) words.push(word);
-                    });
+                    const { words, skipped: skippedWords } = sanitizeWords(buckets[rawName]);
+                    const skipped = skippedWords.length;
 
                     if (words.length < 2) {
                         warnings.push(`${fileName}: '${name}'은(는) 쓸 수 있는 단어가 2개 미만이라 건너뛰었습니다.`);
@@ -822,6 +867,7 @@
 
             return {
                 rebuild,
+                sanitizeWords,
                 getCustom() { return StorageManager.getCustomCategories(); },
                 // 선택한 파일들을 읽어 카테고리를 추가한다. 결과 요약을 Promise로 돌려준다.
                 importFiles(fileList) {
@@ -1306,6 +1352,11 @@
                 clearCanvas();
             }
 
+            // 지금 보드에 깔린 글자를 순서대로 돌려준다 (남은 정답이 있는지 셀 때 쓴다).
+            function getBoardChars() {
+                return Array.from(board.querySelectorAll('.block')).map(b => b.textContent);
+            }
+
             // 상단 HUD 전체를 현재 상태에 맞춰 한 번에 다시 그린다.
             function syncHud() {
                 updateShuffleFabState();
@@ -1325,7 +1376,7 @@
                 updateCategoryDisplay, updateScoreDisplay, updateTimerDisplay, updateHighScoreDisplay,
                 updateChampionBanner, updateVersusBar,
                 resizeCanvas, clearCanvas, drawLines, cacheBlockCenters,
-                resetSelection, renderBoard, clearBoard
+                resetSelection, renderBoard, clearBoard, getBoardChars
             };
         })();
 
@@ -2464,6 +2515,8 @@
            모드 3 — 산업재산권 문제
            quiz-data/산업재산권_문제.txt 에 적힌 문제를 처음부터 끝까지 낸다.
            한 문제당 10초, 시간이 지나면 정답을 보여주고 다음 문제로 넘어간다.
+           맞히면 문제당 5점(EXAM_POINTS_PER_QUESTION)이라 20문제를 다 맞히면 100점이다.
+           맞히면 문제당 5점(EXAM_POINTS_PER_QUESTION)이라 20문제를 다 맞히면 100점이다.
            맞히는 방법은 모드 2와 같다 — 보드의 글자 블록을 눌러 정답을 만든다.
         ========================================================= */
 
@@ -2476,6 +2529,10 @@
         const EXAM_DEFAULT_BLOCKS = 12;  // 보드에 깔 블록 개수
         const EXAM_TIME_MIN = 5, EXAM_TIME_MAX = 120;
         const EXAM_BLOCKS_MIN = 4, EXAM_BLOCKS_MAX = 36;
+        /* 한 문제를 맞히면 주는 점수. 남은 시간과 상관없이 **고정**이다.
+           문제 파일(20문제)을 모두 맞히면 딱 100점이 되도록 5점으로 잡았다.
+           문제 수가 바뀌면 만점도 그에 맞춰 (문제 수 × 5점)으로 달라진다. */
+        const EXAM_POINTS_PER_QUESTION = 5;
         // 설정값이 정답 글자를 다 담지 못하면 이만큼 여유를 두고 자동으로 늘린다.
         const EXAM_MIN_SPARE_BLOCKS = 2;
 
@@ -2633,9 +2690,9 @@
                 return this.active && this.answers.indexOf(word) !== -1;
             },
 
-            // 남은 시간이 곧 점수다. 빨리 맞힐수록 높다 (최소 1점).
+            // 맞히면 문제당 고정 점수. 빨리 맞혀도 더 주지 않는다 (모두 맞히면 문제 수 × 5점 = 100점).
             points() {
-                return Math.max(1, GameState.timeLeft);
+                return EXAM_POINTS_PER_QUESTION;
             },
 
             answerText() {
@@ -2672,6 +2729,11 @@
 
             get totalRounds() {
                 return this.order.length;
+            },
+
+            // 전부 맞혔을 때의 만점. 기본 문제 파일(20문제)이면 100점이다.
+            get maxScore() {
+                return this.order.length * EXAM_POINTS_PER_QUESTION;
             },
 
             currentQuestion() {
@@ -3570,7 +3632,7 @@
             const questions = ExamBank.all();
             ExamSession.start(questions);
             updateExamRoundDisplay();
-            UIManager.showToast(`📜 산업재산권 문제 ${questions.length}개! 한 문제에 ${examTimeLimit()}초예요.`, 'info');
+            UIManager.showToast(`📜 산업재산권 문제 ${questions.length}개! 한 문제에 ${examTimeLimit()}초, 맞히면 ${EXAM_POINTS_PER_QUESTION}점이에요.`, 'info');
             beginExamRound();
         }
 
@@ -3672,7 +3734,7 @@
             dom('examRoundQuestion').textContent = info.question || '';
             dom('examRoundScore').textContent = `+${info.roundScore}`;
             dom('examRoundProgress').textContent =
-                `${ExamSession.round} / ${ExamSession.totalRounds} 문제 · 누적 ${ExamSession.totalScore}점`;
+                `${ExamSession.round} / ${ExamSession.totalRounds} 문제 · 누적 ${ExamSession.totalScore}점 / ${ExamSession.maxScore}점`;
 
             const isLast = ExamSession.round >= ExamSession.totalRounds;
             dom('examNextLabel').textContent = isLast ? '최종 결과 보기' : '다음 문제';
@@ -3706,6 +3768,7 @@
 
             const history = ExamSession.history.slice();
             const total = ExamSession.totalScore;
+            const maxScore = ExamSession.maxScore;
             const solved = history.filter(entry => entry.cleared).length;
 
             const isNewRecord = StorageManager.trySetHighScore(total, 'exam');
@@ -3716,7 +3779,7 @@
             dom('examFinalScore').textContent = `${solved} / ${history.length}`;
             dom('examFinalSub').textContent =
                 `${history.length}문제 중 ${solved}문제를 맞혔어요 · 정답률 ${rate}%`;
-            dom('examFinalPoints').textContent = `⭐ 점수 ${total}점`;
+            dom('examFinalPoints').textContent = `⭐ 점수 ${total}점 / ${maxScore}점`;
             dom('examFinalHigh').textContent = `최고 점수: ${GameState.highScore}점`;
             dom('examFinalRecordBadge').style.display = isNewRecord ? '' : 'none';
             dom('examFinalTrophy').style.display = (solved === history.length && history.length > 0) ? '' : 'none';
@@ -4591,7 +4654,7 @@
                         || Dictionary.hasWord(GameState.currentCategory, formedWord));
 
             if (isCorrect) {
-                // 모드 3: 맞히는 순간 그 문제가 끝난다. 남은 시간이 곧 점수다.
+                // 모드 3: 맞히는 순간 그 문제가 끝난다. 점수는 문제당 고정(EXAM_POINTS_PER_QUESTION)이다.
                 if (isExam) {
                     clearInterval(timerInterval);
                     GameState.isGameActive = false;
@@ -4667,9 +4730,24 @@
                 }
 
                 setTimeout(() => {
-                    // 맞히면 곧바로 새 단어 조합의 판으로 교체한다.
-                    // 더 이상 낼 단어가 없으면 generateNewRound가 게임을 끝낸다.
                     GameState.isResolving = false;
+                    if (!GameState.isGameActive) return;   // 연출 중에 시간이 다 됐으면 여기서 멈춘다
+
+                    /* 판에 아직 만들 수 있는 정답이 남아 있으면 판을 그대로 둔다.
+                       목표로 심은 나머지 단어뿐 아니라, 채움 글자와 섞여 우연히 생긴 카테고리 단어도
+                       정답이므로 그것까지 다 찾을 기회를 준다. 남은 것이 없을 때만 새 판을 깐다.
+                       (더 이상 낼 단어가 없으면 generateNewRound 가 게임을 끝낸다) */
+                    const remaining = Dictionary.findWordsOnBoard(
+                        GameState.currentCategory, UIManager.getBoardChars(), GameState.solvedWords);
+                    if (remaining.length > 0) {
+                        GameState.currentTargetWords = remaining;
+                        // 방금 쓴 블록은 다른 단어에 다시 쓸 수 있으므로 초록 연출을 지워 평소 모습으로 되돌린다.
+                        const usedBlocks = GameState.selectedBlocks.slice();
+                        UIManager.resetSelection();
+                        setTimeout(() => usedBlocks.forEach(b => b.classList.remove('pop-success')), 150);
+                        UIManager.spawnFloatText(`이 판에 정답이 ${remaining.length}개 더 있어요!`, 'good');
+                        return;
+                    }
                     generateNewRound();
                 }, 480);
             } else {

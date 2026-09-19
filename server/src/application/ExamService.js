@@ -93,7 +93,8 @@ class ExamService {
 
     /**
      * 정답 제출. 맞으면서 최초인 사람만 득점하고 곧바로 다음 문제로 넘어간다.
-     * 점수는 **남은 시간**이다 — 빨리 맞힐수록 높다(혼자 하기 모드 3과 같은 계산).
+     * 점수는 **남은 시간**이다 — 빨리 맞힐수록 높다.
+     * (혼자 하기 모드 3은 문제당 5점 고정으로 바뀌었다. 멀티는 먼저 맞힌 사람이 이기는 방식이라 그대로 둔다.)
      */
     submitAnswer({ playerId, word }) {
         const room = this.findRoomByPlayer(playerId);

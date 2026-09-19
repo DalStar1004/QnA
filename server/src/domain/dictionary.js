@@ -42,6 +42,9 @@ function resolveDataPath() {
  * 형식이 잘못됐으면 여기서 예외를 던져 서버가 빈 사전으로 조용히 뜨는 일을 막는다 —
  * require() 중에 던진 예외는 server.js 까지 그대로 올라가 프로세스를 종료시킨다.
  */
+// 게임에 쓸 수 있는 단어의 모양. 혼자 하기 화면의 CategoryManager.WORD_RE 와 같은 값이다.
+const WORD_RE = /^[가-힣]{2,10}$/;
+
 function loadDictionary() {
     const filePath = resolveDataPath();
 
@@ -88,7 +91,35 @@ function loadDictionary() {
         });
     });
 
-    return parsed;
+    /* 혼자 하기 화면(word-connection-game.js 의 loadWordCategories)과 같은 규칙으로 거른다 —
+       한글 2~10글자만, 공백·중복 제거. 게임은 블록 2개부터 낱말로 인정하므로 '감'·'배' 같은
+       한 글자 단어는 목표로 나와도 만들 수 없다. 파일을 고치라고 서버를 죽이지는 않고, 빼고 알린다. */
+    const clean = {};
+    names.forEach((name) => {
+        const words = [];
+        const skipped = [];
+        parsed[name].forEach((raw) => {
+            const word = raw.trim().replace(/\s+/g, '');
+            if (!WORD_RE.test(word)) {
+                skipped.push(word);
+                return;
+            }
+            if (!words.includes(word)) words.push(word);
+        });
+        if (skipped.length) {
+            console.warn(`[dictionary] '${name}' 에서 만들 수 없는 단어 ${skipped.length}개를 뺐습니다 (한글 2~10글자만 씁니다): ${skipped.join(', ')}`);
+        }
+        if (words.length < 2) {
+            console.warn(`[dictionary] '${name}' 은(는) 쓸 수 있는 단어가 2개 미만이라 건너뜁니다.`);
+            return;
+        }
+        clean[name] = words;
+    });
+    if (Object.keys(clean).length === 0) {
+        throw new Error(`[dictionary] ${filePath} 에 쓸 수 있는 카테고리가 하나도 없습니다.`);
+    }
+
+    return clean;
 }
 
 const dictionary = loadDictionary();
