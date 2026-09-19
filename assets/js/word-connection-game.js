@@ -142,27 +142,6 @@
             // 보드에서 만든 글자 조합이 해당 카테고리의 단어인지 확인한다 (길이 무관).
             hasWord(category, word) {
                 return this.getWords(category).includes(word);
-            },
-            /**
-             * 지금 보드의 글자로 만들 수 있는 이 카테고리의 단어를 모두 찾는다.
-             * 목표로 심은 두 단어 말고도, 채움 글자와 섞이면서 우연히 다른 단어가 만들어질 때가 있다.
-             * 그런 단어도 정답이므로, 판을 바꿀지 말지는 이 목록이 비었는지로 정한다.
-             * 글자는 한 칸에 하나뿐이라, 같은 글자가 두 번 들어간 단어('사사')는 보드에도 두 칸이 있어야 한다.
-             * @param {string[]} boardChars 보드에 깔린 글자 (순서 무관)
-             * @param {string[]} exclude 이미 맞힌 단어 — 다시 세지 않는다
-             */
-            findWordsOnBoard(category, boardChars, exclude) {
-                const skip = exclude || [];
-                return this.getWords(category).filter(word => {
-                    if (skip.indexOf(word) !== -1 || word.length > boardChars.length) return false;
-                    const pool = boardChars.slice();
-                    return word.split('').every(ch => {
-                        const at = pool.indexOf(ch);
-                        if (at === -1) return false;
-                        pool.splice(at, 1);
-                        return true;
-                    });
-                });
             }
         };
 
@@ -1352,11 +1331,6 @@
                 clearCanvas();
             }
 
-            // 지금 보드에 깔린 글자를 순서대로 돌려준다 (남은 정답이 있는지 셀 때 쓴다).
-            function getBoardChars() {
-                return Array.from(board.querySelectorAll('.block')).map(b => b.textContent);
-            }
-
             // 상단 HUD 전체를 현재 상태에 맞춰 한 번에 다시 그린다.
             function syncHud() {
                 updateShuffleFabState();
@@ -1376,7 +1350,7 @@
                 updateCategoryDisplay, updateScoreDisplay, updateTimerDisplay, updateHighScoreDisplay,
                 updateChampionBanner, updateVersusBar,
                 resizeCanvas, clearCanvas, drawLines, cacheBlockCenters,
-                resetSelection, renderBoard, clearBoard, getBoardChars
+                resetSelection, renderBoard, clearBoard
             };
         })();
 
@@ -4730,24 +4704,12 @@
                 }
 
                 setTimeout(() => {
+                    // 맞히면 곧바로 새 단어 조합의 판으로 교체한다.
+                    // 한 판에 만들 수 있는 카테고리 단어가 여러 개여도(목표 단어든 우연히 생긴 단어든)
+                    // 그중 하나만 맞히면 판이 바뀐다. 판정은 사전에 있는 단어면 모두 정답으로 친다.
+                    // 더 이상 낼 단어가 없으면 generateNewRound가 게임을 끝낸다.
                     GameState.isResolving = false;
                     if (!GameState.isGameActive) return;   // 연출 중에 시간이 다 됐으면 여기서 멈춘다
-
-                    /* 판에 아직 만들 수 있는 정답이 남아 있으면 판을 그대로 둔다.
-                       목표로 심은 나머지 단어뿐 아니라, 채움 글자와 섞여 우연히 생긴 카테고리 단어도
-                       정답이므로 그것까지 다 찾을 기회를 준다. 남은 것이 없을 때만 새 판을 깐다.
-                       (더 이상 낼 단어가 없으면 generateNewRound 가 게임을 끝낸다) */
-                    const remaining = Dictionary.findWordsOnBoard(
-                        GameState.currentCategory, UIManager.getBoardChars(), GameState.solvedWords);
-                    if (remaining.length > 0) {
-                        GameState.currentTargetWords = remaining;
-                        // 방금 쓴 블록은 다른 단어에 다시 쓸 수 있으므로 초록 연출을 지워 평소 모습으로 되돌린다.
-                        const usedBlocks = GameState.selectedBlocks.slice();
-                        UIManager.resetSelection();
-                        setTimeout(() => usedBlocks.forEach(b => b.classList.remove('pop-success')), 150);
-                        UIManager.spawnFloatText(`이 판에 정답이 ${remaining.length}개 더 있어요!`, 'good');
-                        return;
-                    }
                     generateNewRound();
                 }, 480);
             } else {
