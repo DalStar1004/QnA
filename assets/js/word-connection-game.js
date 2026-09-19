@@ -401,10 +401,12 @@
             const BACKGROUND_KEY = 'wordConnectionGame.background';
             const CUSTOM_CATEGORY_KEY = 'wordConnectionGame.customCategories';
             /* 모드 3 설정.
-               모드 1과 **따로** 둔다 — 한 문제를 10초 안에 푸는 모드와 여러 단어를 찾는 모드는
+               모드 1과 **따로** 둔다 — 한 문제를 정해진 시간 안에 푸는 모드와 여러 단어를 찾는 모드는
                알맞은 블록 개수가 서로 달라서, 한쪽을 고치면 다른 쪽이 망가진다. */
             const EXAM_TIME_KEY = 'wordConnectionGame.examTime';
             const EXAM_BLOCKS_KEY = 'wordConnectionGame.examBlocks';
+            // 모드 3 기본 시간을 10초 -> 40초로 바꿨을 때 예전 저장값을 한 번만 옮겼다는 표시
+            const EXAM_TIME_MIGRATED_KEY = 'wordConnectionGame.examTimeMigrated40';
             // 사용자가 파일로 더 넣은 문제
             const EXAM_EXTRA_KEY = 'wordConnectionGame.examExtraQuestions';
 
@@ -440,6 +442,22 @@
                 }
             }
             migrateLegacyModel();
+
+            /*
+             * 모드 3 한 문제 시간의 기본값을 10초 -> 40초로 바꿨다.
+             * 설정 창을 닫을 때 화면 값이 그대로 저장되므로, 시간을 고른 적 없는 사람의 브라우저에도
+             * 예전 기본값 '10' 이 남아 있고, 저장값이 기본값을 이겨 새 기본값이 영영 적용되지 않는다.
+             * 그래서 예전 기본값 그대로인 저장값만 딱 한 번 지워 새 기본값(EXAM_DEFAULT_TIME)이 쓰이게 한다.
+             * (EXAM_DEFAULT_TIME 은 아래쪽에서 선언되므로 여기서는 예전 값을 숫자 그대로 적는다)
+             */
+            function migrateExamTime() {
+                if (readRaw(EXAM_TIME_MIGRATED_KEY)) return;
+                writeRaw(EXAM_TIME_MIGRATED_KEY, '1');
+                if (readRaw(EXAM_TIME_KEY) === '10') {
+                    try { localStorage.removeItem(EXAM_TIME_KEY); } catch (e) { /* degrade */ }
+                }
+            }
+            migrateExamTime();
 
             /* ---------- 모드별 기록 칸 고르기 ----------
                모드 1(classic) · 모드 2(quiz) · 모드 3(exam)은 점수 폭이 서로 달라서
@@ -2488,7 +2506,7 @@
         /* =========================================================
            모드 3 — 산업재산권 문제
            quiz-data/산업재산권_문제.txt 에 적힌 문제를 처음부터 끝까지 낸다.
-           한 문제당 10초, 시간이 지나면 정답을 보여주고 다음 문제로 넘어간다.
+           한 문제당 기본 40초(설정에서 5~120초), 시간이 지나면 정답을 보여주고 다음 문제로 넘어간다.
            맞히면 문제당 5점(EXAM_POINTS_PER_QUESTION)이라 20문제를 다 맞히면 100점이다.
            맞히면 문제당 5점(EXAM_POINTS_PER_QUESTION)이라 20문제를 다 맞히면 100점이다.
            맞히는 방법은 모드 2와 같다 — 보드의 글자 블록을 눌러 정답을 만든다.
@@ -2497,9 +2515,9 @@
         // 문제 파일 위치. 이 폴더만 옮기면 되도록 한 곳에 모아 둔다.
         const EXAM_FILE = 'quiz-data/산업재산권_문제.txt';
         /* 모드 3 설정의 기본값과 허용 범위.
-           **모드 1과 값을 나눠 쓴다.** 한 문제를 10초 안에 푸는 모드와 여러 단어를 찾는 모드는
+           **모드 1과 값을 나눠 쓴다.** 한 문제를 정해진 시간 안에 푸는 모드와 여러 단어를 찾는 모드는
            알맞은 블록 개수가 서로 달라서, 한쪽 설정을 다른 쪽에 그대로 쓰면 게임이 이상해진다. */
-        const EXAM_DEFAULT_TIME = 10;    // 한 문제에 주는 시간(초)
+        const EXAM_DEFAULT_TIME = 40;    // 한 문제에 주는 시간(초)
         const EXAM_DEFAULT_BLOCKS = 12;  // 보드에 깔 블록 개수
         const EXAM_TIME_MIN = 5, EXAM_TIME_MAX = 120;
         const EXAM_BLOCKS_MIN = 4, EXAM_BLOCKS_MAX = 36;
@@ -2511,6 +2529,12 @@
         const EXAM_MIN_SPARE_BLOCKS = 2;
 
         function examTimeLimit() { return StorageManager.getExamTime(); }
+
+        // 모드 3 배너의 "한 문제에 N초" 를 지금 설정값으로 맞춘다 (초기화 · 설정 닫을 때 · 시작할 때).
+        function syncExamRuleBanner() {
+            const el = dom('examRuleSeconds');
+            if (el) el.textContent = String(examTimeLimit());
+        }
 
         /**
          * 문제 파일을 읽어 문제 목록으로 만든다.
@@ -2657,7 +2681,7 @@
 
             /**
              * 정답이 여러 개인 문제는 **그중 하나만 만들어도 맞은 것으로 본다.**
-             * 10초 안에 블록으로 여러 낱말을 잇달아 만드는 것은 사실상 불가능하기 때문이다.
+             * 한 문제 시간 안에 블록으로 여러 낱말을 잇달아 만드는 것은 사실상 어렵기 때문이다.
              * 결과 화면에서는 정답을 전부 보여 준다.
              */
             isAnswer(word) {
@@ -2699,6 +2723,9 @@
                 this.round = 1;
                 this.totalScore = 0;
                 this.history = [];
+                // 모드 2와 같이 세션 전체가 한 게임이다. 문제가 넘어가도 횟수는 이어지고,
+                // 새 세션을 시작할 때 다시 채운다. (안 채우면 지난 세션에서 쓴 횟수가 그대로 남는다)
+                GameState.resetShuffles();
             },
 
             get totalRounds() {
@@ -2725,6 +2752,8 @@
 
             finish() {
                 this.active = false;
+                // 게임이 끝나면 화면의 '단어변경 (n/5)' 도 다음 게임 기준(5/5)으로 되돌려 둔다.
+                GameState.resetShuffles();
             },
 
             reset() {
@@ -2733,6 +2762,7 @@
                 this.round = 0;
                 this.totalScore = 0;
                 this.history = [];
+                GameState.resetShuffles();
             }
         };
 
@@ -2778,6 +2808,7 @@
                 (v) => StorageManager.setExamTime(v));
 
             // 모드 3 화면에 시간이 적혀 있으므로, 설정을 바꾸면 바로 반영한다.
+            syncExamRuleBanner();
             if (appMode === 'exam' && !ExamSession.active) resetExamPanel();
             UIManager.syncHud();
 
@@ -3571,7 +3602,7 @@
         }
 
         /* =========================================================
-           모드 3 진행 — 문제 내기 / 10초 / 정답 공개 / 다음 문제
+           모드 3 진행 — 문제 내기 / 제한 시간 / 정답 공개 / 다음 문제
            모드 2(스무고개)의 흐름을 그대로 따르되, 문제를 AI가 아니라 파일에서 가져온다.
         ========================================================= */
 
@@ -3739,6 +3770,7 @@
             // 결과창을 띄우기 전에 세션부터 닫는다 (모드 2에서 겪은 문제 — 세션이 살아 있으면 계속 진행된다).
             ExamSession.finish();
             hideExamRoundResult();
+            UIManager.syncHud();   // 되돌린 단어변경 횟수(5/5)를 화면에도 반영한다
 
             const history = ExamSession.history.slice();
             const total = ExamSession.totalScore;
@@ -4742,6 +4774,7 @@
             GameState.highScore = StorageManager.getHighScore();
             UIManager.updateHighScoreDisplay();
             UIManager.updateCategoryDisplay();
+            syncExamRuleBanner();
             dom('howToDeselectNote').textContent =
                 `글자 선택 후 ${AUTO_DESELECT_MS / 1000}초 동안 추가 선택이 없으면 선택이 자동으로 해제됩니다.`;
 

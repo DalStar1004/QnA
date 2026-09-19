@@ -168,7 +168,7 @@
         <div class="rule-banner" id="examRuleBanner" style="display:none;">
             <span class="rule-chip" id="examRoundChip">📜 산업재산권 문제</span>
             <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
-            <span class="rule-text">제시된 문제를 확인하고 정답에 해당하는 글자 블록을 연결하세요. 한 문제에 <b>10초</b>, 시간이 지나면 정답을 알려줘요!</span>
+            <span class="rule-text">제시된 문제를 확인하고 정답에 해당하는 글자 블록을 연결하세요. 한 문제에 <b><span id="examRuleSeconds">40</span>초</b>, 시간이 지나면 정답을 알려줘요!</span>
         </div>
 
         <!-- 단어 블록 보드 -->
@@ -370,7 +370,7 @@
                 </div>
                 <div class="settings-row">
                     <label for="examTimeInput">⏱ 한 문제 시간(초)</label>
-                    <input type="number" id="examTimeInput" value="10" min="5" max="120">
+                    <input type="number" id="examTimeInput" value="40" min="5" max="120">
                 </div>
                 <!-- 문제 파일 내려받기 / 고쳐서 다시 올리기 -->
                 <div class="settings-row settings-row-col">
