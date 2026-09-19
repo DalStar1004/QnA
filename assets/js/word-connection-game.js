@@ -677,13 +677,17 @@
             };
         })();
 
-        // 배경1~4 선택 기능. body의 background-image를 스크림 레이어와 함께 2단으로 깐다.
+        // 배경1~8 선택 기능. body의 background-image를 스크림 레이어와 함께 2단으로 깐다.
         const BackgroundManager = (function () {
             const FILES = {
                 '1': 'assets/backgrounds/배경1.png',
                 '2': 'assets/backgrounds/배경2.png',
                 '3': 'assets/backgrounds/배경3.png',
-                '4': 'assets/backgrounds/배경4.png'
+                '4': 'assets/backgrounds/배경4.png',
+                '5': 'assets/backgrounds/배경5.png',
+                '6': 'assets/backgrounds/배경6.png',
+                '7': 'assets/backgrounds/배경7.png',
+                '8': 'assets/backgrounds/배경8.png'
             };
             let current = 'none';
 
@@ -4783,7 +4787,7 @@
             BackgroundManager.apply(StorageManager.getBackground(), false);
             ModalManager.syncBackgroundPicker();
 
-            // 배경 선택 버튼 이벤트 (배경1~4 + 기본)
+            // 배경 선택 버튼 이벤트 (배경1~8 + 기본)
             dom('bgPicker').addEventListener('click', (e) => {
                 const option = e.target.closest('.bg-option');
                 if (!option) return;

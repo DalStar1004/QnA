@@ -1928,6 +1928,22 @@
                         style="background-image:url('assets/thumb-bg4.png')">
                     <span class="bg-caption">배경4</span>
                 </button>
+                <button type="button" class="bg-option" data-bg="5" title="배경5"
+                        style="background-image:url('assets/thumb-bg5.png')">
+                    <span class="bg-caption">배경5</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="6" title="배경6"
+                        style="background-image:url('assets/thumb-bg6.png')">
+                    <span class="bg-caption">배경6</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="7" title="배경7"
+                        style="background-image:url('assets/thumb-bg7.png')">
+                    <span class="bg-caption">배경7</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="8" title="배경8"
+                        style="background-image:url('assets/thumb-bg8.png')">
+                    <span class="bg-caption">배경8</span>
+                </button>
             </div>
             <div class="modal-actions">
                 <button class="jelly-btn btn-start" id="bgCloseBtn">완료 ✔</button>
@@ -2066,7 +2082,10 @@
            배경은 방 전체가 아니라 **보는 사람마다** 고르는 취향이라 서버를 거치지 않는다.
            고른 값은 이 브라우저에만 기억해 두고, 다음에 들어와도 그대로 열린다. */
         const BackgroundManager = (function () {
-            const FILES = { '1': 'assets/bg1.png', '2': 'assets/bg2.png', '3': 'assets/bg3.png', '4': 'assets/bg4.png' };
+            const FILES = {
+                '1': 'assets/bg1.png', '2': 'assets/bg2.png', '3': 'assets/bg3.png', '4': 'assets/bg4.png',
+                '5': 'assets/bg5.png', '6': 'assets/bg6.png', '7': 'assets/bg7.png', '8': 'assets/bg8.png'
+            };
             const STORAGE_KEY = 'wcg-multi-background';
             let current = 'none';
 

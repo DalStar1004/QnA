@@ -17,9 +17,9 @@ COPY server/src ./src
 COPY server/public ./public
 
 # 혼자 하기 화면과 그 화면이 쓰는 그림들.
-# COPY 는 디렉터리 내용을 합쳐 넣으므로, public/assets 의 글꼴·bg1~4.png 는 남고
+# COPY 는 디렉터리 내용을 합쳐 넣으므로, public/assets 의 글꼴·bg1~8.png 는 남고
 # 루트 assets 의 아이콘(icon-*.png, champion-badge.png, thumb-bg*.png)과
-# 배경(backgrounds/배경1~4.png)이 더해진다.
+# 배경(backgrounds/배경1~8.png)이 더해진다.
 # 배경도 assets 안으로 들어와서, 한글 파일명을 여기에 적을 일이 없어졌다.
 COPY word_connection_game.html ./public/
 COPY assets ./public/assets

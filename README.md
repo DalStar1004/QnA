@@ -40,7 +40,7 @@
 | `server/` | 멀티플레이 서버(Express + Socket.IO)와 멀티플레이 화면. |
 | `tools/node/` | 이 폴더 전용 Node.js. PC에 Node를 설치하지 않아도 서버가 돌아갑니다. |
 | `assets/` | 게임 화면이 쓰는 그림과 글꼴. 아이콘·트로피·배경 미리보기·글꼴이 들어 있습니다. |
-| `assets/backgrounds/` | 게임 배경 그림 `배경1~4.png`. |
+| `assets/backgrounds/` | 게임 배경 그림 `배경1~8.png`. |
 | `source-images/` | 원본 그림(`아이콘.png`·`우승.png`·`챔피언 뱃지.png`). 여기서 잘라 낸 것이 `assets/` 에 있으므로, 게임 실행에는 쓰이지 않습니다. |
 | `quiz-data/` | 모드 3이 내는 문제 파일. `산업재산권_문제.txt` 를 고치면 게임에 바로 반영됩니다. |
 | `music/` | 배경음악 mp3. 게임 화면 오른쪽 위 🎵 단추로 켜고 끄거나 곡을 고릅니다. 곡을 더 넣으려면 mp3 를 여기 두고 `assets/js/bgm.js` 의 목록에 한 줄 적습니다. |
