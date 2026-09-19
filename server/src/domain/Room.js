@@ -20,7 +20,7 @@ const MIN_QUIZ_ROUNDS = 1;
 const MAX_QUIZ_ROUNDS = 10;
 
 // 모드 3: 한 문제에 주는 시간. 혼자 하기와 같은 기본값·범위를 쓴다.
-const EXAM_SECONDS_PER_QUESTION = 10;
+const EXAM_SECONDS_PER_QUESTION = 40;
 const MIN_EXAM_SECONDS = 5;
 const MAX_EXAM_SECONDS = 120;
 
