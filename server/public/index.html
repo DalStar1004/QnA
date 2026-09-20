@@ -975,8 +975,15 @@
         /* 로비(게임 시작하기)만: 안내 문장은 보조 라벨의 1.6배, 닉네임·방 코드의 라벨과 입력칸(placeholder 포함)은
            제목 "🎮 게임 시작하기"(.panel h2, 1.35em)와 같은 크기 */
         #screen-lobby .panel-sub { font-size: calc(var(--fs-label) * 1.6); }
+        /* 제목 "🎮 게임 시작하기"도 그 안내 문장과 같은 크기 */
+        #screen-lobby h2 { font-size: calc(var(--fs-label) * 1.6); }
         #screen-lobby .field-row label,
         #screen-lobby .field-row input { font-size: 1.35em; }
+        /* 대기실 설정 칸(블록 개수 · 게임 시간 · 카테고리 · 문제 수 · 힌트 AI …)의 라벨과 값은
+           게임 종류 카드 제목 "제시어 맞추기"(.mode-title, --fs-body)와 같은 크기 */
+        #screen-waiting .field-row label,
+        #screen-waiting .field-row input,
+        #screen-waiting .field-row select { font-size: var(--fs-body); }
         .divider { height: 1px; background: #ffe3c2; margin: 22px 0; }
 
         /* ---------- 대기실 (Design §5.4) ---------- */
@@ -1005,6 +1012,7 @@
             border-radius: 14px;
             padding: 10px 16px;
             font-weight: 600;
+            font-size: 1.35em;   /* 참가자 이름·점수 — 제목 "⚙️ 게임 설정"(.panel h2)과 같은 크기 */
         }
         .player-chip.is-me { border-color: var(--pink); background: #fff0f4; }
         .player-chip .who { display: flex; align-items: center; gap: 8px; }
