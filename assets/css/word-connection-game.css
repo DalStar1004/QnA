@@ -2843,6 +2843,8 @@
            .bgm-widget 을 붙여 우선순위를 높였다. */
         .home-fab,
         .bgm-widget .bgm-fab { font-size: var(--fs-body); }
+        /* 🔊 효과음·🎵 배경음악 단추 안 여백 — bgm.css 의 10px 16px 에서 사방 5px 씩 더 (멀티플레이와 같은 값) */
+        .bgm-widget .bgm-fab { padding: 15px 21px; }
 
         /* 시작 화면의 멀티플레이 접속 칸 — 제목·안내문·주소 입력칸·[접속하기]·서버 상태 줄 모두
            카드의 [서버 접속 →](.choice-go) 와 같은 크기. --fs-label 묶음(.start-server-status)보다 뒤에 둬 이긴다. */
