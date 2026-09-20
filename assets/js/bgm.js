@@ -156,7 +156,7 @@
         const root = el('div', 'bgm-widget');
         root.id = 'bgmWidget';
 
-        const toggleBtn = el('button', 'bgm-fab');
+        const toggleBtn = el('button', 'bgm-fab bgm-main-fab');
         toggleBtn.type = 'button';
         toggleBtn.id = 'bgmFabBtn';
         toggleBtn.setAttribute('aria-haspopup', 'true');
@@ -212,7 +212,12 @@
         now.id = 'bgmNow';
 
         panel.append(head, onBtn, selectLabel, select, volLabel, volRow, now);
-        root.append(toggleBtn, panel);
+        // 🎵 단추는 한 줄(.bgm-fab-row)에 담는다. 화면이 `data-bgm-beside` 를 붙여 둔 요소가 있으면
+        // 그 줄의 왼쪽에 끌어다 놓아 나란히 보이게 한다 (혼자 하기의 🔊 효과음 단추가 이걸 쓴다).
+        const fabRow = el('div', 'bgm-fab-row');
+        fabRow.append(toggleBtn);
+        document.querySelectorAll('[data-bgm-beside]').forEach(node => fabRow.prepend(node));
+        root.append(fabRow, panel);
         document.body.appendChild(root);
 
         /* --- 이벤트 --- */

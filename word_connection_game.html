@@ -67,6 +67,13 @@
         <span class="home-icon">🏠</span>처음 화면
     </button>
 
+    <!-- 효과음 켜기/끄기. 오른쪽 위 🎵 배경음악 단추 왼쪽에 나란히 놓인다 —
+         bgm.js 가 data-bgm-beside 를 보고 제 단추 줄로 끌어간다. 예전에는 설정 모달 안에 있었다. -->
+    <button type="button" class="bgm-fab sfx-fab" id="sfxFabBtn" data-bgm-beside
+            onclick="toggleMute()" title="효과음 켜기/끄기">
+        <span class="bgm-fab-icon" id="sfxFabIcon">🔊</span><span class="bgm-fab-label" id="sfxFabLabel">효과음</span>
+    </button>
+
     <h1 class="title">🍭 단어 블록 톡톡 🍬</h1>
 
     <div class="app-container">
@@ -222,11 +229,6 @@
                 <div class="settings-row">
                     <label for="nickname">🙋 내 닉네임</label>
                     <input type="text" id="nickname" maxlength="8" placeholder="게스트">
-                </div>
-                <!-- 음소거: 보드 위 아이콘 버튼을 없애면서 여기로 옮겼다. 기능·저장 여부는 그대로다. -->
-                <div class="settings-row">
-                    <label>🔊 소리</label>
-                    <button type="button" class="jelly-btn btn-file-ghost" id="settingsMuteBtn" onclick="toggleMute()">소리 끄기</button>
                 </div>
                 <!-- 아래 묶음들은 **지금 고른 모드의 것만** 보인다 (syncSettingsMode 참고).
                      data-modes 에 적힌 모드일 때만 화면에 나온다. 설정이 세 모드 분량이라

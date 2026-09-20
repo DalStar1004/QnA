@@ -1479,7 +1479,7 @@
              * 지금 고른 모드의 설정 묶음만 남기고 나머지는 숨긴다.
              * 설정이 세 모드 분량이라 한꺼번에 펼치면 어느 것이 지금 게임에 적용되는지 알기 어렵고,
              * 다른 모드의 '블록 개수'를 고쳐 놓고 왜 안 바뀌냐고 헤매기 쉽다.
-             * `data-modes` 를 적지 않은 항목(닉네임 · 소리)은 모드와 상관없이 늘 보인다.
+             * `data-modes` 를 적지 않은 항목(닉네임)은 모드와 상관없이 늘 보인다.
              */
             function syncSettingsMode() {
                 document.querySelectorAll('#settingsOverlay .settings-group').forEach(group => {
@@ -1581,8 +1581,6 @@
                 openSettings() {
                     syncSettingsMode();
                     syncBackgroundPicker();
-                    const muteBtn = dom('settingsMuteBtn');
-                    if (muteBtn) muteBtn.textContent = AudioManager.isMuted ? '🔇 소리 켜기' : '🔊 소리 끄기';
                     renderCustomCategories();
                     // 모드 3 설정도 저장값으로 채운다. 모드 1의 블록 개수와 서로 다른 값이다.
                     dom('examBlockCount').value = StorageManager.getExamBlocks();
@@ -2835,10 +2833,12 @@
                 'warn');
         }
 
+        /* 효과음 켜기/끄기 — 오른쪽 위 🔊 단추(배경음악 왼쪽). 배경음악(bgm.js)과는 별개다. */
         function toggleMute() {
             const muted = AudioManager.toggleMute();
-            const btn = dom('settingsMuteBtn');
-            if (btn) btn.textContent = muted ? '🔇 소리 켜기' : '🔊 소리 끄기';
+            dom('sfxFabBtn').classList.toggle('is-off', muted);
+            dom('sfxFabIcon').textContent = muted ? '🔇' : '🔊';
+            dom('sfxFabLabel').textContent = muted ? '효과음 꺼짐' : '효과음';
         }
 
         function currentNickname() {

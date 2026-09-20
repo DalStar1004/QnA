@@ -17,7 +17,14 @@
     color: var(--ink, #5b4b45);
 }
 
-/* 항상 보이는 단추 */
+/* 항상 보이는 단추 줄 — 🎵 단추와, 화면이 옆에 붙여 둔 단추(data-bgm-beside)가 나란히 놓인다 */
+.bgm-fab-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 항상 보이는 단추 (.bgm-fab 은 옆에 붙는 단추도 같은 모양으로 쓴다) */
 .bgm-fab {
     display: inline-flex;
     align-items: center;
@@ -38,18 +45,20 @@
 .bgm-fab:hover { filter: brightness(1.05); }
 .bgm-fab:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--purple-dark, #8563f0); }
 .bgm-fab-icon { font-size: 1.15em; line-height: 1; }
-.bgm-widget:not(.is-on) .bgm-fab {
+/* 꺼진 단추는 잿빛. 음악 켜짐/꺼짐은 🎵 단추(.bgm-main-fab)에만 적용한다 */
+.bgm-widget:not(.is-on) .bgm-main-fab,
+.bgm-fab.is-off {
     background: linear-gradient(160deg, #e9e4ea, #b9aeb8);
     box-shadow: 0 4px 0 #9b8f9a, 0 8px 14px rgba(0, 0, 0, 0.1);
 }
 /* 재생 중엔 음표가 살짝 흔들린다 */
-.bgm-widget.is-playing .bgm-fab-icon { animation: bgmBounce 1.4s ease-in-out infinite; }
+.bgm-widget.is-playing .bgm-main-fab .bgm-fab-icon { animation: bgmBounce 1.4s ease-in-out infinite; }
 @keyframes bgmBounce {
     0%, 100% { transform: translateY(0) rotate(-6deg); }
     50% { transform: translateY(-2px) rotate(6deg); }
 }
 /* 브라우저가 자동 재생을 막아 첫 클릭을 기다릴 때는 단추를 깜박여 알린다 */
-.bgm-widget.is-waiting .bgm-fab { animation: bgmPulse 1.6s ease-in-out infinite; }
+.bgm-widget.is-waiting .bgm-main-fab { animation: bgmPulse 1.6s ease-in-out infinite; }
 @keyframes bgmPulse {
     0%, 100% { filter: brightness(1); }
     50% { filter: brightness(1.18); }
