@@ -21,7 +21,7 @@
                 <button type="button" class="start-choice choice-solo" onclick="chooseSolo()">
                     <span class="choice-emoji">🙋</span>
                     <span class="choice-title">혼자 하기</span>
-                    <span class="choice-desc">제시어 맞추기 · AI 힌트 맞히기<br>같은 화면에서 즐기는 2인 대결</span>
+                    <span class="choice-desc">제시어 맞추기 · AI 힌트 맞히기<br>산업재산권 문제 풀기</span>
                     <span class="choice-go">바로 시작 →</span>
                 </button>
                 <button type="button" class="start-choice choice-multi" onclick="chooseMultiplayer()">
@@ -79,8 +79,11 @@
                     title="새 판을 시작합니다">
                 <img class="btn-icon" src="assets/icon-start.png" alt=""><span class="nav-label">게임 시작</span>
             </button>
-            <button class="jelly-btn btn-versus" id="versusNavBtn" onclick="openVersusSetup()">
-                <img class="btn-icon" src="assets/icon-versus.png" alt="">대결 시작
+            <!-- 예전 '대결 시작' 자리. 2인 대결 대신 배경 고르기 모달을 연다.
+                 배경은 모드와 상관없는 설정이라 설정 모달에서 빼내 여기 단독 버튼으로 뒀다. -->
+            <button type="button" class="jelly-btn btn-bg" id="bgNavBtn" onclick="openBgPicker()"
+                    title="게임 배경을 고릅니다">
+                🖼 게임 배경
             </button>
             <button class="jelly-btn btn-rank" onclick="openRanking()">
                 <img class="btn-icon" src="assets/champion-badge.png" alt="">랭킹
@@ -225,48 +228,6 @@
                     <label>🔊 소리</label>
                     <button type="button" class="jelly-btn btn-file-ghost" id="settingsMuteBtn" onclick="toggleMute()">소리 끄기</button>
                 </div>
-                <!-- 배경1~8 중 게임 배경 선택. 모드와 상관없는 설정이라 늘 보인다. -->
-                <div class="settings-row settings-row-col">
-                    <label>🖼 게임 배경</label>
-                    <div class="bg-picker" id="bgPicker">
-                        <button type="button" class="bg-option bg-none-option" data-bg="none" title="기본 배경">
-                            <span class="bg-caption">기본</span>
-                        </button>
-                        <button type="button" class="bg-option" data-bg="1" title="배경1"
-                                style="background-image:url('assets/thumb-bg1.png')">
-                            <span class="bg-caption">배경1</span>
-                        </button>
-                        <button type="button" class="bg-option" data-bg="2" title="배경2"
-                                style="background-image:url('assets/thumb-bg2.png')">
-                            <span class="bg-caption">배경2</span>
-                        </button>
-                        <button type="button" class="bg-option" data-bg="3" title="배경3"
-                                style="background-image:url('assets/thumb-bg3.png')">
-                            <span class="bg-caption">배경3</span>
-                        </button>
-                        <button type="button" class="bg-option" data-bg="4" title="배경4"
-                                style="background-image:url('assets/thumb-bg4.png')">
-                            <span class="bg-caption">배경4</span>
-                        </button>
-                        <button type="button" class="bg-option" data-bg="5" title="배경5"
-                                style="background-image:url('assets/thumb-bg5.png')">
-                            <span class="bg-caption">배경5</span>
-                        </button>
-                        <button type="button" class="bg-option" data-bg="6" title="배경6"
-                                style="background-image:url('assets/thumb-bg6.png')">
-                            <span class="bg-caption">배경6</span>
-                        </button>
-                        <button type="button" class="bg-option" data-bg="7" title="배경7"
-                                style="background-image:url('assets/thumb-bg7.png')">
-                            <span class="bg-caption">배경7</span>
-                        </button>
-                        <button type="button" class="bg-option" data-bg="8" title="배경8"
-                                style="background-image:url('assets/thumb-bg8.png')">
-                            <span class="bg-caption">배경8</span>
-                        </button>
-                    </div>
-                </div>
-
                 <!-- 아래 묶음들은 **지금 고른 모드의 것만** 보인다 (syncSettingsMode 참고).
                      data-modes 에 적힌 모드일 때만 화면에 나온다. 설정이 세 모드 분량이라
                      한꺼번에 펼치면 어느 것이 지금 게임에 적용되는지 알기 어렵기 때문이다. -->
@@ -594,6 +555,55 @@
                     <img class="btn-icon" src="assets/icon-start.png" alt="">문제 받기
                 </button>
                 <button class="jelly-btn btn-close-gameover" onclick="cancelQuizSession()">그만하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 배경 고르기 — 배경1~8 + 기본. 멀티플레이(server/public/index.html)의 배경 모달과 같은 구성이다.
+         고른 배경은 바로 적용되고 이 브라우저에 저장된다. -->
+    <div class="modal-overlay" id="bgOverlay">
+        <div class="modal-card">
+            <h2>🖼 게임 배경</h2>
+            <div class="modal-sub">누르면 바로 바뀌고 다음에 열어도 그대로예요</div>
+            <div class="bg-picker" id="bgPicker">
+                <button type="button" class="bg-option bg-none-option" data-bg="none" title="기본 배경">
+                    <span class="bg-caption">기본</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="1" title="배경1"
+                        style="background-image:url('assets/thumb-bg1.png')">
+                    <span class="bg-caption">배경1</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="2" title="배경2"
+                        style="background-image:url('assets/thumb-bg2.png')">
+                    <span class="bg-caption">배경2</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="3" title="배경3"
+                        style="background-image:url('assets/thumb-bg3.png')">
+                    <span class="bg-caption">배경3</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="4" title="배경4"
+                        style="background-image:url('assets/thumb-bg4.png')">
+                    <span class="bg-caption">배경4</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="5" title="배경5"
+                        style="background-image:url('assets/thumb-bg5.png')">
+                    <span class="bg-caption">배경5</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="6" title="배경6"
+                        style="background-image:url('assets/thumb-bg6.png')">
+                    <span class="bg-caption">배경6</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="7" title="배경7"
+                        style="background-image:url('assets/thumb-bg7.png')">
+                    <span class="bg-caption">배경7</span>
+                </button>
+                <button type="button" class="bg-option" data-bg="8" title="배경8"
+                        style="background-image:url('assets/thumb-bg8.png')">
+                    <span class="bg-caption">배경8</span>
+                </button>
+            </div>
+            <div class="modal-actions">
+                <button class="jelly-btn btn-start" onclick="closeBgPicker()">완료 ✔</button>
             </div>
         </div>
     </div>

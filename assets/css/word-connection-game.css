@@ -997,7 +997,7 @@
 
         /* 보조 버튼 — 색으로 겨루지 않는다 */
         .top-nav .btn-settings,
-        .top-nav .btn-versus,
+        .top-nav .btn-bg,
         .top-nav .btn-rank,
         .top-nav .btn-stop,
         .top-nav .btn-info {
@@ -1008,12 +1008,12 @@
             font-weight: 600;
         }
         .top-nav .btn-settings:hover,
-        .top-nav .btn-versus:hover,
+        .top-nav .btn-bg:hover,
         .top-nav .btn-rank:hover,
         .top-nav .btn-stop:hover,
         .top-nav .btn-info:hover { background: var(--surface); filter: none; }
         .top-nav .btn-settings:active,
-        .top-nav .btn-versus:active,
+        .top-nav .btn-bg:active,
         .top-nav .btn-rank:active,
         .top-nav .btn-stop:active,
         .top-nav .btn-info:active { transform: translateY(1px); box-shadow: none; }

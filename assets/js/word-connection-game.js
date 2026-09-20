@@ -1479,7 +1479,7 @@
              * 지금 고른 모드의 설정 묶음만 남기고 나머지는 숨긴다.
              * 설정이 세 모드 분량이라 한꺼번에 펼치면 어느 것이 지금 게임에 적용되는지 알기 어렵고,
              * 다른 모드의 '블록 개수'를 고쳐 놓고 왜 안 바뀌냐고 헤매기 쉽다.
-             * `data-modes` 를 적지 않은 항목(닉네임 · 배경)은 모드와 상관없이 늘 보인다.
+             * `data-modes` 를 적지 않은 항목(닉네임 · 소리)은 모드와 상관없이 늘 보인다.
              */
             function syncSettingsMode() {
                 document.querySelectorAll('#settingsOverlay .settings-group').forEach(group => {
@@ -3137,8 +3137,6 @@
             document.querySelectorAll('#modeSwitch .mode-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.mode === appMode);
             });
-            // 2인 대결은 모드 1에서만 쓴다.
-            dom('versusNavBtn').style.display = usesPanel ? 'none' : '';
             dom('ruleBanner').style.display = usesPanel ? 'none' : '';
             dom('quizRuleBanner').style.display = isQuiz ? 'flex' : 'none';
             dom('examRuleBanner').style.display = isExam ? 'flex' : 'none';
@@ -4170,7 +4168,18 @@
             UIManager.showToast(`${label} 랭킹 기록을 초기화했습니다.`, "info");
         }
 
-        /* ---------- 배경 선택 ---------- */
+        /* ---------- 배경 선택 ----------
+           상단 [게임 배경] 버튼으로 여는 단독 모달. 예전에는 설정 모달 안에 있었지만
+           모드와 상관없는 취향 설정이라 따로 뺐다. 고르면 바로 적용되고 저장된다. */
+
+        function openBgPicker() {
+            ModalManager.syncBackgroundPicker();
+            Overlay.open('bgOverlay');
+        }
+
+        function closeBgPicker() {
+            Overlay.close('bgOverlay');
+        }
 
         function selectBackground(id) {
             BackgroundManager.apply(id);
@@ -4787,11 +4796,14 @@
             BackgroundManager.apply(StorageManager.getBackground(), false);
             ModalManager.syncBackgroundPicker();
 
-            // 배경 선택 버튼 이벤트 (배경1~8 + 기본)
+            // 배경 선택 버튼 이벤트 (배경1~8 + 기본). 바깥 어두운 곳을 누르면 닫힌다.
             dom('bgPicker').addEventListener('click', (e) => {
                 const option = e.target.closest('.bg-option');
                 if (!option) return;
                 selectBackground(option.dataset.bg);
+            });
+            dom('bgOverlay').addEventListener('click', (e) => {
+                if (e.target === dom('bgOverlay')) closeBgPicker();
             });
 
             // 카테고리를 바꾸면 시작 전 제시어 표시도 즉시 따라간다.
