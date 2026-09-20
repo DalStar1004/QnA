@@ -857,7 +857,14 @@
                최대값만 혼자 하기보다 조금 낮춰 잡았다. */
             --tile: clamp(64px, 7vw, 100px);
             --tile-gap: clamp(10px, 1.6vw, 20px);
-            --tile-font: clamp(24px, 3vw, 38px);
+            --tile-font: clamp(26px, 2.75vw, 44px);
+
+            /* 글자 크기 — 혼자 하기(assets/css/word-connection-game.css)와 같은 단계·같은 값.
+               두 화면의 제목·버튼·제시어·설명 글자가 같은 크기로 보이게 여기서만 바꾼다. */
+            --fs-title-game: clamp(26px, 2.4vw, 42px);  /* 게임 제목 */
+            --fs-key: clamp(22px, 1.9vw, 34px);         /* 제시어 · 시간 · 점수 */
+            --fs-body: clamp(16px, 1.25vw, 22px);       /* 설명 · 버튼 · AI 힌트 */
+            --fs-label: clamp(14px, 0.95vw, 18px);      /* 보조 라벨 */
             --tile-radius: clamp(14px, 1.6vw, 22px);
         }
 
@@ -878,7 +885,7 @@
         }
 
         h1.title {
-            font-size: 1.8em;
+            font-size: var(--fs-title-game);
             font-weight: 700;
             color: var(--pink-dark);
             text-shadow: 0 2px 0 #fff, 0 4px 0 rgba(255,107,139,0.25);
@@ -900,7 +907,7 @@
             cursor: pointer;
             font-family: inherit;
             font-weight: 700;
-            font-size: 1em;
+            font-size: var(--fs-body);
             color: #fff;
             padding: 14px 26px;
             transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.2s ease;
@@ -961,6 +968,9 @@
         .field-row select { width: 150px; text-align: center; }
 
         .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        /* 로비 맨 위의 [방 만들기]·[참가하기] — 아래 입력칸과 같은 폭으로 나란히 */
+        .lobby-actions { margin-bottom: 4px; }
+        .lobby-actions .jelly-btn { flex: 1 1 160px; }
         .divider { height: 1px; background: #ffe3c2; margin: 22px 0; }
 
         /* ---------- 대기실 (Design §5.4) ---------- */
@@ -1005,12 +1015,11 @@
         .card-category { background: linear-gradient(160deg, #fff1b8, var(--yellow)); box-shadow: 0 6px 0 var(--yellow-dark); }
         .card-timer { background: linear-gradient(160deg, #e6dcff, var(--purple)); box-shadow: 0 6px 0 var(--purple-dark); }
         .card-score { background: linear-gradient(160deg, #ffe1c7, var(--orange)); box-shadow: 0 6px 0 var(--orange-dark); }
-        /* 제시어·남은 시간·내 점수의 글자 크기. 처음(0.78em/1.35em/1.15em)의 두 배로 키웠다가
-           너무 커서 그 0.7배(= 처음의 1.4배)로 줄였다 */
-        .status-label { font-size: 1.09em; color: rgba(70,50,20,0.65); margin-bottom: 4px; font-weight: 600; }
-        .status-val { font-size: 1.89em; font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.12); }
+        /* 제시어·남은 시간·내 점수의 글자 크기 — 혼자 하기의 상태 카드(--fs-label / --fs-key)와 같다 */
+        .status-label { font-size: var(--fs-label); color: rgba(70,50,20,0.65); margin-bottom: 4px; font-weight: 600; }
+        .status-val { font-size: var(--fs-key); font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.12); }
         /* 제시어는 노란 카드 위에서 눈에 띄게 빨간 글자로 */
-        .card-category .status-val { color: #d81e1e; text-shadow: 0 1px 0 #fff; font-size: 1.61em; }
+        .card-category .status-val { color: #d81e1e; text-shadow: 0 1px 0 #fff; }
 
         .status-card.pulse-score { animation: scorePulse 0.4s ease; }
         @keyframes scorePulse {
@@ -1420,8 +1429,8 @@
         }
         .mode-choice:disabled { opacity: 0.55; cursor: default; }
         .mode-emoji { font-size: 1.5em; }
-        .mode-title { font-weight: 700; font-size: 0.98em; }
-        .mode-desc { font-size: 0.78em; color: #7d6f96; line-height: 1.4; }
+        .mode-title { font-weight: 700; font-size: var(--fs-body); }
+        .mode-desc { font-size: var(--fs-label); color: #7d6f96; line-height: 1.4; }
 
         /* AI 연결 상태 — 꺼져 있어도 게임은 되므로 경고가 아니라 안내로 보이게 한다 */
         .ai-status {
@@ -1461,14 +1470,14 @@
         .rule-banner .rule-chip {
             background: var(--ink);
             color: #fff;
-            font-size: 0.85em;
+            font-size: var(--fs-label);
             font-weight: 700;
             padding: 6px 14px;
             border-radius: 999px;
             white-space: nowrap;
             box-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
         }
-        .rule-banner .rule-text { font-size: 0.92em; font-weight: 700; color: #7a5411; }
+        .rule-banner .rule-text { font-size: var(--fs-body); font-weight: 700; color: #7a5411; }
         .rule-banner.quiz .rule-text { color: #533a8b; }
         .rule-banner .rule-text b {
             color: var(--pink-dark);
@@ -1506,7 +1515,7 @@
             gap: 8px;
             margin-bottom: 10px;
         }
-        .hint-title { font-size: 16px; font-weight: 700; color: var(--purple-dark); }
+        .hint-title { font-size: var(--fs-body); font-weight: 700; color: var(--purple-dark); }
         /* 이번 라운드 힌트를 실제로 만든 AI(또는 내장 힌트 대체) 표시 — 방장·참가자
            모두 서버가 보낸 같은 값을 그린다. 좁은 화면에서는 hint-head가 줄바꿈된다. */
         .hint-provider-badge {
@@ -1521,7 +1530,7 @@
         .hint-provider-badge.offline { background: #fff1e6; color: #9a5a22; }
         .hint-provider-badge[hidden] { display: none; }
         .hint-next {
-            font-size: 12px;
+            font-size: var(--fs-label);
             font-weight: 700;
             color: #fff;
             background: var(--purple);
@@ -1545,7 +1554,7 @@
             background: #fff;
             border-radius: 14px;
             padding: 9px 11px;
-            font-size: 14px;
+            font-size: var(--fs-body);
             line-height: 1.45;
             color: var(--ink);
             box-shadow: 0 3px 0 rgba(167, 139, 250, 0.28);
@@ -1580,7 +1589,7 @@
             border: none;
             cursor: pointer;
             font-family: inherit;
-            font-size: 0.9em;
+            font-size: var(--fs-body);
             font-weight: 600;
             color: var(--ink);
             background: #fff;
@@ -1679,23 +1688,22 @@
                 <h2>🎮 게임 시작하기</h2>
                 <div class="panel-sub">닉네임을 정한 뒤 방을 만들거나, 친구에게 받은 방 코드로 참가하세요</div>
 
-                <div class="field-row">
-                    <label for="nicknameInput">🙋 닉네임</label>
-                    <input type="text" id="nicknameInput" maxlength="10" placeholder="최대 10자" autocomplete="off">
-                </div>
-
-                <div class="btn-row">
+                <!-- 단추 두 개를 맨 위에 나란히 두고, 입력칸(닉네임 · 방 코드)은 그 아래에 모았다.
+                     방 코드는 [참가하기]에만 쓰이고, [방 만들기]는 닉네임만 있으면 된다. -->
+                <div class="btn-row lobby-actions">
                     <button class="jelly-btn btn-start" id="createRoomBtn">🏠 방 만들기</button>
+                    <button class="jelly-btn btn-join" id="joinRoomBtn">🚪 참가하기</button>
                 </div>
 
                 <div class="divider"></div>
 
                 <div class="field-row">
-                    <label for="roomCodeInput">🔑 방 코드</label>
-                    <input type="text" id="roomCodeInput" maxlength="4" placeholder="ABCD" autocomplete="off">
+                    <label for="nicknameInput">🙋 닉네임</label>
+                    <input type="text" id="nicknameInput" maxlength="10" placeholder="최대 10자" autocomplete="off">
                 </div>
-                <div class="btn-row">
-                    <button class="jelly-btn btn-join" id="joinRoomBtn">🚪 참가하기</button>
+                <div class="field-row">
+                    <label for="roomCodeInput">🔑 방 코드</label>
+                    <input type="text" id="roomCodeInput" maxlength="4" placeholder="참가할 때만 · ABCD" autocomplete="off">
                 </div>
             </div>
         </div>
