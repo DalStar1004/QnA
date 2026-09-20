@@ -3843,7 +3843,7 @@
             updateExamRoundDisplay();
             QuizPanelUI.showMessage(`[문제 시작] 을 누르면 파일에 있는 문제를 처음부터 냅니다. 한 문제에 ${examTimeLimit()}초예요.`);
             QuizPanelUI.updateNext('대기중');
-            QuizPanelUI.setFoot('빨리 맞힐수록 점수가 높아요');
+            QuizPanelUI.setFoot('한문제당 점수는 5점이에요');
         }
 
         function restartExamSession() {
@@ -3857,7 +3857,7 @@
             QuizPanelUI.setTitle('📜 산업재산권 문제');
             QuizPanelUI.showMessage(`[문제 시작] 을 누르면 파일에 있는 문제를 처음부터 냅니다. 한 문제에 ${examTimeLimit()}초예요.`);
             QuizPanelUI.updateNext('대기중');
-            QuizPanelUI.setFoot('빨리 맞힐수록 점수가 높아요');
+            QuizPanelUI.setFoot('한문제당 점수는 5점이에요');
         }
 
         /* ----- 3단계: 라운드 결과 -> 다음 라운드 or 최종 결과 ----- */

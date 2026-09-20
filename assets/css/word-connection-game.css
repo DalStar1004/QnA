@@ -2813,7 +2813,6 @@
         .answer-group-title { font-size: var(--fs-body); }
 
         .settings-note,
-        .home-fab,
         .fab-tooltip,
         .champion-banner .champion-label,
         .hint-foot,
@@ -2838,6 +2837,12 @@
 
         /* 모달 안 일반 버튼도 본문과 같은 크기로 */
         .modal-actions .jelly-btn { font-size: var(--fs-body); }
+
+        /* 왼쪽 위 [처음 화면]과 오른쪽 위 🔊 효과음·🎵 배경음악 단추(공용 bgm.css 의 .bgm-fab)도
+           상단 [게임 시작/문제 시작] 버튼(.top-nav .jelly-btn)과 같은 크기. bgm.css 보다 뒤에 오지 않으므로
+           .bgm-widget 을 붙여 우선순위를 높였다. */
+        .home-fab,
+        .bgm-widget .bgm-fab { font-size: var(--fs-body); }
 
         /* =========================================================
            반응형 — 반드시 스타일 맨 끝에 둔다.
