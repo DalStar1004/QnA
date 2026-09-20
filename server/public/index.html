@@ -1033,18 +1033,12 @@
         .card-category { background: linear-gradient(160deg, #fff1b8, var(--yellow)); box-shadow: 0 6px 0 var(--yellow-dark); }
         .card-timer { background: linear-gradient(160deg, #e6dcff, var(--purple)); box-shadow: 0 6px 0 var(--purple-dark); }
         .card-score { background: linear-gradient(160deg, #ffe1c7, var(--orange)); box-shadow: 0 6px 0 var(--orange-dark); }
-        /* 제시어·남은 시간·내 점수의 글자 크기 — 혼자 하기의 상태 카드(--fs-label / --fs-key)와 같다 */
-        .status-label { font-size: var(--fs-label); color: rgba(70,50,20,0.65); margin-bottom: 4px; font-weight: 600; }
-        .status-val { font-size: var(--fs-key); font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.12); }
+        /* 제시어(카테고리·문제)·남은 시간·내 점수의 글자 크기 — 세 모드 모두 상단 [게임 설명] 등
+           버튼(.back-link, --fs-body)과 같은 크기로 쓴다 */
+        .status-label { font-size: var(--fs-body); color: rgba(70,50,20,0.65); margin-bottom: 4px; font-weight: 600; }
+        .status-val { font-size: var(--fs-body); font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.12); }
         /* 제시어는 노란 카드 위에서 눈에 띄게 빨간 글자로 */
         .card-category .status-val { color: #d81e1e; text-shadow: 0 1px 0 #fff; }
-        /* 모드 2(AI 힌트 맞히기)에서는 카테고리·남은 시간·내 점수 카드 글자를
-           상단 [게임 설명] 버튼(.back-link, --fs-body)과 같은 크기로 쓴다 */
-        body.mode-quiz .status-label,
-        body.mode-quiz .status-val,
-        body.mode-word .status-label,
-        body.mode-word .status-val { font-size: var(--fs-body); }
-        /* (모드 1도 같은 크기. 모드 3만 --fs-label / --fs-key 기본값을 쓴다) */
 
         .status-card.pulse-score { animation: scorePulse 0.4s ease; }
         @keyframes scorePulse {
@@ -1621,13 +1615,13 @@
             color: var(--ink);
             background: #fff;
             border-radius: 999px;
-            padding: 8px 16px;
+            padding: 13px 21px;   /* 원래 8px 16px 에서 사방 5px 씩 여유를 더 줬다 */
             box-shadow: 0 3px 0 rgba(167, 139, 250, 0.35);
         }
         .back-link:hover { filter: brightness(0.98); }
         /* 오른쪽 위 🔊 효과음·🎵 배경음악 단추(공용 bgm.css)의 글자를 이 화면에서는
            [게임 설명] 등 상단 버튼(.back-link)과 같은 크기로 쓴다. bgm.css 보다 뒤에 있어 이 규칙이 이긴다. */
-        .bgm-fab { font-size: var(--fs-body); }
+        .bgm-fab { font-size: var(--fs-body); padding: 15px 21px; }   /* bgm.css 의 10px 16px 에서 사방 5px 씩 더 */
         .back-link:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(167, 139, 250, 0.35); }
 
         /*
@@ -2676,9 +2670,6 @@
                 // (모드 2로 돌아오면 quiz:round:started가 실제 값으로 다시 켠다).
                 if (!quiz) hideHintProviderBadge();
                 document.body.classList.toggle('quiz-layout', usesPanel);
-                // 모드 2에서만 다른 글자 크기를 쓰는 CSS(.mode-quiz)가 있어 따로 표시한다.
-                document.body.classList.toggle('mode-quiz', quiz);
-                document.body.classList.toggle('mode-word', !quiz && !exam);
                 boardContainer.classList.toggle('quiz-mode', usesPanel);
                 document.getElementById('wordRuleBanner').hidden = usesPanel;
                 document.getElementById('quizRuleBanner').hidden = !quiz;
