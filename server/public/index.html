@@ -1003,7 +1003,8 @@
         .room-code-box .code { font-size: 2.1em; font-weight: 700; color: #8a6400; letter-spacing: 6px; text-shadow: 0 1px 0 #fff; }
         .room-code-box .hint { font-size: var(--fs-body); color: rgba(70,50,20,0.6); }
         /* 게임 설정 아래 안내("최소 2명 이상이어야…", "🔤 글자 수 제한 없이…" 등)는 검정 글자 */
-        #hostSettings .panel-sub { color: #000; }
+        /* 제목 "⚙️ 게임 설정"(.panel h2)과 같은 크기. 커진 만큼 줄바꿈은 낱말 단위로(keep-all) */
+        #hostSettings .panel-sub { color: #000; font-size: 1.35em; word-break: keep-all; }
 
         .player-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
         .player-chip {
@@ -1040,7 +1041,10 @@
         /* 모드 2(AI 힌트 맞히기)에서는 카테고리·남은 시간·내 점수 카드 글자를
            상단 [게임 설명] 버튼(.back-link, --fs-body)과 같은 크기로 쓴다 */
         body.mode-quiz .status-label,
-        body.mode-quiz .status-val { font-size: var(--fs-body); }
+        body.mode-quiz .status-val,
+        body.mode-word .status-label,
+        body.mode-word .status-val { font-size: var(--fs-body); }
+        /* (모드 1도 같은 크기. 모드 3만 --fs-label / --fs-key 기본값을 쓴다) */
 
         .status-card.pulse-score { animation: scorePulse 0.4s ease; }
         @keyframes scorePulse {
@@ -1302,6 +1306,7 @@
             display: flex; align-items: center; justify-content: space-between;
             gap: 16px; padding: 10px 18px; border-radius: 14px;
             background: #fff3e6; border: 2px solid #ffe3c2; font-weight: 600;
+            font-size: var(--fs-body);   /* 1위·2위 줄 — 아래 [닫기] 버튼(.jelly-btn)과 같은 크기 */
         }
         .rank-row.first {
             background: linear-gradient(160deg, #fff1b8, var(--yellow));
@@ -2673,6 +2678,7 @@
                 document.body.classList.toggle('quiz-layout', usesPanel);
                 // 모드 2에서만 다른 글자 크기를 쓰는 CSS(.mode-quiz)가 있어 따로 표시한다.
                 document.body.classList.toggle('mode-quiz', quiz);
+                document.body.classList.toggle('mode-word', !quiz && !exam);
                 boardContainer.classList.toggle('quiz-mode', usesPanel);
                 document.getElementById('wordRuleBanner').hidden = usesPanel;
                 document.getElementById('quizRuleBanner').hidden = !quiz;

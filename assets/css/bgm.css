@@ -64,10 +64,10 @@
     50% { filter: brightness(1.18); }
 }
 
-/* 펼쳐지는 판 */
+/* 펼쳐지는 판 — 안의 글자는 처음 값(1.02/0.98/0.82/0.95/0.85em)의 1.5배 */
 .bgm-panel {
     display: none;
-    width: min(280px, calc(100vw - 32px));
+    width: min(380px, calc(100vw - 32px));   /* 글자를 1.5배로 키우면서 폭도 넓혔다 (280 → 380) */
     background: #fff;
     border: 1px solid rgba(120, 95, 90, 0.16);
     border-radius: 18px;
@@ -86,7 +86,7 @@
     justify-content: space-between;
     margin-bottom: 10px;
 }
-.bgm-panel-title { font-weight: 700; font-size: 1.02em; color: var(--pink-dark, #e0506f); }
+.bgm-panel-title { font-weight: 700; font-size: 1.53em; color: var(--pink-dark, #e0506f); }
 .bgm-close {
     border: none;
     background: #f3eeff;
@@ -107,7 +107,7 @@
     border-radius: 14px;
     padding: 11px 14px;
     font-family: inherit;
-    font-size: 0.98em;
+    font-size: 1.47em;
     font-weight: 700;
     color: #fff;
     cursor: pointer;
@@ -124,7 +124,7 @@
 
 .bgm-label {
     display: block;
-    font-size: 0.82em;
+    font-size: 1.23em;
     font-weight: 700;
     color: rgba(91, 75, 69, 0.9);
     margin: 0 0 4px 2px;
@@ -132,7 +132,7 @@
 .bgm-select {
     width: 100%;
     font-family: inherit;
-    font-size: 0.95em;
+    font-size: 1.43em;
     color: var(--ink, #5b4b45);
     background: #fffaf3;
     border: 2px solid #f4c9d2;
@@ -144,12 +144,12 @@
 .bgm-select:focus { outline: none; border-color: var(--purple, #A78BFA); }
 
 .bgm-vol-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.bgm-vol-icon { font-size: 1em; }
+.bgm-vol-icon { font-size: 1.5em; }
 .bgm-volume { flex: 1; accent-color: var(--purple, #A78BFA); cursor: pointer; min-width: 0; }
-.bgm-vol-value { min-width: 3.2em; text-align: right; font-size: 0.85em; font-weight: 700; }
+.bgm-vol-value { min-width: 3.2em; text-align: right; font-size: 1.28em; font-weight: 700; }
 
 .bgm-now {
-    font-size: 0.82em;
+    font-size: 1.23em;
     color: rgba(91, 75, 69, 0.85);
     background: #fffaf3;
     border-radius: 10px;
