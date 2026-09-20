@@ -1024,7 +1024,8 @@
         const versusBar = dom('versusBar');
 
         const CONFETTI_COLORS = ['#FF6B8B', '#4ECCA3', '#FFD166', '#A78BFA', '#FFA26B', '#63C7FF'];
-        const GOOD_LABELS = ["Sweet!", "Awesome!", "정답이에요!", "새콤달콤!"];
+        // 정답 연출 문구. 세 모드 모두 같은 말을 띄운다 (콤보일 때는 COMBO 문구가 대신 뜬다).
+        const GOOD_LABEL = "GREAT!";
 
         // 목표 단어 글자를 채우고 남은 블록을 메우는 흔한 한글 글자들
         const FILLER_CHARS = "가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허고노도로모보소오조초코토포호구누두루무부수우주추쿠투푸후기니디리미비시이지치키티피히강건경고과관광구국군권금기길김남대도동명문미민박방배백번부북분산서석선설성세수숙순승시신심안양연영오용우원유윤은이인임장전정제조종주지진찬창채천철최추춘태하한해현호홍화환회효훈흥희";
@@ -4687,7 +4688,7 @@
                     UIManager.spawnConfetti();
                     UIManager.flashBoard('success');
                     UIManager.pulseScore();
-                    UIManager.spawnFloatText(`🎯 정답! +${examGained}`, "good");
+                    UIManager.spawnFloatText(`${GOOD_LABEL} +${examGained}`, "good");
                     AudioManager.playCorrect();
 
                     setTimeout(endGameByClear, 620);
@@ -4708,7 +4709,7 @@
                     UIManager.spawnConfetti();
                     UIManager.flashBoard('success');
                     UIManager.pulseScore();
-                    UIManager.spawnFloatText(`🎯 정답! +${quizGained}`, "good");
+                    UIManager.spawnFloatText(`${GOOD_LABEL} +${quizGained}`, "good");
                     AudioManager.playCorrect();
 
                     setTimeout(endGameByClear, 620);
@@ -4743,8 +4744,7 @@
                     UIManager.spawnFloatText(`🔥 ${combo.comboCount} COMBO! +${gained}`, "combo");
                     AudioManager.playCombo();
                 } else {
-                    const label = GOOD_LABELS[Math.floor(Math.random() * GOOD_LABELS.length)];
-                    UIManager.spawnFloatText(`+${gained} ${label}`, "good");
+                    UIManager.spawnFloatText(`${GOOD_LABEL} +${gained}`, "good");
                     AudioManager.playCorrect();
                 }
 

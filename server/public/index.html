@@ -937,6 +937,9 @@
             border: 2px solid #ffe3c2;
             margin-bottom: 14px;
         }
+        /* display:flex 가 브라우저 기본 [hidden] 규칙을 덮어쓰므로 따로 지정한다.
+           이게 없으면 모드 3(산업재산권 문제)에서 감춘 카테고리 줄이 그대로 보인다. */
+        .field-row[hidden] { display: none; }
         .field-row label { font-weight: 600; font-size: 0.95em; white-space: nowrap; }
         .field-row input, .field-row select {
             padding: 9px 12px;
@@ -1002,9 +1005,10 @@
         .card-category { background: linear-gradient(160deg, #fff1b8, var(--yellow)); box-shadow: 0 6px 0 var(--yellow-dark); }
         .card-timer { background: linear-gradient(160deg, #e6dcff, var(--purple)); box-shadow: 0 6px 0 var(--purple-dark); }
         .card-score { background: linear-gradient(160deg, #ffe1c7, var(--orange)); box-shadow: 0 6px 0 var(--orange-dark); }
-        .status-label { font-size: 0.78em; color: rgba(70,50,20,0.65); margin-bottom: 4px; font-weight: 600; }
-        .status-val { font-size: 1.35em; font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.12); }
-        .card-category .status-val { color: #8a6400; text-shadow: 0 1px 0 #fff; font-size: 1.15em; }
+        /* 제시어·남은 시간·내 점수의 글자는 멀리서도 읽히게 원래(0.78em/1.35em/1.15em)의 두 배로 키웠다 */
+        .status-label { font-size: 1.56em; color: rgba(70,50,20,0.65); margin-bottom: 4px; font-weight: 600; }
+        .status-val { font-size: 2.7em; font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.12); }
+        .card-category .status-val { color: #8a6400; text-shadow: 0 1px 0 #fff; font-size: 2.3em; }
 
         .status-card.pulse-score { animation: scorePulse 0.4s ease; }
         @keyframes scorePulse {
