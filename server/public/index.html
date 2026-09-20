@@ -1051,6 +1051,12 @@
         body.mode-quiz .status-val { font-size: calc(var(--fs-body) * 2); }
         body.mode-quiz #quizRuleBanner .rule-chip { font-size: calc(var(--fs-label) * 1.5); }
         body.mode-quiz #quizRuleBanner .rule-text { font-size: calc(var(--fs-body) * 1.5); }
+        /* 모드 1(제시어 맞추기)의 게임 종료 모달 — 카드(폭·여백)와 글자(제목·순위 줄·버튼) 모두 1.5배,
+           [다시하기]·[닫기] 안 여백은 .jelly-btn 기본 14px 26px 에서 사방 5px 씩 더 */
+        body.mode-word #gameOverOverlay .modal-card { min-width: 450px; padding: 48px 57px; }
+        body.mode-word #gameOverOverlay .modal-card h2 { font-size: 2.25em; }
+        body.mode-word #gameOverOverlay .rank-row { font-size: calc(var(--fs-body) * 1.5); padding: 15px 27px; }
+        body.mode-word #gameOverOverlay .jelly-btn { font-size: calc(var(--fs-body) * 1.5); padding: 19px 31px; }
         /* 모드 2의 이름·점수 칩 안 여백 — .rank-chip 기본 7px 14px 에서 사방 20px 씩 더 (10px 씩 두 번 넓혔다) */
         body.mode-quiz .rank-chip { padding: 27px 34px; }
 
@@ -1441,7 +1447,8 @@
         /* 배경 고르기 모달 안 글자(제목·안내·미리보기 이름·✔)는 모두 1.5배. em 단위라 카드의 font-size 하나로 함께 커지고,
            [완료 ✔] 버튼은 --fs-body 고정이라 따로 1.5배. 미리보기 격자가 좁아지지 않게 카드 폭도 넓혔다. */
         #bgOverlay .modal-card { font-size: 1.5em; max-width: min(92vw, 720px); }
-        #bgOverlay .modal-card .jelly-btn { font-size: calc(var(--fs-body) * 1.5); }
+        /* [완료 ✔] — 글자는 1.5배에서 0.8배로 줄여 1.2배, 여백은 .jelly-btn 기본 14px 26px 에서 사방 3px 씩 더 */
+        #bgOverlay .modal-card .jelly-btn { font-size: calc(var(--fs-body) * 1.2); padding: 17px 29px; }
         /* 미리보기 단추(.bg-option)는 button 이라 글자 크기를 물려받지 않고 브라우저 기본 13.33px 을 썼다.
            그 1.5배(20px)를 직접 적어 이름(0.68em)과 ✔(0.85em)도 같이 1.5배가 되게 한다. */
         #bgOverlay .bg-option { font-size: 20px; }
