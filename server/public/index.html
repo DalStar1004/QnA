@@ -1005,10 +1005,12 @@
         .card-category { background: linear-gradient(160deg, #fff1b8, var(--yellow)); box-shadow: 0 6px 0 var(--yellow-dark); }
         .card-timer { background: linear-gradient(160deg, #e6dcff, var(--purple)); box-shadow: 0 6px 0 var(--purple-dark); }
         .card-score { background: linear-gradient(160deg, #ffe1c7, var(--orange)); box-shadow: 0 6px 0 var(--orange-dark); }
-        /* 제시어·남은 시간·내 점수의 글자는 멀리서도 읽히게 원래(0.78em/1.35em/1.15em)의 두 배로 키웠다 */
-        .status-label { font-size: 1.56em; color: rgba(70,50,20,0.65); margin-bottom: 4px; font-weight: 600; }
-        .status-val { font-size: 2.7em; font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.12); }
-        .card-category .status-val { color: #8a6400; text-shadow: 0 1px 0 #fff; font-size: 2.3em; }
+        /* 제시어·남은 시간·내 점수의 글자 크기. 처음(0.78em/1.35em/1.15em)의 두 배로 키웠다가
+           너무 커서 그 0.7배(= 처음의 1.4배)로 줄였다 */
+        .status-label { font-size: 1.09em; color: rgba(70,50,20,0.65); margin-bottom: 4px; font-weight: 600; }
+        .status-val { font-size: 1.89em; font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.12); }
+        /* 제시어는 노란 카드 위에서 눈에 띄게 빨간 글자로 */
+        .card-category .status-val { color: #d81e1e; text-shadow: 0 1px 0 #fff; font-size: 1.61em; }
 
         .status-card.pulse-score { animation: scorePulse 0.4s ease; }
         @keyframes scorePulse {
@@ -1041,7 +1043,7 @@
             border: 2px solid #ffe3c2;
             border-radius: 14px;
             padding: 7px 14px;
-            font-size: 1.32em;   /* 이름·점수가 멀리서도 읽히게 원래 0.88em 의 1.5배 */
+            font-size: 1.98em;   /* 이름·점수가 멀리서도 읽히게. 원래 0.88em → 1.5배(1.32em) → 다시 1.5배 */
             font-weight: 600;
             box-shadow: 0 3px 0 rgba(255,214,226,0.9);
         }
