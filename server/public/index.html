@@ -998,9 +998,12 @@
             transition: transform 0.1s ease;
         }
         .room-code-box:active { transform: translateY(3px); box-shadow: 0 3px 0 var(--yellow-dark); }
-        .room-code-box .label { font-size: 0.78em; color: rgba(70,50,20,0.7); font-weight: 600; }
+        /* "방 코드" 라벨과 "클릭해서 복사 → …" 안내는 상단 [게임 설명] 버튼(.back-link, --fs-body)과 같은 크기 */
+        .room-code-box .label { font-size: var(--fs-body); color: rgba(70,50,20,0.7); font-weight: 600; }
         .room-code-box .code { font-size: 2.1em; font-weight: 700; color: #8a6400; letter-spacing: 6px; text-shadow: 0 1px 0 #fff; }
-        .room-code-box .hint { font-size: 0.72em; color: rgba(70,50,20,0.6); }
+        .room-code-box .hint { font-size: var(--fs-body); color: rgba(70,50,20,0.6); }
+        /* 게임 설정 아래 안내("최소 2명 이상이어야…", "🔤 글자 수 제한 없이…" 등)는 검정 글자 */
+        #hostSettings .panel-sub { color: #000; }
 
         .player-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
         .player-chip {
