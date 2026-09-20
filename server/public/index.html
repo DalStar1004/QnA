@@ -1281,7 +1281,10 @@
         .modal-overlay.show .modal-card { transform: none; }
         .modal-card h2 { margin: 0 0 16px; font-size: 1.5em; color: var(--pink-dark); }
         /* ---------- 게임 설명 모달 (혼자 하기의 게임 설명과 같은 카드형 단계 디자인) ---------- */
-        .modal-card.how-to-card { max-width: min(92vw, 620px); max-height: min(86vh, 700px); overflow-y: auto; text-align: left; }
+        /* 게임 설명 안 글자는 모두 1.5배. 제목·단계·설명이 em 단위라 카드의 font-size 하나로 함께 커지고,
+           [알겠어요] 버튼은 --fs-body 고정이라 따로 1.5배. 글자가 커진 만큼 카드도 조금 넓혔다(620 → 780px). */
+        .modal-card.how-to-card { max-width: min(92vw, 780px); max-height: min(86vh, 760px); overflow-y: auto; text-align: left; font-size: 1.5em; }
+        .modal-card.how-to-card .jelly-btn { font-size: calc(var(--fs-body) * 1.5); padding: 24px 36px; }   /* 여백은 .jelly-btn 기본 14px 26px 에서 사방 10px 씩 더 */
         .modal-card.how-to-card h2 { text-align: center; }
         .modal-sub { color: #8a7a72; font-size: 0.92em; margin-bottom: 14px; text-align: center; }
         .how-to-body { display: flex; flex-direction: column; gap: 14px; margin: 16px 0; }
@@ -1618,13 +1621,13 @@
             color: var(--ink);
             background: #fff;
             border-radius: 999px;
-            padding: 13px 21px;   /* 원래 8px 16px 에서 사방 5px 씩 여유를 더 줬다 */
+            padding: 23px 31px;   /* 원래 8px 16px 에서 사방 15px 씩 여유를 더 줬다 (5px, 그다음 10px) */
             box-shadow: 0 3px 0 rgba(167, 139, 250, 0.35);
         }
         .back-link:hover { filter: brightness(0.98); }
         /* 오른쪽 위 🔊 효과음·🎵 배경음악 단추(공용 bgm.css)의 글자를 이 화면에서는
            [게임 설명] 등 상단 버튼(.back-link)과 같은 크기로 쓴다. bgm.css 보다 뒤에 있어 이 규칙이 이긴다. */
-        .bgm-fab { font-size: var(--fs-body); padding: 15px 21px; }   /* bgm.css 의 10px 16px 에서 사방 5px 씩 더 */
+        .bgm-fab { font-size: var(--fs-body); padding: 20px 26px; }   /* bgm.css 의 10px 16px 에서 사방 10px 씩 더 (5px 씩 두 번, 혼자 하기와 같은 값) */
         .back-link:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(167, 139, 250, 0.35); }
 
         /*
@@ -1790,7 +1793,7 @@
 
                     <!-- 제시어 맞추기 설정 -->
                     <div id="wordSettings">
-                        <div class="panel-sub">🔤 글자 수 제한 없이, 카테고리와 관련된 단어를 블록으로 이어서 만들면 정답이에요</div>
+                        <div class="panel-sub">🔤 글자 수 제한 없이, 카테고리와 관련된 단어를 블록을 클릭해서 정답을 만들면 정답이에요</div>
                         <div class="field-row">
                             <label for="blockCountInput">🧩 블록 개수</label>
                             <input type="number" id="blockCountInput" value="16" min="4" max="36">
