@@ -1045,6 +1045,14 @@
         /* 모드 1(제시어 맞추기)만 제시어·남은 시간·내 점수 카드의 라벨과 값을 1.5배로 */
         body.mode-word .status-label,
         body.mode-word .status-val { font-size: calc(var(--fs-body) * 1.5); }
+        /* 모드 2(AI 힌트 맞히기)는 카테고리·남은 시간·내 점수 카드의 라벨과 값을 2배로,
+           규칙 배너(AI 힌트 맞히기 · 정답을 완성하면 자동 제출 · 안내문)는 1.5배로 */
+        body.mode-quiz .status-label,
+        body.mode-quiz .status-val { font-size: calc(var(--fs-body) * 2); }
+        body.mode-quiz #quizRuleBanner .rule-chip { font-size: calc(var(--fs-label) * 1.5); }
+        body.mode-quiz #quizRuleBanner .rule-text { font-size: calc(var(--fs-body) * 1.5); }
+        /* 모드 2의 이름·점수 칩 안 여백 — .rank-chip 기본 7px 14px 에서 사방 10px 씩 더 */
+        body.mode-quiz .rank-chip { padding: 17px 24px; }
 
         .status-card.pulse-score { animation: scorePulse 0.4s ease; }
         @keyframes scorePulse {
@@ -1429,6 +1437,13 @@
             background: rgba(91, 75, 69, 0.6);
             padding: 3px 0;
         }
+        /* 배경 고르기 모달 안 글자(제목·안내·미리보기 이름·✔)는 모두 1.5배. em 단위라 카드의 font-size 하나로 함께 커지고,
+           [완료 ✔] 버튼은 --fs-body 고정이라 따로 1.5배. 미리보기 격자가 좁아지지 않게 카드 폭도 넓혔다. */
+        #bgOverlay .modal-card { font-size: 1.5em; max-width: min(92vw, 720px); }
+        #bgOverlay .modal-card .jelly-btn { font-size: calc(var(--fs-body) * 1.5); }
+        /* 미리보기 단추(.bg-option)는 button 이라 글자 크기를 물려받지 않고 브라우저 기본 13.33px 을 썼다.
+           그 1.5배(20px)를 직접 적어 이름(0.68em)과 ✔(0.85em)도 같이 1.5배가 되게 한다. */
+        #bgOverlay .bg-option { font-size: 20px; }
         .bg-option.bg-none-option {
             background: linear-gradient(135deg, #fdf2f8 0%, #fff8ec 45%, #eef6ff 100%);
         }
@@ -2679,8 +2694,9 @@
                 // (모드 2로 돌아오면 quiz:round:started가 실제 값으로 다시 켠다).
                 if (!quiz) hideHintProviderBadge();
                 document.body.classList.toggle('quiz-layout', usesPanel);
-                // 모드 1에서만 상태 카드 글자를 키우는 CSS(body.mode-word)가 있어 따로 표시한다.
+                // 모드 1·2에서 상태 카드/배너 글자를 키우는 CSS(body.mode-word / body.mode-quiz)가 있어 따로 표시한다.
                 document.body.classList.toggle('mode-word', !usesPanel);
+                document.body.classList.toggle('mode-quiz', quiz);
                 boardContainer.classList.toggle('quiz-mode', usesPanel);
                 document.getElementById('wordRuleBanner').hidden = usesPanel;
                 document.getElementById('quizRuleBanner').hidden = !quiz;
