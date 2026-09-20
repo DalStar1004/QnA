@@ -931,7 +931,8 @@
             box-shadow: 0 14px 0 rgba(255, 214, 226, 0.9), 0 22px 30px rgba(255, 140, 170, 0.18);
         }
         .panel h2 { margin: 0 0 6px; font-size: 1.35em; color: var(--pink-dark); }
-        .panel .panel-sub { color: #8a7a72; font-size: 0.92em; margin-bottom: 18px; }
+        /* 패널 안 보조 설명("최소 2명 이상이어야…", 모드별 안내 등) — 게임 종류 카드의 설명(.mode-desc)과 같은 크기 */
+        .panel .panel-sub { color: #8a7a72; font-size: var(--fs-label); margin-bottom: 18px; }
 
         .field-row {
             display: flex;
@@ -1669,6 +1670,12 @@
         </div>
     </div>
 
+    <!-- 효과음 켜기/끄기. 오른쪽 위 🎵 배경음악 단추 왼쪽에 나란히 놓인다 —
+         bgm.js 가 data-bgm-beside 를 보고 제 단추 줄로 끌어간다 (혼자 하기와 같은 단추). -->
+    <button type="button" class="bgm-fab sfx-fab" id="sfxFabBtn" data-bgm-beside title="효과음 켜기/끄기">
+        <span class="bgm-fab-icon" id="sfxFabIcon">🔊</span><span class="bgm-fab-label" id="sfxFabLabel">효과음</span>
+    </button>
+
     <h1 class="title">단어 블록 톡톡 — 멀티플레이</h1>
 
     <div class="app-container">
@@ -2182,6 +2189,90 @@
         // 마지막 블록 선택 후 이 시간(ms) 동안 추가 선택이 없으면 내 선택만 자동으로 푼다.
         // 혼자 하기(word_connection_game.js)의 AUTO_DESELECT_MS와 같은 값·같은 이름이다.
         const AUTO_DESELECT_MS = 2000;
+
+        /* ---------- 효과음 — 혼자 하기(assets/js/word-connection-game.js)의 AudioManager 와 같다 ----------
+           외부 파일 없이 Web Audio 오실레이터로 짧은 음을 낸다. 배경음악(bgm.js)과는 별개이며,
+           오른쪽 위 🔊 효과음 단추로 끄고 켠다. 브라우저는 사용자가 한 번 누르기 전에는 소리를 못 내므로
+           방 만들기·참가·시작 클릭과 첫 pointerdown 에서 ensureContext() 를 부른다. */
+        const AudioManager = (function () {
+            let ctx = null;
+            let muted = false;
+
+            function ensureContext() {
+                try {
+                    if (!ctx) {
+                        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        ctx = new AudioCtx();
+                    } else if (ctx.state === 'suspended') {
+                        ctx.resume();
+                    }
+                } catch (e) {
+                    ctx = null; // 미지원 브라우저는 조용히 무시
+                }
+            }
+
+            function beep(freq, duration, type, volume) {
+                if (muted || !ctx) return;
+                try {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = type || 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.value = volume || 0.2;
+                    osc.connect(gain).connect(ctx.destination);
+                    osc.start();
+                    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+                    osc.stop(ctx.currentTime + duration);
+                } catch (e) { /* 재생 실패는 게임 진행에 영향 없음 */ }
+            }
+
+            // 짧은 음을 순서대로 이어 붙인다. 음 하나는 [주파수, 길이(초), 파형, 볼륨, 시작 지연(ms)].
+            function melody(notes) {
+                notes.forEach(([freq, duration, type, volume, delay]) => {
+                    if (delay) setTimeout(() => beep(freq, duration, type, volume), delay);
+                    else beep(freq, duration, type, volume);
+                });
+            }
+
+            return {
+                ensureContext,
+                playStart() {
+                    ensureContext();
+                    melody([[523, 0.12, 'sine', 0.18, 0], [784, 0.18, 'sine', 0.18, 120]]);
+                },
+                playCorrect() {
+                    melody([[880, 0.15, 'triangle', 0.18, 0], [1200, 0.15, 'triangle', 0.16, 90]]);
+                },
+                playWrong() {
+                    beep(180, 0.25, 'sawtooth', 0.13);
+                },
+                // 모드 2: 새 힌트가 열렸을 때의 짧은 알림음
+                playHint() {
+                    melody([[740, 0.09, 'sine', 0.14, 0], [988, 0.14, 'sine', 0.12, 90]]);
+                },
+                playWin() {
+                    melody([[523, 0.12, 'triangle', 0.18, 0], [659, 0.12, 'triangle', 0.18, 110],
+                            [784, 0.12, 'triangle', 0.18, 220], [1047, 0.3, 'triangle', 0.18, 330]]);
+                },
+                playGameOver() {
+                    melody([[392, 0.2, 'sine', 0.18, 0], [330, 0.2, 'sine', 0.18, 180],
+                            [262, 0.3, 'sine', 0.18, 360]]);
+                },
+                toggleMute() {
+                    muted = !muted;
+                    return muted;
+                },
+                get isMuted() { return muted; }
+            };
+        })();
+
+        /* 효과음 켜기/끄기 — 오른쪽 위 🔊 단추(배경음악 왼쪽). 혼자 하기의 toggleMute() 와 같다. */
+        function toggleMute() {
+            const muted = AudioManager.toggleMute();
+            document.getElementById('sfxFabBtn').classList.toggle('is-off', muted);
+            document.getElementById('sfxFabIcon').textContent = muted ? '🔇' : '🔊';
+            document.getElementById('sfxFabLabel').textContent = muted ? '효과음 꺼짐' : '효과음';
+        }
 
         /* ---------- State: 서버 상태의 읽기 전용 사본 ---------- */
         const ClientState = {
@@ -2879,6 +2970,7 @@
          */
         function handleCorrectAnswer(blocks) {
             UIManager.popBlocks(blocks);
+            AudioManager.playCorrect();
             // 스무고개는 몇 점을 얻었는지가 곧 오는 quiz:round:result 에 담겨 오므로,
             // 축하 연출을 그쪽에 맡겨 두 번 터지지 않게 한다.
             if (ClientState.mode !== 'quiz') {
@@ -3000,6 +3092,7 @@
                 UIManager.spawnFloatText(message, 'bad');
                 UIManager.shakeBlocks(blocks);
                 UIManager.flashBoard('error');
+                AudioManager.playWrong();
                 setTimeout(() => UIManager.resetSelection(), 380);
             }
         };
@@ -3056,6 +3149,7 @@
 
         NetworkManager.on('game:started', (payload) => {
             ClientState.inGame = true;
+            AudioManager.playStart();
             ClientState.mode = payload.mode || 'word';
             ClientState.category = payload.category;
             UIManager.hideGameOver();
@@ -3140,6 +3234,7 @@
 
         NetworkManager.on('quiz:hint', (payload) => {
             UIManager.appendHint(payload);
+            AudioManager.playHint();
         });
 
         /* ---------- 산업재산권 문제 (모드 3) ----------
@@ -3250,6 +3345,11 @@
             UIManager.resetSelection();
             UIManager.renderRanking();
             UIManager.showGameOver(payload.players);
+            // 순위는 서버가 점수순으로 정렬해 보낸다. 내가 1위(공동 1위 포함)면 승리음, 아니면 종료음.
+            const top = payload.players[0];
+            const me = payload.players.find((p) => p.id === ClientState.myId);
+            if (top && me && me.score === top.score) AudioManager.playWin();
+            else AudioManager.playGameOver();
         });
 
         NetworkManager.on('error:notice', (payload) => {
@@ -3329,6 +3429,9 @@
         document.getElementById('aiConnectBtn').addEventListener('click', () => LobbyController.connectAi());
         document.getElementById('aiDisconnectBtn').addEventListener('click', () => LobbyController.disconnectAi());
 
+        // 효과음 단추와, 브라우저의 소리 잠금을 푸는 첫 클릭
+        document.getElementById('sfxFabBtn').addEventListener('click', toggleMute);
+        document.addEventListener('pointerdown', () => AudioManager.ensureContext(), { once: true });
         document.getElementById('createRoomBtn').addEventListener('click', LobbyController.createRoom);
         document.getElementById('joinRoomBtn').addEventListener('click', LobbyController.joinRoom);
         document.getElementById('startGameBtn').addEventListener('click', LobbyController.startGame);
