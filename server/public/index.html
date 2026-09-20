@@ -1039,6 +1039,9 @@
         .status-val { font-size: var(--fs-body); font-weight: 700; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.12); }
         /* 제시어는 노란 카드 위에서 눈에 띄게 빨간 글자로 */
         .card-category .status-val { color: #d81e1e; text-shadow: 0 1px 0 #fff; }
+        /* 모드 1(제시어 맞추기)만 제시어·남은 시간·내 점수 카드의 라벨과 값을 1.5배로 */
+        body.mode-word .status-label,
+        body.mode-word .status-val { font-size: calc(var(--fs-body) * 1.5); }
 
         .status-card.pulse-score { animation: scorePulse 0.4s ease; }
         @keyframes scorePulse {
@@ -2670,6 +2673,8 @@
                 // (모드 2로 돌아오면 quiz:round:started가 실제 값으로 다시 켠다).
                 if (!quiz) hideHintProviderBadge();
                 document.body.classList.toggle('quiz-layout', usesPanel);
+                // 모드 1에서만 상태 카드 글자를 키우는 CSS(body.mode-word)가 있어 따로 표시한다.
+                document.body.classList.toggle('mode-word', !usesPanel);
                 boardContainer.classList.toggle('quiz-mode', usesPanel);
                 document.getElementById('wordRuleBanner').hidden = usesPanel;
                 document.getElementById('quizRuleBanner').hidden = !quiz;
