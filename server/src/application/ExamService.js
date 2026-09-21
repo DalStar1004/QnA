@@ -20,6 +20,9 @@ const MIN_BLOCK_COUNT = 4;
 const MAX_BLOCK_COUNT = 36;
 // 정답을 보여 주고 다음 문제로 넘어가기까지의 시간. 스무고개와 같게 맞춘다.
 const ROUND_TRANSITION_DELAY_MS = 3000;
+// 맞히면 문제당 고정 점수. 혼자 하기 모드 3(EXAM_POINTS_PER_QUESTION)과 같다 —
+// 빨리 맞혀도 더 주지 않는다 (기본 문제 파일 20문제를 다 맞히면 100점).
+const EXAM_POINTS_PER_QUESTION = 5;
 
 class ExamService {
     /**
@@ -93,8 +96,7 @@ class ExamService {
 
     /**
      * 정답 제출. 맞으면서 최초인 사람만 득점하고 곧바로 다음 문제로 넘어간다.
-     * 점수는 **남은 시간**이다 — 빨리 맞힐수록 높다.
-     * (혼자 하기 모드 3은 문제당 5점 고정으로 바뀌었다. 멀티는 먼저 맞힌 사람이 이기는 방식이라 그대로 둔다.)
+     * 점수는 혼자 하기 모드 3과 같이 **문제당 5점 고정**이다 (예전에는 남은 시간을 줬다).
      */
     submitAnswer({ playerId, word }) {
         const room = this.findRoomByPlayer(playerId);
@@ -110,7 +112,7 @@ class ExamService {
             return { ok: true, correct: false, alreadySolved: result.alreadySolved };
         }
 
-        const gained = Math.max(1, room.timeLeft);
+        const gained = EXAM_POINTS_PER_QUESTION;
         const winner = room.getPlayer(playerId);
         winner.addScore(gained);
         this.roomRepository.save(room);
