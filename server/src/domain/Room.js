@@ -43,13 +43,13 @@ class Room {
         this.players = new Map();
         this.status = RoomStatus.WAITING;
         this.mode = GameMode.WORD;
-        this.settings = { blockCount: 16, category: 'random', durationSeconds: GAME_DURATION_SECONDS };
+        this.settings = { blockCount: 20, category: 'random', durationSeconds: GAME_DURATION_SECONDS };
         // 스무고개는 시간이 아니라 라운드 수로 끝난다. 그래서 설정을 따로 둔다.
-        this.quizSettings = { rounds: 5, blockCount: 16, category: 'random' };
+        this.quizSettings = { rounds: 5, blockCount: 20, category: 'random' };
         /* 모드 3도 설정을 따로 둔다. 세 모드는 판의 성격이 달라 알맞은 블록 개수가 서로 다르므로
            (혼자 하기에서 겪은 것과 같은 이유) 값을 나눠 쓰지 않는다.
            문제 수는 방장이 정하지 않는다 — 문제 파일에 있는 것을 처음부터 끝까지 낸다. */
-        this.examSettings = { blockCount: 12, secondsPerQuestion: EXAM_SECONDS_PER_QUESTION };
+        this.examSettings = { blockCount: 16, secondsPerQuestion: EXAM_SECONDS_PER_QUESTION };
         this.examRound = null;
         this.examQuestions = [];   // 이번 게임에서 낼 문제 목록 (파일에 적힌 순서 그대로)
         // settings.category가 'random'일 수 있으므로, 실제로 뽑힌 카테고리는 따로 보관한다
