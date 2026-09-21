@@ -1944,7 +1944,7 @@
             <!-- 산업재산권 문제 안내 (스무고개와 같은 화면 틀을 쓴다) -->
             <div class="rule-banner quiz" id="examRuleBanner" hidden>
                 <span class="rule-chip" id="examRoundChip">📜 산업재산권 문제</span>
-                <span class="rule-chip">🖱 왼쪽 클릭으로 고르고 · 오른쪽 클릭으로 완성</span>
+                <span class="rule-chip">🖱 정답을 완성하면 자동 제출</span>
                 <span class="rule-text">문제를 읽고 <b id="examSecondsLabel">40</b>초 안에 정답을 만들어보세요. 시간이 지나면 정답을 알려줘요!</span>
             </div>
 
@@ -2056,7 +2056,7 @@
                     <span class="how-to-num">2</span>
                     <div>
                         <b>정답이 완성되면 자동으로 제출</b>
-                        <p>제시어 맞추기·AI 힌트 맞히기에서는 블록을 이어 정답이 만들어지면 오른쪽 클릭 없이 바로 제출됩니다. 오른쪽 클릭으로 직접 제출할 수도 있어요.</p>
+                        <p>세 모드 모두 블록을 이어 정답이 만들어지면 오른쪽 클릭 없이 바로 제출됩니다. 오른쪽 클릭으로 직접 제출할 수도 있어요.</p>
                     </div>
                 </div>
                 <div class="how-to-step">
@@ -3049,11 +3049,13 @@
         }
 
         /* ---------- Controller: 게임 보드 입력 처리 ----------
-           왼쪽 클릭으로 블록을 하나씩 고른다. 제시어 맞추기·AI 힌트 맞히기(word/quiz)는
-           정답이 완성되는 순간 서버가 곧바로 판정해 자동으로 제출된다(혼자 하기와 같은
-           조작감). 오른쪽 클릭으로 직접 끝내는 방법도 그대로 남겨 뒀다 — 자동 판정이
-           실패하거나(네트워크 지연 등) 확인차 다시 보내고 싶을 때 쓸 수 있다.
-           산업재산권 문제(exam)는 이번 작업 대상이 아니라 오른쪽 클릭 제출 그대로다. */
+           왼쪽 클릭으로 블록을 하나씩 고른다. 세 모드 모두 정답이 완성되는 순간 서버가
+           곧바로 판정해 자동으로 제출되고, 2초 동안 더 고르지 않으면 내 선택만 풀린다
+           (혼자 하기와 같은 조작감). 오른쪽 클릭으로 직접 끝내는 방법도 그대로 남겨 뒀다 —
+           자동 판정이 실패하거나(네트워크 지연 등) 확인차 다시 보내고 싶을 때 쓸 수 있다.
+           산업재산권 문제(exam)도 처음엔 오른쪽 클릭 제출뿐이었는데, 혼자 하기 모드 3과
+           같은 방식(정답 완성 즉시 판정 · 2초 뒤 선택 해제)으로 맞췄다. 서버(ExamService)는
+           오답에 아무 불이익을 주지 않으므로 조용히 물어봐도 된다. */
         const GameController = {
             /**
              * 왼쪽 클릭 — 누른 순서대로 블록을 고른다.
@@ -3062,8 +3064,9 @@
              */
             pickBlock(block) {
                 if (ClientState.boardLocked) return;
-                // 자동 판정·자동 초기화는 이번에 적용하는 두 모드에서만 켠다.
-                const autoModes = ClientState.mode === 'word' || ClientState.mode === 'quiz';
+                // 자동 판정·자동 초기화 — 제시어 맞추기·AI 힌트 맞히기·산업재산권 문제 모두 켠다.
+                const autoModes = ClientState.mode === 'word' || ClientState.mode === 'quiz'
+                    || ClientState.mode === 'exam';
 
                 const already = ClientState.selectedBlocks.indexOf(block);
                 if (already !== -1) {
@@ -3120,8 +3123,8 @@
 
             /**
              * 오른쪽 클릭 — 고르기를 끝내고 만들어진 낱말을 서버에 보낸다.
-             * word/quiz는 정답 완성 시 checkAutoSubmit이 먼저 처리하므로 이 경로는
-             * 주로 확인차 다시 보내거나 exam(산업재산권 문제)에서 쓰인다.
+             * 세 모드 모두 정답 완성 시 checkAutoSubmit이 먼저 처리하므로 이 경로는
+             * 주로 확인차 다시 보내거나 오답을 확인하고 싶을 때 쓰인다.
              */
             async finishSelection() {
                 if (ClientState.selectedBlocks.length === 0) return;
