@@ -973,7 +973,8 @@
            주 버튼(게임 시작 / 스무고개 시작 / 다시하기)만 코랄 단색이고,
            나머지(설정 · 대결 · 랭킹 · 종료)는 크림색 고스트로 물러선다. */
         .top-nav .jelly-btn {
-            padding: clamp(10px, 0.75vw, 15px) clamp(16px, 1.3vw, 26px);
+            /* 안 여백 — 예전 clamp(10px, 0.75vw, 15px) clamp(16px, 1.3vw, 26px) 에서 사방 5px 씩 더 */
+            padding: clamp(15px, calc(0.75vw + 5px), 20px) clamp(21px, calc(1.3vw + 5px), 31px);
             font-size: var(--fs-body);
             border-radius: 16px;
             box-shadow: 0 3px 0 var(--btn-dark), 0 5px 10px rgba(0,0,0,0.06);
@@ -982,7 +983,7 @@
             transform: translateY(2px);
             box-shadow: 0 1px 0 var(--btn-dark), 0 2px 5px rgba(0,0,0,0.06);
         }
-        .top-nav .jelly-btn.icon-btn { padding: clamp(9px, 0.7vw, 14px) clamp(11px, 0.9vw, 16px); }
+        .top-nav .jelly-btn.icon-btn { padding: clamp(14px, calc(0.7vw + 5px), 19px) clamp(16px, calc(0.9vw + 5px), 21px); }
         .top-nav .btn-icon {
             width: clamp(22px, 1.35vw, 30px); height: clamp(22px, 1.35vw, 30px);
             vertical-align: -0.25em; margin-right: 8px;
